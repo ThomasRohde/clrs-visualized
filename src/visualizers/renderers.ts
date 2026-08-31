@@ -25,6 +25,18 @@ import type { Role } from './roles.ts';
 export interface RenderOptions {
   /** Tallest value the run will reach, so bar heights are stable across steps. */
   maxValue: number;
+  /**
+   * Smallest value the run will reach, when that is below zero.
+   *
+   * Absent — and 0 — mean "the axis starts at the baseline", which is what
+   * every algorithm on the site did until Problem 4-1 needed a maximum
+   * subarray, a problem that is trivial unless the input has negative numbers
+   * in it. Like `maxValue` it is computed over the whole trace and fixed for
+   * its duration: an axis refitted per frame would move every bar on screen as
+   * the algorithm ran, which is the rule `plot.ts` states at more length and
+   * for exactly the same reason.
+   */
+  minValue?: number;
 }
 
 /**

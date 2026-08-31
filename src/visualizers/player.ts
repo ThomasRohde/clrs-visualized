@@ -51,6 +51,7 @@ export class AlgorithmPlayer {
   private lastTick = 0;
   private baseInput: AlgorithmInput = [];
   private maxValue = 1;
+  private minValue = 0;
   private rafId: number | null = null;
   /**
    * True once `init()` has finished. Until then the buttons are unbound, the
@@ -177,6 +178,7 @@ export class AlgorithmPlayer {
     // raises a key above anything the reader typed, and a bar that overflows
     // the plot is worse than one that is slightly short.
     this.maxValue = traceMaxValue(steps, this.baseInput);
+    this.minValue = traceMinValue(steps, this.baseInput);
     this.scrub.max = String(steps.length - 1);
     this.tape.setTrace(steps);
     requestAnimationFrame(() => this.resizeAll());
@@ -244,7 +246,10 @@ export class AlgorithmPlayer {
 
   private resizeAll(): void {
     this.reserveNoteHeight();
-    this.renderer.resize(this.canvas, this.steps[this.index], { maxValue: this.maxValue });
+    this.renderer.resize(this.canvas, this.steps[this.index], {
+      maxValue: this.maxValue,
+      minValue: this.minValue,
+    });
     this.tape.layout();
     this.tape.render(this.index);
   }
@@ -253,7 +258,10 @@ export class AlgorithmPlayer {
     const step = this.steps[this.index];
     if (!step) return;
 
-    this.renderer.draw(this.canvas, step, { maxValue: this.maxValue });
+    this.renderer.draw(this.canvas, step, {
+      maxValue: this.maxValue,
+      minValue: this.minValue,
+    });
     this.tape.render(this.index);
     this.renderAux(step);
     this.renderCodeHighlight(step);
@@ -615,6 +623,30 @@ export function traceMaxValue(steps: Step[], fallback: AlgorithmInput): number {
     }
   }
   return max;
+}
+
+/**
+ * The most negative value the chart will have to draw, or 0 if there is none.
+ *
+ * Zero is the floor rather than the true minimum: a chart of values 40 to 78
+ * should still show them as bars of different heights standing on the
+ * baseline, not as a band floating between 40 and 78. Only a genuinely
+ * negative value moves the baseline up, which is what keeps this a no-op for
+ * every algorithm that shipped before it.
+ */
+export function traceMinValue(steps: Step[], fallback: AlgorithmInput): number {
+  let min = 0;
+  if (Array.isArray(fallback)) {
+    for (const v of fallback) if (Number.isFinite(v) && v < min) min = v;
+  }
+  for (const step of steps) {
+    if (!step.array) continue;
+    for (let k = 1; k < step.array.length; k++) {
+      const v = step.array[k];
+      if (typeof v === 'number' && Number.isFinite(v) && v < min) min = v;
+    }
+  }
+  return min;
 }
 
 /**

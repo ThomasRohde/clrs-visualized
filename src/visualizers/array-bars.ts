@@ -218,6 +218,61 @@ export function rolesForStep(step: Step): Map<number, Role> {
   return roles;
 }
 
+/** Where one bar's rectangle sits, in canvas y, and which way it points. */
+export interface BarSpan {
+  top: number;
+  bottom: number;
+  /** True for a bar rising from the zero line, false for one hanging below. */
+  up: boolean;
+}
+
+/**
+ * The height arithmetic, as a function rather than four lines inside a paint.
+ *
+ * It is out here because it is the one part of this renderer that can be
+ * checked without a canvas, and because E8 changed it: until Problem 4-1
+ * needed a maximum subarray, every value on the site was positive and a bar
+ * was measured from the baseline. **With `axisLo === 0` this returns exactly
+ * what that code returned** — same clamp, same 3px floor, same bottom — which
+ * is the whole guarantee that forty shipped players did not move.
+ * `tests/array-bars-axis.test.ts` is where that is asserted rather than
+ * asserted about.
+ *
+ * `axisLo` is the bottom of the value axis and is never above zero; the zero
+ * line lands wherever that puts it, and a negative bar hangs from it.
+ */
+export function barSpan(
+  value: number,
+  maxValue: number,
+  axisLo: number,
+  baseline: number,
+  plotH: number,
+): BarSpan {
+  const span = Math.max(1e-9, maxValue - axisLo);
+  const zeroY = baseline - ((0 - axisLo) / span) * plotH;
+  const finite = Number.isFinite(value);
+  // Which side of the zero line the bar sits on. **On an axis that starts at
+  // zero there is no "below" to draw in** — the zero line is the baseline, and
+  // under it are the index labels — so everything points up, which is what
+  // this renderer did for every player that shipped before E8. That is not
+  // only about the sentinels: it is what makes the guarantee below total.
+  const up = axisLo === 0 || (finite ? value >= 0 : value > 0);
+  // A sentinel is not a magnitude, so it gets the stub rather than a height.
+  const reach = finite ? Math.min(plotH, Math.max(3, (Math.abs(value) / span) * plotH)) : 3;
+  return up ? { top: zeroY - reach, bottom: zeroY, up } : { top: zeroY, bottom: zeroY + reach, up };
+}
+
+/** The y of the zero line, which is the baseline unless the axis goes below it. */
+export function zeroLine(
+  maxValue: number,
+  axisLo: number,
+  baseline: number,
+  plotH: number,
+): number {
+  const span = Math.max(1e-9, maxValue - axisLo);
+  return baseline - ((0 - axisLo) / span) * plotH;
+}
+
 export function draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: RenderOptions): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -258,6 +313,14 @@ export function draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: Re
   const plotH = H - padTop - padBottom;
   const x0For = (k: number) => padSide + (k - 1) * (barW + gap);
 
+  // The bottom of the value axis. Zero unless the trace actually goes below
+  // it, so every chart that shipped before Problem 4-1 keeps the geometry it
+  // had: with `axisLo === 0` the two expressions below reduce, term for term,
+  // to what this renderer has always computed.
+  const axisLo = Math.min(0, opts.minValue ?? 0);
+  const signed = axisLo < 0;
+  const zeroY = zeroLine(opts.maxValue, axisLo, H - padBottom, plotH);
+
   const roles = rolesForStep(step);
 
   // Active subarray band (merge sort / quicksort recursion). Drawn as a
@@ -294,6 +357,21 @@ export function draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: Re
     ctx.font = `500 10px ${mono}`;
     ctx.textAlign = 'right';
     ctx.fillText('◀ heap', x - 4, captionY);
+  }
+
+  // The line values are measured from. Only drawn when it is not the
+  // baseline, because otherwise it *is* the baseline, drawn at the end.
+  if (signed) {
+    ctx.strokeStyle = css('--line-strong');
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padSide, zeroY + 0.5);
+    ctx.lineTo(W - padSide, zeroY + 0.5);
+    ctx.stroke();
+    ctx.fillStyle = css('--ink-3');
+    ctx.font = `9px ${mono}`;
+    ctx.textAlign = 'left';
+    ctx.fillText('0', 1, zeroY - 2);
   }
 
   // Place the variable markers before drawing any bars. A label like
@@ -336,21 +414,29 @@ export function draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: Re
     // ±∞ is a sentinel, not a magnitude: draw the stub the sentinel deserves
     // and let the label say which one it is.
     const finite = Number.isFinite(val);
-    const h = finite ? Math.min(plotH, Math.max(3, (val / opts.maxValue) * plotH)) : 3;
-    const y = H - padBottom - h;
+    const { top, bottom, up } = barSpan(val, opts.maxValue, axisLo, H - padBottom, plotH);
 
     // Settled bars are square-topped; everything still in play is rounded.
     // That is the second channel — the one that still works if the colours
-    // are indistinguishable to the reader.
+    // are indistinguishable to the reader. The rounding goes on the *free*
+    // end, so a negative bar is rounded at the bottom and reads the same way.
     const radius = role === 'done' ? 0 : Math.min(3, barW / 2);
 
     ctx.fillStyle = colour(role);
     ctx.beginPath();
-    ctx.moveTo(x, y + radius);
-    ctx.arcTo(x, y, x + radius, y, radius);
-    ctx.arcTo(x + barW, y, x + barW, y + radius, radius);
-    ctx.lineTo(x + barW, H - padBottom);
-    ctx.lineTo(x, H - padBottom);
+    if (up) {
+      ctx.moveTo(x, top + radius);
+      ctx.arcTo(x, top, x + radius, top, radius);
+      ctx.arcTo(x + barW, top, x + barW, top + radius, radius);
+      ctx.lineTo(x + barW, bottom);
+      ctx.lineTo(x, bottom);
+    } else {
+      ctx.moveTo(x, top);
+      ctx.lineTo(x + barW, top);
+      ctx.lineTo(x + barW, bottom - radius);
+      ctx.arcTo(x + barW, bottom, x + barW - radius, bottom, radius);
+      ctx.arcTo(x, bottom, x, bottom - radius, radius);
+    }
     ctx.closePath();
     ctx.fill();
 
@@ -365,7 +451,13 @@ export function draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: Re
       ctx.fillStyle = css('--ink');
       ctx.font = `500 10px ${mono}`;
       ctx.textAlign = 'center';
-      ctx.fillText(finite ? String(val) : val > 0 ? '∞' : '−∞', x + barW / 2, y - 6);
+      // Beyond the free end, so a negative bar's value reads below it rather
+      // than through the bar above it.
+      ctx.fillText(
+        finite ? String(val) : val > 0 ? '∞' : '−∞',
+        x + barW / 2,
+        up ? top - 6 : bottom + 11,
+      );
     }
 
     ctx.fillStyle = css('--ink-3');
