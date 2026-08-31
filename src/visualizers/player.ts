@@ -7,6 +7,7 @@ import type {
   Step,
 } from '../algorithms/types.ts';
 import { loadAlgorithm } from '../algorithms/lazy.ts';
+import { activateWhenReady, KeyboardTarget } from './keyboard-target.ts';
 import { loadRenderer, type Renderer } from './renderers.ts';
 import { Tape } from './tape.ts';
 
@@ -49,6 +50,14 @@ export class AlgorithmPlayer {
   private baseInput: AlgorithmInput = [];
   private maxValue = 1;
   private rafId: number | null = null;
+  /**
+   * True once `init()` has finished. Until then the buttons are unbound, the
+   * trace is empty and there is no renderer, so the player must not be the
+   * keyboard's target — see keyboard-target.ts.
+   */
+  private ready = false;
+  /** The reader touched this player while it was still loading. */
+  private claimPending = false;
   private tape!: Tape;
   /** Chosen from the module's `visualizer` kind, before anything can draw. */
   private renderer!: Renderer;
@@ -95,7 +104,11 @@ export class AlgorithmPlayer {
     const size = Number(this.root.dataset.size ?? this.algo.defaultSize ?? 12);
     this.setInput(makeInput(size, this.algo.input));
     this.resizeAll();
+    this.ready = true;
     this.root.dataset.ready = 'true';
+    // A reader who clicked during the load meant it, and their choice outranks
+    // whichever player mountAll would otherwise hand the keyboard to.
+    if (this.claimPending) AlgorithmPlayer.keyboard.claim(this);
   }
 
   private q<T extends HTMLElement>(sel: string): T {
@@ -306,7 +319,12 @@ export class AlgorithmPlayer {
   // ---------- events ----------
 
   private wire(): void {
-    const claim = () => AlgorithmPlayer.setActive(this);
+    // Deferred rather than dropped when the player is still loading: the
+    // listeners are live from here, but `init()` has not finished.
+    const claim = () => {
+      if (this.ready) AlgorithmPlayer.keyboard.claim(this);
+      else this.claimPending = true;
+    };
 
     this.btnPlay.addEventListener('click', () => {
       claim();
@@ -390,21 +408,28 @@ export class AlgorithmPlayer {
 
   // ---------- keyboard ----------
 
-  static active: AlgorithmPlayer | null = null;
+  /**
+   * The one keyboard target on the page, and the marking that shows which it
+   * is. The policy — earliest ready player, until the reader picks one — is in
+   * keyboard-target.ts, where it can be tested without a browser.
+   */
+  static readonly keyboard = new KeyboardTarget<AlgorithmPlayer>((previous, next) => {
+    if (previous) delete previous.root.dataset.active;
+    next.root.dataset.active = 'true';
+  });
 
-  /** Mark one player as the keyboard target, and show which one that is. */
-  static setActive(player: AlgorithmPlayer): void {
-    if (AlgorithmPlayer.active === player) return;
-    if (AlgorithmPlayer.active) delete AlgorithmPlayer.active.root.dataset.active;
-    AlgorithmPlayer.active = player;
-    player.root.dataset.active = 'true';
-  }
+  private static keysInstalled = false;
 
   static installKeyboardShortcuts(): void {
+    if (AlgorithmPlayer.keysInstalled) return;
+    AlgorithmPlayer.keysInstalled = true;
     document.addEventListener('keydown', (e) => {
       const target = document.activeElement;
       if (target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) return;
-      const player = AlgorithmPlayer.active;
+      // Null until a player has finished loading, which is what makes a key
+      // pressed during the load a no-op rather than a call into an unbuilt
+      // player.
+      const player = AlgorithmPlayer.keyboard.active;
       if (!player) return;
 
       if (e.key === ' ') {
@@ -509,18 +534,29 @@ export function traceMaxValue(steps: Step[], fallback: AlgorithmInput): number {
   return max;
 }
 
-/** Boot every visualizer on the page. */
+/**
+ * Boot every visualizer on the page.
+ *
+ * The shortcuts are installed first and do nothing until some player is ready,
+ * which is the safe order: the alternative is a window in which the listener
+ * is missing and a keypress is silently lost. Nothing becomes the keyboard's
+ * target until its `init()` has resolved — see keyboard-target.ts for why that
+ * mattered enough to be its own file.
+ */
 export function mountAll(): void {
-  const roots = document.querySelectorAll<HTMLElement>('[data-algorithm]');
-  let first: AlgorithmPlayer | null = null;
-  roots.forEach((root) => {
-    const player = new AlgorithmPlayer(root);
-    if (!first) first = player;
-    player.init().catch((err) => {
-      console.error(err);
-      root.dataset.error = 'true';
-    });
-  });
-  if (first) AlgorithmPlayer.setActive(first);
   AlgorithmPlayer.installKeyboardShortcuts();
+
+  const players = [...document.querySelectorAll<HTMLElement>('[data-algorithm]')].map((root) => {
+    const player = new AlgorithmPlayer(root);
+    return { player, root, ready: player.init() };
+  });
+
+  activateWhenReady(
+    AlgorithmPlayer.keyboard,
+    players,
+    (player: AlgorithmPlayer, error: unknown) => {
+      console.error(error);
+      players.find((p) => p.player === player)!.root.dataset.error = 'true';
+    },
+  );
 }
