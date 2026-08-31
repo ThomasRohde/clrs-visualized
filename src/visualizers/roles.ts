@@ -54,6 +54,13 @@ export const DEFAULT_LEGEND: Legend = [
 ];
 
 export const LEGENDS: Record<string, Legend> = {
+  'maximum-subarray': [
+    ['scope', 'the bracket over the subarray this call owns'],
+    ['look', 'the element being added to the running sum'],
+    ['mark', 'the best subarray found so far'],
+    ['done', 'the answer, once both algorithms have found it'],
+    ['rest', 'outside this call, or not yet reached'],
+  ],
   'hoare-partition': [
     ['scope', 'the bracket over the subarray this call owns'],
     ['look', 'compared with the pivot value x'],

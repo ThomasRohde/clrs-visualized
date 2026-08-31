@@ -28,6 +28,19 @@ function markersFor(step: Step): Array<{ idx: number; label: string }> {
       push(hi.i, 'i');
       push(hi.j, 'j');
       break;
+    case 'MAX-SUBARRAY':
+      // No p and r markers: the bracket already says which subarray this call
+      // owns, and q is the only thing on screen a reader has to locate.
+      push(hi.q, 'q');
+      break;
+    case 'MAX-CROSSING-SUBARRAY':
+      push(hi.q, 'q');
+      push(hi.i, 'i');
+      push(hi.j, 'j');
+      break;
+    case 'MAX-SUBARRAY-LINEAR':
+      push(hi.j, 'j');
+      break;
     case 'BINARY-SEARCH':
       if (Array.isArray(hi.range)) {
         push(hi.range[0], 'p');
@@ -298,10 +311,21 @@ export function draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: Re
   const n = arr.length - 1;
   const hi = step.hi as Record<string, unknown>;
 
+  // The bottom of the value axis. Zero unless the trace actually goes below
+  // it, so every chart that shipped before Problem 4-1 keeps the geometry it
+  // had: with `axisLo === 0` the arithmetic below reduces, term for term, to
+  // what this renderer has always computed.
+  const axisLo = Math.min(0, opts.minValue ?? 0);
+  const signed = axisLo < 0;
+
   // Three label lanes above the bars, so nothing ever collides: the region
   // caption on top, variable markers below it, values on the bar itself.
+  //
+  // A signed chart needs a fourth, below: a bar hanging the full depth of the
+  // plot prints its value under its free end, which lands on the index labels
+  // at the default padding. Only a signed chart pays for it.
   const padTop = 58;
-  const padBottom = 22;
+  const padBottom = signed ? 34 : 22;
   const padSide = 6;
   const markerY = padTop - 24;
   const markerY2 = padTop - 37;
@@ -313,12 +337,6 @@ export function draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: Re
   const plotH = H - padTop - padBottom;
   const x0For = (k: number) => padSide + (k - 1) * (barW + gap);
 
-  // The bottom of the value axis. Zero unless the trace actually goes below
-  // it, so every chart that shipped before Problem 4-1 keeps the geometry it
-  // had: with `axisLo === 0` the two expressions below reduce, term for term,
-  // to what this renderer has always computed.
-  const axisLo = Math.min(0, opts.minValue ?? 0);
-  const signed = axisLo < 0;
   const zeroY = zeroLine(opts.maxValue, axisLo, H - padBottom, plotH);
 
   const roles = rolesForStep(step);

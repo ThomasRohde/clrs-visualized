@@ -35,14 +35,14 @@ npm run dev      # http://localhost:4321
 
 <!-- generated:contents -->
 
-**All 35 chapters and 4 appendices**, covering **82 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
+**All 35 chapters and 4 appendices**, covering **83 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
 
 ### Part I — Foundations
 
 - **1. The Role of Algorithms in Computing** — prose
 - **2. Getting Started** — Insertion Sort, Merge Sort, Binary Search, Counting Inversions
 - **3. Characterizing Running Times** — Asymptotic Bounds
-- **4. Divide-and-Conquer** — Matrix Multiplication, Strassen's Algorithm
+- **4. Divide-and-Conquer** — Matrix Multiplication, Strassen's Algorithm, Maximum Subarray
 - **5. Probabilistic Analysis and Randomized Algorithms** — Hire Assistant, Permute by Sorting, Randomize in Place
 
 ### Part II — Sorting and Order Statistics
@@ -102,7 +102,7 @@ npm run dev      # http://localhost:4321
 
 ### Renderers
 
-- `array-bars` — bar charts, for anything array-shaped (18)
+- `array-bars` — bar charts, for anything array-shaped (19)
 - `cells` — rows of boxes with pointer arcs — lists, stacks, hash chains, string matching (13)
 - `tree` — rooted trees and forests, with nodes sized to their keys (8)
 - `graph` — graphs, with recorder-owned layouts fixed for the whole trace (16)

@@ -1,8 +1,8 @@
 ---
 title: Divide-and-Conquer
-section: '§4.1–4.7'
-summary: Multiplying matrices in fewer than n³ operations — and the three methods for solving the recurrences that divide-and-conquer keeps producing.
-algorithms: ['matrix-multiply', 'strassen']
+section: '§4.1–4.7 · problems'
+summary: Multiplying matrices in fewer than n³ operations — and the three methods for solving the recurrences that divide-and-conquer keeps producing, plus the maximum-subarray problem the fourth edition demoted.
+algorithms: ['matrix-multiply', 'strassen', 'maximum-subarray']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -120,12 +120,59 @@ starred. Worth reading once; not worth memorising.
 
 </ComplexityCard>
 
-## Where the rest of this chapter went
+## Beyond the numbered sections
 
-In the third edition, §4.1 was the **maximum-subarray problem** — the small divide-and-conquer
-exercise many readers remember. In the fourth it has been demoted to Problem 4-1, and matrix
-multiplication takes its place as the chapter's worked example. It is catalogued in this site's
-backlog rather than dropped.
+Everything above is §4.1 to §4.7. What follows is from the chapter's problems, and is marked as such
+rather than blended in with the book's own numbered sections.
+
+### Problem 4-1 — The maximum subarray
+
+In the third edition this was **§4.1**, the small divide-and-conquer exercise many readers remember;
+the fourth demotes it to a problem and gives its place to matrix multiplication. It is worth
+keeping, because it is the clearest picture in the book of what divide-and-conquer actually asks you
+to do.
+
+The problem: find the contiguous stretch of the array with the largest sum. It is only interesting
+because of the **negative** values — with everything positive the answer is always the whole array,
+and there is nothing to decide. The book's framing is a share price and the best day to buy and
+sell; the array below is the day-to-day changes.
+
+Here is the whole idea. Split the array in half. The best subarray then either lies entirely in the
+left half, or entirely in the right half, **or it crosses the midpoint** — and there is no fourth
+case. The two halves are handled by recursion. Only the crossing case needs work, and it turns out
+to need very little: a subarray that crosses `q` is the best one ending at `q` joined to the best
+one starting at `q+1`, and each of those is a single scan outward from the middle.
+
+<AlgorithmPlayer id="maximum-subarray" size={10} />
+
+<ComplexityCard id="maximum-subarray">
+  **The recurrence is merge sort's.** Two subproblems of half the size, plus Θ(n) to handle the
+  crossing case:
+
+```
+T(n) = 2T(n/2) + Θ(n)   →   T(n) = Θ(n lg n)
+```
+
+Which is the point of putting it in this chapter at all: the recurrence does not care what the
+Θ(n) is spent on. Merge sort spends it merging, this spends it scanning outward from a midpoint, and
+the master method — §4.5, above — gives both the same answer without being told which is which.
+
+**Then watch the second algorithm.** After the divide-and-conquer finishes, this player runs
+Problem 4-1(d) on the same array: one pass, left to right, carrying the best subarray _ending at the
+current element_. The rule is one line long — if the running sum ever goes negative, throw it away
+and start again here, because a negative prefix makes every subarray that carries it worse. Compare
+the two halves of the trace tape: the same answer arrives in Θ(n).
+
+That is not a criticism of the divide-and-conquer. It is the same lesson chapter 2 ends on and
+chapter 14 spends a whole chapter on: **the shape you reach for first is rarely the cheapest one**,
+and finding the cheaper one usually means noticing that the subproblems overlap. "The best subarray
+ending here" is a dynamic program, and it is the one this book will keep coming back to.
+
+**A case worth typing.** Paste `-8,-3,-11,-2,-6` — every value negative. The answer is the single
+least-bad element, not the empty subarray, because the problem asks for a **non-empty** stretch. It
+is the case that catches naive implementations, and both algorithms here get it right.
+
+</ComplexityCard>
 
 Chapter 28 returns to matrices with a completely different question — solving systems of equations
 rather than multiplying — and chapter 30 uses the same divide-and-conquer shape to multiply

@@ -575,9 +575,15 @@ export function parseCustomInput(str: string, spec?: InputSpec): ParsedInput {
   if (parts.length < 2) return { error: 'Enter at least 2 numbers, separated by commas.' };
   if (parts.length > 24) return { error: 'Keep it to 24 numbers or fewer.' };
 
+  // A leading minus is allowed exactly when the module's own range goes below
+  // zero. Every algorithm on the site was positive until Problem 4-1's maximum
+  // subarray, which is trivial without negative numbers — and a reader who can
+  // watch one but not type one cannot ask it a question.
+  const whole = min < 0 ? /^-?\d+$/ : /^\d+$/;
+
   const nums: number[] = [];
   for (const p of parts) {
-    if (!/^\d+$/.test(p)) return { error: `"${p}" isn't a whole number.` };
+    if (!whole.test(p)) return { error: `"${p}" isn't a whole number.` };
     const v = Number.parseInt(p, 10);
     // The bounds are the module's, not the player's: counting sort is only
     // legible with small keys, and radix sort wants three digits.

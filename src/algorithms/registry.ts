@@ -46,6 +46,7 @@ import { dijkstra } from './graphs/dijkstra.ts';
 import { fordFulkerson } from './graphs/ford-fulkerson.ts';
 import { edmondsKarp } from './graphs/edmonds-karp.ts';
 import { bipartiteMatching } from './graphs/bipartite-matching.ts';
+import { maximumSubarray } from './dp/maximum-subarray.ts';
 import { rodCutting } from './dp/rod-cutting.ts';
 import { matrixChainOrder } from './dp/matrix-chain-order.ts';
 import { lcs } from './dp/lcs.ts';
@@ -149,6 +150,7 @@ export const ALGORITHMS: AlgorithmModule[] = [
   optimalBst,
   matrixMultiply,
   strassen,
+  maximumSubarray,
   floydWarshall,
   transitiveClosure,
   apspMatrixMultiply,
