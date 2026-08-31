@@ -42,11 +42,26 @@ permissions:
   pages: write
   id-token: write
 
-# One deployment at a time, and let a queued one finish rather than cancelling
-# it — a half-published site is worse than a slightly stale one.
+# One deployment at a time, and a superseded run is cancelled rather than left
+# to finish.
+#
+# This was `cancel-in-progress: false` — GitHub's own Pages starter says a
+# production deployment should be allowed to complete — and that was the right
+# reading when this workflow did nothing but build. It is not any more. The
+# gates now run *inside* this workflow, so letting a queued run finish means
+# paying for a full CI pass, seven-minute browser sweep included, on a commit
+# that the next run is about to overwrite. Two pushes six minutes apart cost
+# sixteen minutes of runner time and published the same site twice.
+#
+# What that trades away is small and bounded. The newer commit is a superset of
+# the older one, so nothing is lost by abandoning it, and the only cancellation
+# that could bite lands inside `deploy-pages` — a nine-second step at the end of
+# an eight-minute run. Pages keeps serving the previous deployment until a new
+# one completes, so the failure mode is a site that stays stale until the next
+# run finishes, not a half-published one.
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   # Every gate this project has, against the commit about to be published.
