@@ -11,22 +11,25 @@ the end of every working session. A stale tracker is worse than none.
 
 ## Resume here
 
-> **Phase:** G — **the first promotion out of the Tier-2 backlog.** The book itself is finished:
+> **Phase:** G — **complete. The first promotion out of the Tier-2 backlog is done: nine players
+> across eight chapters that were already ✅ at Tier 1.** The book itself is finished:
 > Phases A–F are closed, all 35 chapters and all four appendices are written, all six renderers are
 > built, and housekeeping — CI, deploy, the generated README, the skills — is closed too. `origin`
 > is <https://github.com/ThomasRohde/clrs-visualized>, **Settings → Pages → Source is GitHub
 > Actions**, the site serves at <https://thomasrohde.github.io/clrs-visualized/>, and **the deploy
 > runs behind CI**, so a red commit cannot publish.
-> **Next task:** **G5**, the last batch — `miller-rabin` (§31.8 ★) in chapter 31 and `boyer-moore`
-> (Prob. 32-1) in chapter 32, both on R5 and both slotting into a comparison their chapter has
-> already set up. See
+> **Next task:** **nothing is outstanding.** What is left in the
+> [backlog](#tier-2-backlog) is eight ⬜ rows, two ❓ ones that need a 4e copy to settle, two ✏️
+> changes to players that already ship, and three ⛔ decisions not to build something. Promoting
+> another row is a decision, exactly as Phase G was. See
 > [Phase G](#phase-g--the-first-tier-2-promotion) for the batches and the
 > [backlog](#tier-2-backlog) for the status of every other row.
 > **Phase G is optional in a way A–F were not.** Nothing in the backlog is a gap; promoting a row is
 > a decision. Nine of the twenty-four were promoted, chosen because each teaches something no player
 > on the site currently shows, and the rest stay catalogued exactly as they were.
-> **Last completed:** **G4** — `hopcroft-karp` (§25.1), so **chapter 25 now has a player for
-> everything in it**. Before that, **G3** — `articulation-points` (Prob. 20-2, with bridges) and
+> **Last completed:** **G5** — `miller-rabin` (§31.8 ★) and `boyer-moore`, which closes Phase G.
+> Before that, **G4** — `hopcroft-karp` (§25.1), so **chapter 25 now has a player for everything in
+> it**. Before that, **G3** — `articulation-points` (Prob. 20-2, with bridges) and
 > `difference-constraints` (§22.4), so **chapter 22 now has a player for every numbered section it
 > has**. Before that, **G2** — `maximum-subarray` (Prob. 4-1), one player running the
 > divide-and-conquer and then Problem 4-1(d)'s single pass on the same input, so the two halves of
@@ -546,7 +549,7 @@ revisiting during Phase B.
 | ✅    | Graphs                | R4           | 5        | 12         |
 | ✅    | Grids and matrices    | R5           | 6        | 17         |
 | ✅    | Remainder and prose   | R6           | 13       | 22         |
-| 🚧    | Tier 2, first batch   | —            | 8 again  | 9          |
+| ✅    | Tier 2, first batch   | —            | 8 again  | 9          |
 
 **All six phases are closed.** The phases were ordered so that no phase waited on a renderer a later
 phase would build, and none did. The final count is 35 chapters, 4 appendices, 79 players and 6
@@ -841,8 +844,9 @@ isolated, and the one large item stands alone.
       asserts the property the algorithm exists for — the shortest augmenting path grows strictly
       every phase — rather than the O(√V) bound, which at ten vertices a lazy one-path-per-phase
       implementation would also satisfy.
-- [ ] **G5** — ch 31 and ch 32 on R5: `miller-rabin` (§31.8 ★) and `boyer-moore` (Prob. 32-1). Both
-      slot into a comparison their chapter has already set up.
+- [x] **G5** — ch 31 and ch 32 on R5: `miller-rabin` (§31.8 ★) and `boyer-moore` (from ch 32's
+      problems — the number is not asserted, since `toc-4/` can no longer settle it). Both slotted
+      into a comparison their chapter had already set up, and neither needed renderer work.
 
 **What G1 landed, and what the rest of Phase G inherits from it.** The trailing section works and
 is the convention now. Two of the three findings are about the renderer rather than about any of
@@ -925,18 +929,18 @@ All 39, in book order. "Renderer" is what the chapter's players need — `—` m
 
 ### Part VII — Selected Topics
 
-| Ch  | Slug                          | Status | Phase | Renderer | Tier-1 algorithms                                                                                                                      |
-| --- | ----------------------------- | ------ | ----- | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| 26  | `parallel-algorithms`         | ✅     | F     | R3+R5+R2 | `p-fib` ✅, `p-matrix-multiply` ✅, `p-merge` ✅ — P-MERGE-SORT is ch 2's sort with these two swapped in                               |
-| 27  | `online-algorithms`           | ✅     | F     | R2       | `move-to-front` ✅, `online-caching` ✅ — §27.1's elevator is an analysis, not an algorithm                                            |
-| 28  | `matrix-operations`           | ✅     | E     | R5       | `lup-decomposition` ✅, `lup-solve` ✅ — inverse and least squares are prose                                                           |
-| 29  | `linear-programming`          | ✅     | F     | —        | **none** — §29.1–29.3 are formulations, modelling and duality; 4e drops simplex                                                        |
-| 30  | `polynomials-and-the-fft`     | ✅     | E     | R5       | `iterative-fft` ✅ — `recursive-fft` is the same butterfly, so it is prose                                                             |
-| 31  | `number-theoretic-algorithms` | ✅     | F     | R5       | `extended-euclid` ✅, `modular-exponentiation` ✅, `rsa` ✅ — §31.4 and §31.5 are prose                                                |
-| 32  | `string-matching`             | ✅     | E+F   | R5       | `naive-string-matcher` ✅, `rabin-karp` ✅, `finite-automaton-matcher` ✅, `kmp` ✅ (★ in 4e), `suffix-array` ✅                       |
-| 33  | `machine-learning-algorithms` | ✅     | F     | R6       | `k-means` ✅, `multiplicative-weights` ✅, `gradient-descent` ✅                                                                       |
-| 34  | `np-completeness`             | ✅     | F     | —        | none — §34.1–34.5 are definitions, reductions and proofs                                                                               |
-| 35  | `approximation-algorithms`    | ✅     | F     | R4+R5+R2 | `approx-vertex-cover` ✅, `approx-tsp-tour` ✅, `greedy-set-cover` ✅, `approx-subset-sum` ✅ — §35.4's randomization and LP are prose |
+| Ch  | Slug                          | Status | Phase  | Renderer | Tier-1 algorithms                                                                                                                           |
+| --- | ----------------------------- | ------ | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 26  | `parallel-algorithms`         | ✅     | F      | R3+R5+R2 | `p-fib` ✅, `p-matrix-multiply` ✅, `p-merge` ✅ — P-MERGE-SORT is ch 2's sort with these two swapped in                                    |
+| 27  | `online-algorithms`           | ✅     | F      | R2       | `move-to-front` ✅, `online-caching` ✅ — §27.1's elevator is an analysis, not an algorithm                                                 |
+| 28  | `matrix-operations`           | ✅     | E      | R5       | `lup-decomposition` ✅, `lup-solve` ✅ — inverse and least squares are prose                                                                |
+| 29  | `linear-programming`          | ✅     | F      | —        | **none** — §29.1–29.3 are formulations, modelling and duality; 4e drops simplex                                                             |
+| 30  | `polynomials-and-the-fft`     | ✅     | E      | R5       | `iterative-fft` ✅ — `recursive-fft` is the same butterfly, so it is prose                                                                  |
+| 31  | `number-theoretic-algorithms` | ✅     | F+G5   | R5       | `extended-euclid` ✅, `modular-exponentiation` ✅, `rsa` ✅ · Tier 2: `miller-rabin` ✅ (§31.8 ★) — §31.4 and §31.5 are prose               |
+| 32  | `string-matching`             | ✅     | E+F+G5 | R5       | `naive-string-matcher` ✅, `rabin-karp` ✅, `finite-automaton-matcher` ✅, `kmp` ✅ (★ in 4e), `suffix-array` ✅ · Tier 2: `boyer-moore` ✅ |
+| 33  | `machine-learning-algorithms` | ✅     | F      | R6       | `k-means` ✅, `multiplicative-weights` ✅, `gradient-descent` ✅                                                                            |
+| 34  | `np-completeness`             | ✅     | F      | —        | none — §34.1–34.5 are definitions, reductions and proofs                                                                                    |
+| 35  | `approximation-algorithms`    | ✅     | F      | R4+R5+R2 | `approx-vertex-cover` ✅, `approx-tsp-tour` ✅, `greedy-set-cover` ✅, `approx-subset-sum` ✅ — §35.4's randomization and LP are prose      |
 
 ### Part VIII — Appendices
 
@@ -1048,8 +1052,8 @@ more than the row.
 | 28  | `matrix-inverse`                            | §28.2      | R5       | ⛔ Phase E: it is LUP-SOLVE's trace, n times over                        |
 | 28  | `least-squares`                             | §28.3      | R5       | ⛔ Phase E: both of its halves are already players on that page          |
 | 30  | `recursive-fft`                             | §30.2      | R5       | ⛔ Phase E: the same butterfly the iterative player draws                |
-| 31  | `miller-rabin` primality testing            | §31.8 (★)  | R5       | 🚧 G5 — **R5, not the R2 first written here**: ch 31 landed on the grid  |
-| 32  | `boyer-moore` — right-to-left, sublinear    | Prob. 32-1 | R5       | 🚧 G5                                                                    |
+| 31  | `miller-rabin` primality testing            | §31.8 (★)  | R5       | ✅ G5 — **R5, not the R2 first written here**: ch 31 landed on the grid  |
+| 32  | `boyer-moore` — right-to-left, sublinear    | Prob. 32-1 | R5       | ✅ G5                                                                    |
 
 **One row left the table rather than being marked.** `RSA end to end (§31.7)` was catalogued as Tier
 2 before chapter 31 was written and then built as Tier 1 — §31.7 is a numbered, unstarred section,
@@ -1143,3 +1147,4 @@ Append one line per session: date, what landed, and where you stopped. Newest la
 | 2026-08-31 | **E8 and G2.** `array-bars` learned an axis that goes below zero — `RenderOptions.minValue`, computed over the whole trace by `traceMinValue` and fixed for its duration, with the baseline gated on a negative value actually appearing so forty shipped players keep the pixels they had. That promise cannot be checked by comparing screenshots, since most players generate a random input, so the arithmetic came out of `draw()` as `barSpan` and `tests/array-bars-axis.test.ts` writes out the old formula and asserts the new one against it. Writing that test found the one case that would have moved: a −∞ stub hanging below a baseline that has the index labels under it. Then `maximum-subarray` — one player, two algorithms, the same answer, and the trace tape as the comparison. Two more found only by looking: a full-depth negative bar printed its value on the index row, so a signed chart reserves a lane below the bars, and the default parser rejected a leading minus. 1051 tests, 83 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | **Phase G**, next: **G3** — `articulation-points` and `difference-constraints` on R4 |
 | 2026-08-31 | **G3, the two graph problems on R4.** `articulation-points` (Prob. 20-2): one depth-first search finds every cut vertex and every bridge, given `low[v]` — the earliest discovery time reachable from v's subtree using at most one back edge. Everything happens on the way back up, and the difference between the bridge test (`v.low > u.d`) and the cut-vertex test (`v.low ≥ u.d`) is the whole content of the problem. One `d/low` badge rather than two bare numbers, per chapter 20's own precedent; `verify` removes each vertex and each edge and counts components, which is the definition rather than the recurrence. `difference-constraints` (§22.4): a numbered section, Tier 1 by this file's rule, ruled prose because it is a reduction — so the player is the **translation**, with inequalities in the input box and the graph they become on screen. `verify` checks a feasible answer against the constraints that were typed rather than the estimates it was read off, and backs infeasibility with `negativeCycleVertices`. **Chapter 22 now has a player for every numbered section.** One legend wording fix no test can catch: `done` paints tree edges as well as finished vertices. 1075 tests, 85 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | **Phase G**, next: **G4** — `hopcroft-karp`, alone                                   |
 | 2026-08-31 | **G4, `hopcroft-karp`.** §25.1's own algorithm uses one augmenting path per search; this one uses every disjoint shortest path it can find in a phase, which is worth a factor of √V. Two lines carry it and neither is the augmentation: `level[M[v]] == level[u] + 1` is what keeps a path shortest, and `level[u] = ∞` on the way out is what keeps the paths disjoint, so a phase costs O(E) rather than O(E) per path. NIL is a real vertex in the bookkeeping — every free right vertex leads to one virtual sink — which is what lets the BFS stop at the right layer and the DFS need no special case for the end of a path. `verify` checks Berge's theorem through the same helper §25.1's player uses, and then the property this algorithm exists for: the shortest augmenting path is strictly longer every phase. The O(E√V) bound is not worth asserting at ten vertices, since a one-path-per-phase implementation would meet it — but it would repeat a length. The odd-length check found that levels and edges had been conflated: a level counts left vertices, and a path of level ℓ has 2ℓ − 1 edges. 1087 tests, 86 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **Phase G**, next: **G5** — `miller-rabin` and `boyer-moore` on R5                   |
+| 2026-08-31 | **G5, and Phase G closed.** `miller-rabin` (§31.8 ★): Fermat's test is useless against Carmichael numbers, and Miller-Rabin's fix costs nothing — a prime has only two square roots of 1, so a squaring chain reaching 1 from anything else is a proof. `verify` checks the **guarantee** rather than the probability: a prime is never called composite however unlucky the bases, and a composite that survives s trials is allowed only if no row held an unreported witness. The candidate pool is chosen rather than random, because a random odd number is composite for a reason the first base finds instantly. `boyer-moore` (ch 32's problems): the fifth matcher on the same picture, reading right to left, with γ as the corner note on each pattern cell and λ as a second aux row. Its `verify` checks something stronger than the answer — every jump is recorded and every position it skipped is tested, because agreeing with the naive matcher only proves this input was handled right, while "no shift steps over an occurrence" is what both heuristics exist to preserve. Two fixes from looking: `done` named only the current trial, so a settled row lost its colour; and `doneSet` is an array-bars key the grid renderer does not read. 1111 tests, 88 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | **Phase G complete.** Nothing outstanding                                            |
