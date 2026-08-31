@@ -17,14 +17,18 @@ the end of every working session. A stale tracker is worse than none.
 > is <https://github.com/ThomasRohde/clrs-visualized>, **Settings → Pages → Source is GitHub
 > Actions**, the site serves at <https://thomasrohde.github.io/clrs-visualized/>, and **the deploy
 > runs behind CI**, so a red commit cannot publish.
-> **Next task:** **G1** — `binary-search`, `count-inversions` and `hoare-partition`, in chapters 2
-> and 7. See [Phase G](#phase-g--the-first-tier-2-promotion) for the batches and the
+> **Next task:** **E8**, then **G2**. E8 is the zero baseline for `array-bars` and lands on its own,
+> with a `--shots` run before and after proving that nothing without a negative value moved; G2 is
+> then chapter 4's `maximum-subarray`, the row it unblocks. See
+> [Phase G](#phase-g--the-first-tier-2-promotion) for the batches and the
 > [backlog](#tier-2-backlog) for the status of every other row.
 > **Phase G is optional in a way A–F were not.** Nothing in the backlog is a gap; promoting a row is
 > a decision. Nine of the twenty-four were promoted, chosen because each teaches something no player
 > on the site currently shows, and the rest stay catalogued exactly as they were.
-> **Last completed:** **the backlog table itself, which had gone six phases without being
-> revisited.** Six of its rows were no longer work: `RSA end to end` had shipped as Tier 1 (§31.7 is
+> **Last completed:** **G1** — `binary-search` (Ex. 2.3-6), `count-inversions` (Prob. 2-4) and
+> `hoare-partition` (Prob. 7-1), one commit each, plus the trailing `Beyond the numbered sections`
+> heading every Tier-2 promotion now uses. Before that, **the backlog table itself, which had gone
+> six phases without being revisited.** Six of its rows were no longer work: `RSA end to end` had shipped as Tier 1 (§31.7 is
 > a numbered section and was never Tier 2), `matrix-inverse`, `least-squares` and `recursive-fft`
 > were decided against in Phase E with reasons, and §9.3's walkthrough and §16.4's `table-delete`
 > are changes to players that already ship rather than new ones. Two more are now ❓ against the 4e
@@ -794,11 +798,24 @@ blurred them into the numbered ones would be claiming the book covers more than 
 Batched so the convention is settled on the cheapest chapter first, the one engine change is
 isolated, and the one large item stands alone.
 
-- [ ] **G1** — ch 2 and ch 7 on R1: `binary-search` (Ex. 2.3-6), `count-inversions` (Prob. 2-4),
+- [x] **G1** — ch 2 and ch 7 on R1: `binary-search` (Ex. 2.3-6), `count-inversions` (Prob. 2-4),
       `hoare-partition` (Prob. 7-1). The pilot: it settles the trailing-section convention on the
       most-read chapter, and all three reuse scaffolding that already exists. Binary search is the
       highest-value row in the backlog — chapters 12, 26 and 32 all invoke one and none has a
       picture of it.
+
+      **Landed, and three things came out of it that the rest of Phase G inherits.** The trailing
+          section works and is the convention now. `array-bars` has exactly **two** label lanes, so a
+          third marker over adjacent bars goes back on top of the first — `low`/`mid`/`high` collided
+          at 375px where `p`/`q`/`r` does not, and p/q/r is what MERGE-SORT calls them anyway. And
+          `rolesForStep` already reads `r` as merge's right-hand index, so emitting a search bound
+          under that name painted a bar `look` on every step — invisible to every test, obvious in one
+          screenshot. **Read `rolesForStep` before choosing a highlight key, not after.**
+
+          One test changed shape: the well-formed check measured a snapshot against `input.length + 1`,
+          which holds only until a module packs a parameter in front of its values. It now measures
+          through `inputSize` — the module's own answer, and the one the player puts in the n readout.
+
 - [ ] **E8** — the zero baseline, on its own, verified by a `--shots` run before and after showing
       that nothing without a negative value moved.
 - [ ] **G2** — ch 4: `maximum-subarray` (Prob. 4-1), the row E8 unblocks.
@@ -818,22 +835,22 @@ All 39, in book order. "Renderer" is what the chapter's players need — `—` m
 
 ### Part I — Foundations
 
-| Ch  | Slug                           | Status | Phase | Renderer | Tier-1 algorithms                                                     |
-| --- | ------------------------------ | ------ | ----- | -------- | --------------------------------------------------------------------- |
-| 1   | `role-of-algorithms`           | ✅     | F     | —        | none — prose                                                          |
-| 2   | `getting-started`              | ✅     | —     | R1       | `insertion-sort` ✅, `merge-sort` ✅                                  |
-| 3   | `characterizing-running-times` | ✅     | F     | R6       | `asymptotic-bound` ✅ — the optional plot, built                      |
-| 4   | `divide-and-conquer`           | ✅     | E     | R5       | `matrix-multiply` ✅, `strassen` ✅                                   |
-| 5   | `probabilistic-analysis`       | ✅     | A     | R1       | `hire-assistant` ✅, `permute-by-sorting` ✅, `randomize-in-place` ✅ |
+| Ch  | Slug                           | Status | Phase  | Renderer | Tier-1 algorithms                                                                        |
+| --- | ------------------------------ | ------ | ------ | -------- | ---------------------------------------------------------------------------------------- |
+| 1   | `role-of-algorithms`           | ✅     | F      | —        | none — prose                                                                             |
+| 2   | `getting-started`              | ✅     | — + G1 | R1       | `insertion-sort` ✅, `merge-sort` ✅ · Tier 2: `binary-search` ✅, `count-inversions` ✅ |
+| 3   | `characterizing-running-times` | ✅     | F      | R6       | `asymptotic-bound` ✅ — the optional plot, built                                         |
+| 4   | `divide-and-conquer`           | ✅     | E      | R5       | `matrix-multiply` ✅, `strassen` ✅                                                      |
+| 5   | `probabilistic-analysis`       | ✅     | A      | R1       | `hire-assistant` ✅, `permute-by-sorting` ✅, `randomize-in-place` ✅                    |
 
 ### Part II — Sorting and Order Statistics
 
-| Ch  | Slug                           | Status | Phase | Renderer | Tier-1 algorithms                                         |
-| --- | ------------------------------ | ------ | ----- | -------- | --------------------------------------------------------- |
-| 6   | `heapsort`                     | ✅     | A     | R1       | `heapsort` ✅ · `max-priority-queue` (§6.5) ✅            |
-| 7   | `quicksort`                    | ✅     | A     | R1       | `quicksort` ✅ · `randomized-quicksort` (§7.3) ✅         |
-| 8   | `sorting-in-linear-time`       | ✅     | A     | R1       | `counting-sort` ✅, `radix-sort` ✅, `bucket-sort` ✅     |
-| 9   | `medians-and-order-statistics` | ✅     | A     | R1       | `minimum-maximum` ✅, `randomized-select` ✅, `select` ✅ |
+| Ch  | Slug                           | Status | Phase  | Renderer | Tier-1 algorithms                                                                |
+| --- | ------------------------------ | ------ | ------ | -------- | -------------------------------------------------------------------------------- |
+| 6   | `heapsort`                     | ✅     | A      | R1       | `heapsort` ✅ · `max-priority-queue` (§6.5) ✅                                   |
+| 7   | `quicksort`                    | ✅     | A + G1 | R1       | `quicksort` ✅ · `randomized-quicksort` (§7.3) ✅ · Tier 2: `hoare-partition` ✅ |
+| 8   | `sorting-in-linear-time`       | ✅     | A      | R1       | `counting-sort` ✅, `radix-sort` ✅, `bucket-sort` ✅                            |
+| 9   | `medians-and-order-statistics` | ✅     | A      | R1       | `minimum-maximum` ✅, `randomized-select` ✅, `select` ✅                        |
 
 ### Part III — Data Structures
 
@@ -975,12 +992,12 @@ more than the row.
 | Ch  | Algorithm                                   | Source     | Renderer | Status                                                                   |
 | --- | ------------------------------------------- | ---------- | -------- | ------------------------------------------------------------------------ |
 | 2   | `linear-search`                             | Ex. 2.1-3  | R1       | ⬜                                                                       |
-| 2   | `binary-search`                             | Ex. 2.3-6  | R1       | 🚧 G1                                                                    |
+| 2   | `binary-search`                             | Ex. 2.3-6  | R1       | ✅ G1                                                                    |
 | 2   | `bubble-sort`                               | Prob. 2-2  | R1       | ⬜                                                                       |
 | 2   | `horner`                                    | Prob. 2-3  | R1       | ⬜                                                                       |
-| 2   | `count-inversions`                          | Prob. 2-4  | R1       | 🚧 G1                                                                    |
+| 2   | `count-inversions`                          | Prob. 2-4  | R1       | ✅ G1                                                                    |
 | 4   | `maximum-subarray`                          | Prob. 4-1  | R1       | 🔒 **E8** — then G2                                                      |
-| 7   | `hoare-partition`                           | Prob. 7-1  | R1       | 🚧 G1                                                                    |
+| 7   | `hoare-partition`                           | Prob. 7-1  | R1       | ✅ G1                                                                    |
 | 7   | `tail-recursive-quicksort`                  | Prob. 7-4  | R1       | ⬜                                                                       |
 | 8   | decision-tree lower bound                   | §8.1       | R3       | ⬜ needs a decision first — it is a proof, and has no procedure to panel |
 | 9   | `select`'s worst-case regions               | §9.3       | R1       | ✏️ a marking on the shipped `select`, not a second player                |
@@ -1087,3 +1104,4 @@ Append one line per session: date, what landed, and where you stopped. Newest la
 | 2026-08-31 | **Chapter 27, online algorithms.** `move-to-front` (§27.2) and `online-caching` (§27.3), on R2. The chapter measures competitive ratio rather than running time, so each verify computes the offline optimum and asserts the bound: move-to-front's exactly, by DP over every reachable list order (after paying to reach an item, an offline algorithm may move it forward for free — the same freedom MTF has), and LRU's by Belady's rule from §15.4, which that section proves optimal. Neither shares code with the algorithm under test. The two brackets are the chapter in one mark: chapter 15's points forward over requests still to come, this one backward over those already served. Both players take the same input, so a reader can type one sequence into both. One collision found only by looking — the bracket caption and a pointer marker are both drawn above the first row. 696 tests, 67 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | **Phase F**, next: **ch 35** approximation algorithms                    |
 | 2026-08-31 | **Chapter 35, approximation algorithms.** `approx-vertex-cover` and `approx-tsp-tour` on R4, `greedy-set-cover` on R5, `approx-subset-sum` on R2; §35.4 is prose, being two techniques rather than two algorithms. Every `verify` computes the true optimum — all 2^V vertex subsets, Held-Karp over the tours, every subfamily of F, all 2ⁿ subset sums — and asserts the section's ratio against it, which is the one chapter where brute-forcing the optimum is the subject rather than an extravagance. TSP's cost is the Euclidean distance rounded **up**, because ⌈·⌉ preserves the triangle inequality where ordinary rounding can lose it by 1 and take the guarantee with it, and its input box asks for **points** rather than an edge list for the same reason. Measured against the optimum, vertex cover runs at 1.84× and reaches its bound of 2 routinely, TSP at 1.17×, subset sum at 0.977 of a promised 0.6 — the chapter says so. **Three things only the screenshots caught:** the TSP map drew into two-thirds of the canvas (now scaled to fill it, uniformly, since that one picture has to be metrically honest); `done` was being spent on the spanning tree, leaving the tour phase nothing to fill in; and a cells scope caption is drawn in the gap above its row, which only the _first_ row has a band for — L now sits above S, and the rule is in CLAUDE.md. Also fixed: the RSA guard from ch 31 was necessary but not sufficient and failed the suite intermittently, and `noun` is used as `Use this {noun}`, so eight plural ones were made singular. 736 tests, 71 players.                                                                                                                                                                                                                                                                                                                                                                    | **Phase F**, next: **ch 26** parallel algorithms                         |
 | 2026-08-31 | **An independent review's fourteen issues, closed one commit each, on `review-fixes`.** Three correctness bugs first: Johnson reweighted from a potential that does not exist and ran Dijkstra on negative edges, Floyd-Warshall called a negative diagonal a matrix of shortest distances, and LUP solve turned a zero pivot into `x_i = 0` and reported a vector that does not satisfy `Ax = b`. Each now reaches a terminal state that names the failure, and each verifier checks it by a route that shares no code with the thing it checks — `negativeCycleVertices` is per-source Bellman-Ford, `determinant` is cofactor expansion. LUP decomposition stops at `error` instead of emitting Done as well, and its space is Θ(n), because π is n entries and is the part you keep. Then the claims: the all-pairs chapter no longer credits four players with behaviour two of them do not have, the hero no longer promises every algorithm in the book, and the site says 35 chapters and four appendices rather than 39 chapters. **Four things changed shape rather than wording.** Deploy runs behind CI as a job dependency (ci.yml is now `workflow_call`), so a red commit cannot publish. The keyboard target is chosen after `init()` resolves and by document order, not by which chunk arrived first. `draft: true` finally means something, in all four places that list chapters. And **every canvas now carries its state in words** — `describe.ts`, read from the renderer's own `roles()` so it cannot drift from the picture, associated by `aria-describedby`, with the narration's live region silenced during playback. `verify:players` gained a **dark@375** row and a clipping check, which found legends cut off on every renderer family and three genuine height shifts; the narration box now measures its own reserve rather than assuming three lines. 997 tests, all gates clean, `verify:players` clean across four theme/width combinations. | Merged as [#15](https://github.com/ThomasRohde/clrs-visualized/pull/15)  |
+| 2026-08-31 | **The Tier-2 backlog planned and cleaned up, and G1 built.** Six of its twenty-three rows had stopped being work — `RSA end to end` shipped as Tier 1, three were decided against in Phase E with reasons recorded, and two are changes to shipped players rather than new ones — so they are marked rather than deleted, and two more are ❓ against 4e numbering that `toc-4/` can no longer settle. Nine rows promoted into a new **Phase G**, each chosen because it teaches something no player on the site shows. G1 built three on R1. `binary-search`: bounds named p/q/r so line 4 is merge sort's line 2 character for character, with the target packed in front of the values so half the generated searches fail. `count-inversions`: MERGE-INVERSIONS is MERGE line for line plus one, and the counted run is captioned in the L row rather than on the bars, because by then those elements are in the buffer and A is being overwritten from p upwards. `hoare-partition`: the whole point is that QUICKSORT′ recurses on (p, q) and not (p, q−1), so nothing is ever painted settled until the last step, and verify reads 7-1(b) and (c) straight off the trace. Two traps found only by looking — array-bars has two marker lanes, and `rolesForStep` already reads `r`. 1033 tests, 82 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **Phase G**, next: **E8**, then ch 4's `maximum-subarray`                |
