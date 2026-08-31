@@ -3,6 +3,7 @@ import type { AlgorithmModule } from './types.ts';
 import { insertionSort } from './sorting/insertion-sort.ts';
 import { binarySearch } from './searching/binary-search.ts';
 import { countInversions } from './sorting/count-inversions.ts';
+import { hoarePartition } from './sorting/hoare-partition.ts';
 import { mergeSort } from './sorting/merge-sort.ts';
 import { heapsort } from './sorting/heapsort.ts';
 import { maxPriorityQueue } from './sorting/max-priority-queue.ts';
@@ -107,6 +108,7 @@ export const ALGORITHMS: AlgorithmModule[] = [
   maxPriorityQueue,
   quicksort,
   randomizedQuicksort,
+  hoarePartition,
   countingSort,
   radixSort,
   bucketSort,

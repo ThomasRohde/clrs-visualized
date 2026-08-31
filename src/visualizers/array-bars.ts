@@ -57,6 +57,19 @@ function markersFor(step: Step): Array<{ idx: number; label: string }> {
       push(hi.i, 'i');
       push(hi.j, 'j');
       break;
+    case 'QUICKSORT′':
+      if (Array.isArray(hi.range)) {
+        push(hi.range[0], 'p');
+        push(hi.range[1], 'r');
+      }
+      break;
+    case 'HOARE-PARTITION':
+      // Hoare's i and j start *outside* the subarray, so p and r would sit
+      // under them on the first two steps and be unreadable. The bracket
+      // already says where the subarray is.
+      push(hi.i, 'i');
+      push(hi.j, 'j');
+      break;
     case 'BUILD-MAX-HEAP':
       push(hi.i, 'i');
       break;

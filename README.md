@@ -35,7 +35,7 @@ npm run dev      # http://localhost:4321
 
 <!-- generated:contents -->
 
-**All 35 chapters and 4 appendices**, covering **81 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
+**All 35 chapters and 4 appendices**, covering **82 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
 
 ### Part I — Foundations
 
@@ -48,7 +48,7 @@ npm run dev      # http://localhost:4321
 ### Part II — Sorting and Order Statistics
 
 - **6. Heapsort** — Heapsort, Max-Priority Queue
-- **7. Quicksort** — Quicksort, Randomized Quicksort
+- **7. Quicksort** — Quicksort, Randomized Quicksort, Hoare's Partition
 - **8. Sorting in Linear Time** — Counting Sort, Radix Sort, Bucket Sort
 - **9. Medians and Order Statistics** — Minimum and Maximum, Randomized Select, Select (Median of Medians)
 
@@ -102,7 +102,7 @@ npm run dev      # http://localhost:4321
 
 ### Renderers
 
-- `array-bars` — bar charts, for anything array-shaped (17)
+- `array-bars` — bar charts, for anything array-shaped (18)
 - `cells` — rows of boxes with pointer arcs — lists, stacks, hash chains, string matching (13)
 - `tree` — rooted trees and forests, with nodes sized to their keys (8)
 - `graph` — graphs, with recorder-owned layouts fixed for the whole trace (16)

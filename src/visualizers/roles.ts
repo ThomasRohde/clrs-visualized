@@ -54,6 +54,14 @@ export const DEFAULT_LEGEND: Legend = [
 ];
 
 export const LEGENDS: Record<string, Legend> = {
+  'hoare-partition': [
+    ['scope', 'the bracket over the subarray this call owns'],
+    ['look', 'compared with the pivot value x'],
+    ['move', 'the pair being exchanged across the split'],
+    ['mark', 'q, the split point — not an element in its final place'],
+    ['done', 'sorted, which nothing is until the last step'],
+    ['rest', 'outside this call'],
+  ],
   'count-inversions': [
     ['scope', 'the bracket over the subarray this call owns'],
     ['look', 'copied out to L or R, and the front of each'],

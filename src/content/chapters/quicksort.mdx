@@ -1,8 +1,8 @@
 ---
 title: Quicksort
-section: '§7.1–7.3'
-summary: Divide-and-conquer that does its work before the recursion — partition around a pivot, then sort each side. Fast in practice, quadratic in the worst case.
-algorithms: ['quicksort', 'randomized-quicksort']
+section: '§7.1–7.3 · problems'
+summary: Divide-and-conquer that does its work before the recursion — partition around a pivot, then sort each side. Fast in practice, quadratic in the worst case — and there is more than one way to partition.
+algorithms: ['quicksort', 'randomized-quicksort', 'hoare-partition']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -86,3 +86,48 @@ excellent cache locality because it walks the array linearly. Merge sort's Θ(n 
 dependable, but each merge touches a separate buffer. In practice most standard-library sorts are a
 hybrid — introsort, for example, runs quicksort but switches to heapsort when recursion gets too
 deep, capping the worst case at Θ(n log n) without giving up quicksort's speed.
+
+## Beyond the numbered sections
+
+Everything above is §7.1 to §7.3. What follows is from the chapter's problems, and is marked as such
+rather than blended in with the book's own numbered sections.
+
+### Problem 7-1 — Hoare's partition
+
+The `PARTITION` at the top of this page is **Lomuto's**, and the book uses it because its invariant
+is easy to state. It is not, however, the partition quicksort was invented with. Hoare's original,
+from 1961, starts two pointers _outside_ the subarray and walks them towards each other, exchanging
+each pair it finds on the wrong side, until they cross.
+
+<AlgorithmPlayer id="hoare-partition" />
+
+<ComplexityCard id="hoare-partition">
+  **Look at line 3 of `QUICKSORT′` and compare it with line 3 of `QUICKSORT` at the top of the
+  page.** This one recurses on `(p, q)`; that one recurses on `(p, q-1)`. The difference is not a
+  detail, and it is the whole of Problem 7-1(d).
+
+Lomuto's partition **places** the pivot. Its last act is to exchange the pivot into slot `i+1`, and
+that element is then in its final position for the rest of the run — which is why the bar squares
+off and settles, and why §7.1's quicksort can leave it out of both recursive calls.
+
+Hoare's returns a **split point**, not a placed element. All `q` promises is that everything in
+`A[p‥q]` is at most everything in `A[q+1‥r]`; the element sitting at `q` is somewhere in the left
+part and has no idea where it finally belongs. So it has to go into the left recursive call. Write
+`q-1` there instead and the array comes back _almost_ sorted, which is the worst kind of wrong —
+the bug survives every casual test.
+
+Nothing in this player is ever painted as settled until the very last step, and that is honest
+rather than an oversight: there is no moment at which this algorithm knows an element is home.
+
+**Why `q < r` matters as much as the split does.** If `HOARE-PARTITION` could return `r`, then
+`QUICKSORT′(A, p, q)` would be the call it was already in, and the recursion would never end. That
+it cannot is Problem 7-1(b), and it is checked on every generated input here, along with the split
+property itself — both read straight off the recorded trace rather than argued.
+
+**Compare the tapes.** Set this player and `quicksort` at the top to the same `n` and look at the
+two strips. Hoare's does noticeably fewer exchanges: Lomuto swaps once for every element that lands
+on the small side, and then again to seat the pivot, while Hoare only swaps pairs that are both
+genuinely on the wrong side. That is the practical reason Hoare's version is the one most real
+implementations use, and Problem 7-1 is where the book admits it.
+
+</ComplexityCard>
