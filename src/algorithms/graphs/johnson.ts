@@ -11,7 +11,13 @@ import {
   type Trace,
 } from '../types.ts';
 import type { Role } from '../../visualizers/roles.ts';
-import { ekey, generateWeightedDigraph, parseGraph, vid } from './graph-input.ts';
+import {
+  ekey,
+  generateWeightedDigraph,
+  negativeCycleVertices,
+  parseGraph,
+  vid,
+} from './graph-input.ts';
 
 /**
  * JOHNSON'S ALGORITHM — CLRS §23.3.
@@ -49,6 +55,13 @@ import { ekey, generateWeightedDigraph, parseGraph, vid } from './graph-input.ts
  * zero or above, and no path's ranking moves. The extra vertex is drawn for
  * the whole trace, but it does nothing after the reweighting: it exists only
  * to be a source that reaches everything.
+ *
+ * **Bellman-Ford is doing two jobs**, and the second one is the reason it is
+ * Bellman-Ford and not something cheaper. It computes h, and it answers
+ * whether h exists at all: a graph with a negative-weight cycle has no
+ * shortest paths, so there is no potential satisfying the triangle inequality
+ * and nothing to reweight from. The run stops there and says so, rather than
+ * handing Dijkstra a graph that still has negative edges in it.
  *
  * The V Dijkstra runs afterwards are §22.3's player, so they are summarised
  * here one source at a time rather than stepped through again.
@@ -178,6 +191,38 @@ export function record(input: GraphInput): Trace {
     );
     if (changed === 0) break;
   }
+
+  /**
+   * The check the pseudocode's line 2 is: after |V′| − 1 passes every estimate
+   * is settled *unless* going round some cycle makes it smaller again, so an
+   * edge that can still be relaxed is a negative-weight cycle and nothing else.
+   *
+   * It has to happen here, before the reweighting. h is only non-negative-
+   * making because it satisfies the triangle inequality, which a run that
+   * never settled does not — reweight from it and Dijkstra is handed negative
+   * edges, which it is not allowed and which it silently gets wrong.
+   */
+  const slack = g.edges.filter((e) => d[e.u]! + w.get(ekey(e.u, e.v))! < d[e.v]!);
+  stats.comparisons += g.edges.length;
+  if (slack.length > 0) {
+    const ends = [...new Set(slack.flatMap((e) => [e.u, e.v]))].sort((a, b) => a - b);
+    for (let v = 1; v <= n; v++) badge[v] = d[v]!;
+    ring = ends;
+    ringLabel = 'still getting cheaper after |V′| − 1 passes';
+    emit(
+      'JOHNSON',
+      3,
+      snapshot(),
+      {
+        ...base(),
+        look: ends.map(vid),
+        edges: Object.fromEntries(slack.map((e) => [ekey(e.u, e.v), 'move' as Role])),
+      },
+      `${slack[0]!.u}→${slack[0]!.v} still improves after ${n} pass${n === 1 ? '' : 'es'}, which only a negative-weight cycle allows. Shortest paths are undefined, so there is nothing to reweight and no matrix to return.`,
+    );
+    return { steps, output: { n, dijkstras: 0, negativeCycle: 1 } };
+  }
+
   for (let v = 1; v <= n; v++) h[v] = d[v]!;
 
   // ---- reweight ---------------------------------------------------------
@@ -262,7 +307,7 @@ export function record(input: GraphInput): Trace {
 
   const last = steps.at(-1)!;
   (last.hi as { matrix?: unknown }).matrix = D.map((row) => [...row]);
-  return { steps, output: { n, dijkstras: n } };
+  return { steps, output: { n, dijkstras: n, negativeCycle: 0 } };
 }
 
 /**
@@ -271,12 +316,27 @@ export function record(input: GraphInput): Trace {
  * Bellman-Ford on the **original** weights, so nothing about the reweighting
  * is assumed — if `h` were wrong, or the correction at the end mis-signed,
  * this is what would notice.
+ *
+ * On a graph with a negative-weight cycle there are no shortest paths, so the
+ * claim is the other one: the run must have said so and must not have handed
+ * back a matrix anyway.
  */
 function verify(input: AlgorithmInput, trace: Trace): string | null {
   if (!isGraphInput(input)) return 'not a graph input';
   const g = input;
   const n = g.n;
   const D = (trace.steps.at(-1)!.hi as { matrix?: number[][] }).matrix;
+
+  const reported = trace.output?.negativeCycle === 1;
+  const real = negativeCycleVertices(g).length > 0;
+  if (real && !reported) {
+    return 'the graph has a negative-weight cycle, but the run reweighted and ran Dijkstra anyway';
+  }
+  if (reported && !real) return 'the run reported a negative-weight cycle, but there is none';
+  if (reported) {
+    return D ? 'the run reported a negative-weight cycle and returned a distance matrix too' : null;
+  }
+
   if (!D) return 'the run returned no matrix';
 
   for (let s = 1; s <= n; s++) {

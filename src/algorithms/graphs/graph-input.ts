@@ -537,3 +537,37 @@ export function verticesOf(
   }
   return out;
 }
+
+/**
+ * The vertices that lie on a negative-weight cycle.
+ *
+ * Used by the *verifiers* of the two all-pairs algorithms that have to report
+ * one — Floyd-Warshall reads its own diagonal, Johnson reads its Bellman-Ford
+ * pass — so the check here is deliberately neither of those: it runs a plain
+ * Bellman-Ford from each vertex in turn and asks whether that vertex's own
+ * estimate ever drops below zero. It can only do so by going round a closed
+ * walk of negative weight, and `n` passes are enough to find one, since a
+ * simple cycle has at most `n` edges.
+ *
+ * O(V²E), which is fine for the five-vertex graphs these two players accept
+ * and is worth it for a check that shares no code with the thing it checks.
+ */
+export function negativeCycleVertices(g: GraphInput): number[] {
+  const out: number[] = [];
+  for (let c = 1; c <= g.n; c++) {
+    const d = new Array<number>(g.n + 1).fill(Infinity);
+    d[c] = 0;
+    for (let pass = 0; pass <= g.n; pass++) {
+      for (const e of g.edges) {
+        const via = d[e.u]! + (e.w ?? 1);
+        if (via < d[e.v]!) d[e.v] = via;
+        if (!g.directed) {
+          const back = d[e.v]! + (e.w ?? 1);
+          if (back < d[e.u]!) d[e.u] = back;
+        }
+      }
+    }
+    if (d[c]! < 0) out.push(c);
+  }
+  return out;
+}
