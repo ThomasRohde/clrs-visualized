@@ -177,7 +177,65 @@ export class AlgorithmPlayer {
 
   // ---------- rendering ----------
 
+  /**
+   * Reserve the narration box for the tallest sentence this trace contains.
+   *
+   * The box has a fixed height so that a longer sentence never shoves the
+   * transport down mid-run, and that height used to be three lines. Three is
+   * right beside a sidebar at 1440 and wrong on a phone, where the same
+   * sentence wraps to five — and wrong in a subtler way anywhere, because a
+   * superscript in `D⁰ is the weight matrix` raises that line's box by 11px
+   * without adding a line at all. Both were caught only by stepping a player
+   * at 375 and watching the panel breathe.
+   *
+   * So it is measured rather than guessed. Every distinct narration is cloned
+   * into an absolutely positioned probe inside the box — cloned, so it carries
+   * the same classes and Astro's scoped-style attribute and therefore wraps
+   * exactly as the real one does — and the whole probe is laid out **once**.
+   * Setting the real element's text in a loop would be one forced reflow per
+   * step, which is 220 of them on radix sort.
+   *
+   * Re-measured on every resize rather than only when the width changes: the
+   * narration font is a web font, and the same sentence in the fallback wraps
+   * to fewer lines at exactly the same width. A guard on width alone reserved
+   * the pre-font-load height and was short by a line on the sentences that
+   * mattered.
+   */
+  private reserveNoteHeight(): void {
+    if (this.note.clientWidth === 0) return;
+
+    const probe = document.createElement('div');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText =
+      'position:absolute;left:0;right:0;top:0;visibility:hidden;pointer-events:none';
+
+    const seen = new Set<string>();
+    for (const step of this.steps) {
+      if (seen.has(step.note)) continue;
+      seen.add(step.note);
+      const clone = this.note.cloneNode(false) as HTMLElement;
+      clone.removeAttribute('data-el');
+      clone.removeAttribute('aria-live');
+      clone.textContent = step.note;
+      probe.appendChild(clone);
+    }
+
+    this.note.appendChild(probe);
+    let tallest = 0;
+    for (const child of probe.children) {
+      // The fractional height, rounded up: `offsetHeight` is an integer, and
+      // reserving 79 for a box that really wants 79.13 moves the transport by
+      // a pixel — which the browser pass notices and a reader would not.
+      tallest = Math.max(tallest, child.getBoundingClientRect().height);
+    }
+    probe.remove();
+    // Each clone keeps the CSS floor of three lines, so this is never smaller
+    // than the height the box had before.
+    this.note.style.minHeight = `${Math.ceil(tallest)}px`;
+  }
+
   private resizeAll(): void {
+    this.reserveNoteHeight();
     this.renderer.resize(this.canvas, this.steps[this.index], { maxValue: this.maxValue });
     this.tape.layout();
     this.tape.render(this.index);
@@ -392,6 +450,10 @@ export class AlgorithmPlayer {
     // changes width when web fonts land and when the sidebar collapses, and
     // neither of those fires a window resize.
     new ResizeObserver(() => this.resizeAll()).observe(this.root);
+
+    // …and the narration reserve depends on the font even when nothing
+    // changes width, so it is remeasured once the real one has arrived.
+    document.fonts?.ready.then(() => this.resizeAll());
 
     // Redraw when the theme changes, since colours come from CSS variables.
     // The tape's cached strip has to be repainted, not just blitted.

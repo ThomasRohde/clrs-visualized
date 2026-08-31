@@ -24,12 +24,16 @@ import { pathToFileURL } from 'node:url';
 const ROOT = resolve(import.meta.dirname, '..');
 const CHAPTERS = join(ROOT, 'src/content/chapters');
 
-// theme × viewport width. The narrow entry is not padding: a narration line
+// theme × viewport width. The narrow entries are not padding: a narration line
 // that fits at 1440 can wrap at 900, and only the wrapped width shifts layout.
+// 375 is a phone, and is below the player's own 620px container breakpoint —
+// the width at which a long legend entry stopped fitting and, because the
+// workspace clips, simply vanished with nothing to scroll to.
 const MATRIX = [
   { theme: 'light', width: 1440 },
   { theme: 'dark', width: 1440 },
   { theme: 'light', width: 900 },
+  { theme: 'dark', width: 375 },
 ];
 
 /** Frames to read pixels back from, per player. Cheap checks run on every step. */
@@ -197,6 +201,39 @@ try {
           const pixelAt = new Set([0, last]);
           for (let s = 0; s <= last; s += Math.max(1, Math.floor(last / samples))) pixelAt.add(s);
 
+          /**
+           * Text that has been clipped out of existence.
+           *
+           * Not "overflows its parent" — plenty of things scroll, and the
+           * pseudocode panel is meant to. The question is whether the nearest
+           * ancestor that *clips* cuts the element off, because then there is
+           * no scrollbar and no gesture that brings the rest of the sentence
+           * back. The selectors are the text a reader has to be able to read:
+           * the key, the input's assumption, the stats and the narration.
+           */
+          const clips = (el) => /hidden|clip/.test(getComputedStyle(el).overflowX);
+          const cut = [];
+          const READABLE =
+            '.legend-item, .input-note, .stage-name, .stat, .step-count, .custom-err, .aux-hint, .note';
+          for (const el of root.querySelectorAll(READABLE)) {
+            const text = el.textContent.trim();
+            if (!text) continue;
+            const box = el.getBoundingClientRect();
+            for (let a = el.parentElement; a && root.contains(a); a = a.parentElement) {
+              if (!clips(a)) continue;
+              const outer = a.getBoundingClientRect();
+              if (box.right > outer.right + 1 || box.left < outer.left - 1) {
+                cut.push(`"${text.slice(0, 46)}" is cut off by .${a.className.split(' ')[0]}`);
+              }
+              break;
+            }
+            // …and the same sentence clipped inside its own box, which is what
+            // `white-space: nowrap` does to a legend entry too long for a phone.
+            if (clips(el) && el.scrollWidth > el.clientWidth + 1) {
+              cut.push(`"${text.slice(0, 46)}" is wider than its own box`);
+            }
+          }
+
           const heights = new Map();
           let blank = 0;
           let emptyNotes = 0;
@@ -222,6 +259,7 @@ try {
 
           return {
             steps: last,
+            cut: [...new Set(cut)],
             blank,
             emptyNotes,
             badHighlight,
@@ -234,6 +272,7 @@ try {
         const at = `[${where()}] ${slug}/${id}`;
         if (report.steps < 2) problems.push(`${at}: only ${report.steps} steps`);
         if (report.blank > 0) problems.push(`${at}: ${report.blank} sampled frames drew nothing`);
+        for (const line of report.cut) problems.push(`${at}: ${line}`);
         if (report.emptyNotes > 0)
           problems.push(`${at}: ${report.emptyNotes} steps have no narration`);
         if (report.badHighlight > 0) {
