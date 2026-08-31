@@ -202,6 +202,15 @@ Nothing is hardcoded. `astro.config.mjs` reads two environment variables:
 project site works with no configuration at all — push, and set Settings → Pages → Source
 to "GitHub Actions".
 
+**Deploy runs behind CI, as a job dependency rather than a hope.** `ci.yml` is a reusable workflow
+(`workflow_call`), and deploy.yml's first job is `uses: ./.github/workflows/ci.yml`; everything that
+touches Pages `needs` it. So nothing publishes until types, lint, formatting, README freshness, the
+generative suite, the browser pass over every player and the subpath link check have all passed
+**for the commit being published** — a manual `workflow_dispatch` included, since there is no input
+that turns the gate off. Adding a job to `ci.yml` adds it to the gate; in exchange, CI does not run
+standalone on `master`/`main`, because it runs inside Deploy there. `tests/workflows.test.ts`
+asserts the whole chain, and was checked by removing the dependency and watching it fail.
+
 Every internal link goes through `href()` / `chapterHref()` in `src/lib/paths.ts`, and CI builds
 under a subpath and asserts that every emitted link carries the prefix. That check exists because a
 hardcoded `/chapters/…` works perfectly on a root deploy and 404s on a subpath one, which is the

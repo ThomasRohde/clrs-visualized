@@ -947,7 +947,8 @@ the work it tracks isn't checkpointed.
       Renamed to `main` during the build, then back to `master` when the history was squashed and
       pushed to <https://github.com/ThomasRohde/clrs-visualized>. `deploy.yml` triggers on both
       names so the rename cannot silently stop the deploy.
-- [x] **CI.** `.github/workflows/ci.yml`, three jobs. **gates** runs `format:check`, `lint`, `check`,
+- [x] **CI.** `.github/workflows/ci.yml`, three jobs, and — since the review pass — a
+      `workflow_call` trigger, because it is also the deploy gate. **gates** runs `format:check`, `lint`, `check`,
       the README freshness check, `test` and `build`, cheapest first so a formatting slip fails in
       seconds. **players** runs `verify:players` in a real browser — Playwright is now a pinned
       devDependency rather than the global install the script fell back to, which is what unblocked
@@ -961,7 +962,11 @@ the work it tracks isn't checkpointed.
       1920 links, all of them correct, and the checker was confirmed to fail on a root build. The
       two steps that had to happen outside the repository are done: `origin` is
       <https://github.com/ThomasRohde/clrs-visualized>, and **Settings → Pages → Source** is set to
-      **GitHub Actions**, serving <https://thomasrohde.github.io/clrs-visualized/>.
+      **GitHub Actions**, serving <https://thomasrohde.github.io/clrs-visualized/>. **Deploy runs
+      behind CI**: its first job is `uses: ./.github/workflows/ci.yml` and everything that touches
+      Pages `needs` it, so a red commit cannot publish — a job dependency for the exact commit, not
+      a wait on timing, and no input that skips it. CI no longer runs standalone on the default
+      branch, because it runs inside Deploy there.
 - [x] **Build time.** ~~Re-measure `npm run build` at the end of Phase C.~~ Measured at the end of
       Phase D: **40 pages in 3.3 s** with 43 lazy chunks, against 3 chapters and 4 algorithms at the
       start. It is flat — the per-algorithm chunking is doing its job, and nothing here needs

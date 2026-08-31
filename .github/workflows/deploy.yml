@@ -1,10 +1,25 @@
-# Publish to GitHub Pages.
+# Publish to GitHub Pages, and only behind the gates.
 #
-# Nothing here needs editing to work, and nothing here runs until two things
-# are true, neither of which can be done from the repository:
+# **The `ci` job below is the gate.** It runs ci.yml as a reusable workflow —
+# the same file, the same jobs, against this exact commit — and `build` needs
+# it, so nothing is uploaded until types, lint, formatting, README freshness,
+# the generative suite, the browser pass over every player and the subpath
+# link check have all passed. Deploy used to trigger independently on a push
+# to the default branch and run only `npm run build`, which meant CI could go
+# red and this workflow would publish that same commit regardless.
 #
-#   1. the repo has a remote on GitHub and the default branch has been pushed;
-#   2. Settings → Pages → Source is set to "GitHub Actions".
+# Two things make it a real gate rather than a hopeful one. It is a job
+# dependency, not a wait on timing, so there is no window in which a stale or
+# unrelated CI run could satisfy it. And it applies to `workflow_dispatch`
+# too: a manual deploy is still deliberate, but it cannot skip the checks —
+# there is no input that turns them off, because a switch labelled "deploy
+# anyway" gets used.
+#
+# ci.yml is where the jobs live; adding one there adds it to this gate with
+# nothing to change here. In exchange, that workflow does not run on its own
+# for master or main — it runs inside this one, so the gates run once per
+# commit instead of twice. Every other branch and every pull request still
+# runs CI directly.
 #
 # The destination is not hardcoded. `actions/configure-pages` reports where
 # this repository will actually be served — origin and subpath — and those are
@@ -13,8 +28,8 @@
 # site at the root, and neither case needs a different config.
 #
 # Every internal link goes through `href()` in src/lib/paths.ts, and the
-# `base-path` job in ci.yml asserts that on every push, so the subpath case is
-# checked rather than hoped for.
+# `base-path` job asserts that, so the subpath case is checked rather than
+# hoped for.
 name: Deploy
 
 on:
@@ -34,7 +49,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Every gate this project has, against the commit about to be published.
+  # Inherits the caller's permissions, which are read-only for `contents`.
+  ci:
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: ci
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
