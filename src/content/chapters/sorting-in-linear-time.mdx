@@ -1,0 +1,157 @@
+---
+title: Sorting in Linear Time
+section: '§8.1–8.4'
+summary: Every comparison sort needs Ω(n log n). Three sorts beat it by not comparing at all — and by assuming something about the keys instead.
+algorithms: ['counting-sort', 'radix-sort', 'bucket-sort']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Merge sort and heapsort both run in Θ(n log n), and no amount of cleverness has ever improved on
+that. Chapter 8 explains why: it is not a failure of imagination but a theorem. It then breaks the
+theorem, by changing the rules.
+
+## §8.1 — The lower bound, and what it actually covers
+
+Every sort so far has learned about the input in exactly one way: by asking whether one element is
+less than another. Nothing else. An algorithm restricted to that is a **comparison sort**, and you
+can draw its whole behaviour as a binary decision tree — one internal node per comparison, one leaf
+per permutation it can output.
+
+To sort correctly, the tree must have a leaf for each of the n! possible orderings. A binary tree
+with n! leaves has height at least log₂(n!), and by Stirling's approximation that is Ω(n log n).
+The height of the tree _is_ the worst-case number of comparisons, so:
+
+> No comparison sort can do better than Ω(n log n) in the worst case.
+
+Merge sort and heapsort meet the bound exactly, which makes them asymptotically optimal. There is
+nothing left to win here.
+
+The escape hatch is in the premise. The bound covers algorithms that only ever _compare_. The three
+sorts below never compare two elements at all — watch the compares counter stay at zero — and they
+buy that by assuming something about the keys instead. Every one of them is a trade: information
+you already have about the data, exchanged for time.
+
+## §8.2 — Counting sort
+
+Counting sort assumes the keys are integers in a known range 0‥k. Given that, it can work out where
+each element belongs by arithmetic rather than by comparison.
+
+It runs in three sweeps. First it counts how many of each key there are. Then it turns those counts
+into running totals, so that `C[i]` becomes the number of elements less than or equal to `i` —
+which is precisely the last slot of the output that a key `i` may occupy. Finally it walks the
+input backwards, dropping each element straight into that slot and decrementing the counter so the
+next equal key lands just to its left.
+
+<AlgorithmPlayer id="counting-sort" />
+
+The chart shows whichever array the algorithm is currently working in: the input while the counts
+are taken, then the output as it fills. `C` sits above as chips, captioned with the key each count
+belongs to, because `C` is indexed by key rather than by position.
+
+**Why walk the input backwards?** That is what makes counting sort stable, and stability is not a
+nicety here — §8.3 depends on it entirely. Going right to left means the last equal key encountered
+is placed rightmost, so equal keys come out in the order they went in. Reverse the loop and the
+sort still works; radix sort built on top of it does not.
+
+<ComplexityCard id="counting-sort">
+  **Θ(n + k), and the k matters.** Counting sort is linear only when k is O(n). Sorting a million
+  32-bit integers this way would need a count array of four billion entries to save a few
+  comparisons — the assumption has to be genuinely true, not merely technically true.
+
+**Not in place, and that is the price.** The output needs its own array of n slots, plus k+1
+counters. Every sort in chapters 2–7 that ran in Θ(n log n) also ran in O(n) space or better;
+counting sort trades space for time as deliberately as it trades assumptions for time.
+
+</ComplexityCard>
+
+## §8.3 — Radix sort
+
+Counting sort collapses when k is large. Radix sort fixes that by sorting on one digit at a time,
+so the range each pass has to cope with is the number of digit values — ten, for decimal keys —
+rather than the size of the keys themselves.
+
+The surprise is the direction. Radix sort goes **least significant digit first**, which looks
+backwards: sorting on the ones digit seems to be work that the tens-digit pass will immediately
+undo. It does not, because each pass is stable. When the tens pass reorders the array, elements
+with equal tens digits keep the relative order the ones pass gave them — so that earlier work is
+still there, sitting underneath, exactly where it is needed.
+
+<AlgorithmPlayer id="radix-sort" />
+
+Each pass is a counting sort on a single digit, so the layout is the one you have already read:
+the count array above, the output array filling from the right. Step to the end of the first pass
+and check that the array is ordered by last digit only, then let the second pass run and watch that
+ordering survive inside each group of equal tens digits.
+
+<ComplexityCard id="radix-sort">
+  **Θ(d(n + b)) for d digits in base b.** With three-digit decimal keys that is three passes over
+  n elements with a ten-entry count array — linear in n, with a constant of three.
+
+**Choosing the base is the real decision.** For b-bit keys split into digits of r bits, radix sort
+costs Θ((b/r)(n + 2ʳ)). Larger digits mean fewer passes but bigger count arrays; the sweet spot is
+around r = log n, which makes it Θ(bn / log n).
+
+**Stability is load-bearing.** Substitute a faster unstable sort for the per-digit pass and radix
+sort simply stops being correct. This is the one place in the book where stability is not a
+convenience but a correctness requirement.
+
+</ComplexityCard>
+
+## §8.4 — Bucket sort
+
+Bucket sort assumes the keys are drawn uniformly at random from an interval. Under that assumption
+it can afford to be crude: scatter the elements into n equal-width buckets, sort each bucket with
+something simple, and read the buckets out in order.
+
+The reasoning is a probability argument rather than a worst-case one. With n uniform keys and n
+buckets, each bucket holds one element on average, and the expected cost of insertion-sorting a
+bucket is Θ(1) — a bound that survives summing over all n buckets because the expected value of
+the _square_ of a bucket's size is still constant.
+
+The book's keys lie in [0, 1); the player below uses two-digit keys read as hundredths, which is
+the same thing scaled by 100.
+
+<AlgorithmPlayer id="bucket-sort" />
+
+One liberty is taken here for the sake of the picture. The book sorts each bucket and then
+concatenates them; the player concatenates first, so the buckets appear in the array as contiguous
+runs, and then insertion-sorts each run where it lies. Concatenation never moves an element out of
+its bucket, so sorting before or after it is the same sort — but only the second order has anything
+to show you.
+
+Watch the bucket counts above the chart during the scatter phase. On random input they hover near
+one apiece, which is the assumption doing its work. Then type in an array that violates it —
+`5,6,7,8,9,10,11,12` all land in the first bucket or two — and the run degenerates into a single
+insertion sort of everything. The tape makes this vivid: a healthy run is a series of short, similar
+figures, one per bucket, while a degenerate one is the long solid block of shifts you saw in
+chapter 2.
+
+<ComplexityCard id="bucket-sort">
+  **Θ(n) expected, Θ(n²) worst case.** The expectation is over the *input distribution*, not over
+  coin flips the algorithm makes — which is a strictly weaker guarantee than randomized quicksort's.
+  If the data is not uniform, no amount of re-running will help; there is nothing random inside
+  bucket sort to re-roll.
+
+**It does compare.** Unlike counting and radix sort, bucket sort uses comparisons inside each
+bucket — the compares counter is not zero. It sidesteps the Ω(n log n) bound anyway, because the
+scatter step does the coarse ordering without comparing, leaving only Θ(1) elements for the
+comparison sort to handle.
+
+</ComplexityCard>
+
+## Choosing between them
+
+| If you know                         | Use                          |
+| ----------------------------------- | ---------------------------- |
+| Nothing about the keys              | A comparison sort — you must |
+| Small integer keys, 0‥k with k=O(n) | Counting sort                |
+| Fixed-width keys, large range       | Radix sort                   |
+| Keys uniform over an interval       | Bucket sort                  |
+
+Every row below the first is an assumption you are asserting about your data. When the assumption
+holds, these sorts are unbeatable — a radix sort over fixed-width keys does no comparisons and
+touches memory linearly. When it does not, they range from slower than quicksort to quadratic.
+Chapter 8's real lesson is that the Ω(n log n) bound is a statement about ignorance, and the way
+past it is to know something.

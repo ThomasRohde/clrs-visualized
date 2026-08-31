@@ -1,0 +1,86 @@
+---
+title: 'D — Matrices'
+section: '§D.1–D.2'
+summary: The operations and properties Parts IV and VII assume — and why a matrix turns out to be four different things depending on the chapter.
+algorithms: []
+---
+
+import { chapterHref } from '../../lib/paths.ts';
+
+## §D.1 — Matrices and their operations
+
+An m × n matrix is a rectangular array. Addition is entrywise. Multiplication is not:
+
+```
+(AB)ᵢⱼ = Σ(k = 1..n) aᵢₖ · bₖⱼ
+```
+
+Row i of A dotted with column j of B, defined only when A's width matches B's height. The cost of
+the obvious algorithm is Θ(n³) for square matrices, and the whole of <a href={chapterHref('divide-and-conquer')}>chapter 4</a>'s Strassen section is an attack on that
+exponent.
+
+Matrix multiplication is **associative** and **distributive** but **not commutative**. Both facts
+earn their keep:
+
+- associativity is what makes <a href={chapterHref('dynamic-programming')}>matrix-chain
+  multiplication</a> a problem at all — every parenthesisation gives the same product and a wildly
+  different cost;
+- non-commutativity is why the order of transformations matters, and why Strassen's seven products
+  have to be combined in exactly the way they are.
+
+The **transpose** Aᵀ swaps rows and columns, with `(AB)ᵀ = BᵀAᵀ`. The **identity** Iₙ has ones on
+the diagonal. An **inverse** A⁻¹ satisfies `AA⁻¹ = I`, and exists exactly when A is **non-singular**
+— equivalently when its determinant is non-zero, its rows are linearly independent, and `Ax = 0` has
+only the zero solution. Those are the same condition wearing different clothes, and <a href={chapterHref('matrix-operations')}>chapter 28</a> uses whichever is convenient.
+
+Special shapes worth naming, because algorithms exploit them: **diagonal**, **upper/lower
+triangular** (solvable by substitution in Θ(n²) rather than Θ(n³), which is the entire point of LUP
+decomposition), **symmetric** (A = Aᵀ), **permutation** (one 1 per row and column — the P in LUP),
+and **positive-definite**, which is what guarantees an LU decomposition exists without pivoting.
+
+## §D.2 — Properties, and what they are used for
+
+Rank, determinant, linear independence, and the equivalence above. Rather than restate them, here is
+where each one is actually cashed in.
+
+**Solving Ax = b.** <a href={chapterHref('matrix-operations')}>Chapter 28</a>'s LUP decomposition
+factors A into a permutation, a lower triangular and an upper triangular matrix. Once you have that,
+two triangular solves at Θ(n²) each replace a Θ(n³) elimination — so the expensive step happens once
+per _matrix_ rather than once per right-hand side. That is why LUP is the thing to compute and the
+inverse usually is not.
+
+**Never invert to solve.** `x = A⁻¹b` is correct and is the wrong algorithm: it costs more and is
+numerically worse than solving directly. Chapter 28 makes this point and it is worth repeating,
+because the notation invites the mistake.
+
+**Matrices as more than numbers.** The reason this appendix matters more than it looks is that four
+different chapters use a matrix to mean four different things, and the algebra transfers:
+
+- an **adjacency matrix**, where multiplication counts paths — which is what makes
+  <a href={chapterHref('all-pairs-shortest-paths')}>chapter 23</a>'s repeated-squaring shortest
+  paths work, once you replace (+, ×) with (min, +);
+- a **transition matrix** for a Markov chain or an automaton, where a power is a number of steps;
+- a **DP table**, which is a matrix only in shape but inherits the whole vocabulary of rows,
+  columns and diagonals that <a href={chapterHref('dynamic-programming')}>chapter 14</a> needs to
+  describe its fill order;
+- a **linear transformation**, where the determinant is a volume scale factor and singularity means
+  collapse.
+
+The (min, +) substitution is the one worth remembering. It is the same triple loop, the same
+associativity, and the same repeated-squaring trick — only the two operations changed. Recognising
+that an algorithm is really about a **semiring** rather than about arithmetic is what lets one piece
+of code compute shortest paths, transitive closure and matrix products alike, and chapter 23 has all
+three side by side.
+
+## Where this shows up
+
+Four chapters, four uses: <a href={chapterHref('divide-and-conquer')}>chapter 4</a> (multiplication and Strassen), <a href={chapterHref('dynamic-programming')}>chapter 14</a> (the chain problem, which is entirely
+about associativity), <a href={chapterHref('all-pairs-shortest-paths')}>chapter 23</a> (adjacency
+matrices and the min-plus semiring), <a href={chapterHref('matrix-operations')}>chapter 28</a> (LUP,
+inversion and least squares) and <a href={chapterHref('parallel-algorithms')}>chapter 26</a>, where
+the same product is the standard example of an algorithm with enormous parallelism because no two
+entries of the result depend on each other.
+
+That last property — that `c(i,j)` needs nothing from `c(i′,j′)` — is worth noticing here rather
+than only there. It is a fact about the _definition_ of matrix multiplication, not about any
+algorithm for it, and it is why the operation ended up at the centre of so much of modern computing.

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#0F1524"/>
+  <!-- The invariant: a rule that holds while the elements under it change. -->
+  <rect x="5" y="7" width="22" height="2" fill="#E9EDF8"/>
+  <rect x="5"  y="18" width="4" height="8"  fill="#7488B2"/>
+  <rect x="10" y="13" width="4" height="13" fill="#E9A93A"/>
+  <rect x="15" y="16" width="4" height="10" fill="#F0705E"/>
+  <rect x="20" y="11" width="4" height="15" fill="#35C39C"/>
+  <rect x="25" y="20" width="2" height="6"  fill="#52BFE3"/>
+</svg>

@@ -1,0 +1,72 @@
+---
+// Cycles system → light → dark. The choice is stamped on <html data-theme>
+// and remembered per browser.
+---
+
+<button class="theme-btn" id="theme-btn" type="button">
+  <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true" id="theme-icon">
+    <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"></circle>
+    <path d="M8 2a6 6 0 010 12z" fill="currentColor" id="theme-icon-fill"></path>
+  </svg>
+  <span id="theme-label">System</span>
+</button>
+
+<script is:inline>
+  // Inline and synchronous so the stored theme is applied before first paint,
+  // which avoids a flash of the wrong palette.
+  (function () {
+    const KEY = 'loop-invariant-theme';
+    let mode = 'system';
+    try {
+      mode = localStorage.getItem(KEY) || 'system';
+    } catch {
+      // localStorage unavailable (private browsing, disabled) — fall back to system.
+    }
+    if (mode === 'light' || mode === 'dark') {
+      document.documentElement.setAttribute('data-theme', mode);
+    }
+
+    // Half-filled circle for "system", full for dark, empty for light — the
+    // icon shows the state, the word names it, the label says what a click does.
+    const FILL = {
+      system: 'M8 2a6 6 0 010 12z',
+      light: '',
+      dark: 'M8 2a6 6 0 000 12 6 6 0 000-12z',
+    };
+    const WORD = { system: 'System', light: 'Light', dark: 'Dark' };
+    const ORDER = ['system', 'light', 'dark'];
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const btn = document.getElementById('theme-btn');
+      const fill = document.getElementById('theme-icon-fill');
+      const word = document.getElementById('theme-label');
+      if (!btn || !fill || !word) return;
+
+      function current() {
+        return document.documentElement.getAttribute('data-theme') || 'system';
+      }
+
+      function paint() {
+        const cur = current();
+        const next = ORDER[(ORDER.indexOf(cur) + 1) % ORDER.length];
+        fill.setAttribute('d', FILL[cur]);
+        word.textContent = WORD[cur];
+        btn.setAttribute('aria-label', 'Theme: ' + WORD[cur] + '. Switch to ' + WORD[next] + '.');
+        btn.setAttribute('title', 'Switch to ' + WORD[next].toLowerCase() + ' theme');
+      }
+      paint();
+
+      btn.addEventListener('click', function () {
+        const next = ORDER[(ORDER.indexOf(current()) + 1) % ORDER.length];
+        if (next === 'system') document.documentElement.removeAttribute('data-theme');
+        else document.documentElement.setAttribute('data-theme', next);
+        try {
+          localStorage.setItem(KEY, next);
+        } catch {
+          // localStorage unavailable — the choice just won't persist across reloads.
+        }
+        paint();
+      });
+    });
+  })();
+</script>

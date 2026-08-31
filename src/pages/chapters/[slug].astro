@@ -1,0 +1,335 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { ALL_CHAPTERS, chapterLabel } from '../../lib/book';
+import { chapterHref } from '../../lib/paths';
+import { ALGORITHM_IDS } from '../../algorithms/registry';
+
+// One route per chapter in the book outline. Chapters with an MDX file render
+// their content; the rest render a stub that says so plainly and points at
+// what is readable instead. That way the full table of contents is browsable
+// from the very first commit.
+export async function getStaticPaths() {
+  const written = await getCollection('chapters');
+  const bySlug = new Map(written.map((entry) => [entry.id, entry]));
+
+  return ALL_CHAPTERS.map((chapter, i) => {
+    // The nearest written chapters on either side, so a stub is a signpost
+    // rather than a dead end.
+    const nearest = ALL_CHAPTERS.filter((c) => bySlug.has(c.slug))
+      .map((c) => ({ chapter: c, title: bySlug.get(c.slug)!.data.title, distance: 0 }))
+      .map((x) => ({
+        ...x,
+        distance: Math.abs(ALL_CHAPTERS.findIndex((c) => c.slug === x.chapter.slug) - i),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, 3);
+
+    return {
+      params: { slug: chapter.slug },
+      props: {
+        chapter,
+        entry: bySlug.get(chapter.slug) ?? null,
+        prev: ALL_CHAPTERS[i - 1] ?? null,
+        next: ALL_CHAPTERS[i + 1] ?? null,
+        nearest,
+      },
+    };
+  });
+}
+
+const { chapter, entry, prev, next, nearest } = Astro.props;
+
+// Fail the build on a typo'd algorithm id rather than shipping a broken page.
+if (entry) {
+  for (const id of entry.data.algorithms) {
+    if (!ALGORITHM_IDS.includes(id)) {
+      throw new Error(
+        `Chapter "${chapter.slug}" lists unknown algorithm "${id}". ` +
+          `Known ids: ${ALGORITHM_IDS.join(', ')}. Register it in src/algorithms/registry.ts.`,
+      );
+    }
+  }
+}
+
+const Content = entry ? (await render(entry)).Content : null;
+const title = entry?.data.title ?? chapter.title;
+const eyebrow = entry?.data.section ?? chapterLabel(chapter);
+const summary = entry?.data.summary;
+---
+
+<BaseLayout title={`${title} — Loop Invariant`} description={summary} current={chapter.slug}>
+  <div class="chapter-head">
+    <span class="chapter-num" aria-hidden="true">{chapter.number > 0 ? chapter.number : '—'}</span>
+    <div>
+      <span class="eyebrow">{eyebrow}</span>
+      <h1>{title}</h1>
+      {summary && <p class="summary">{summary}</p>}
+    </div>
+  </div>
+
+  {
+    Content ? (
+      <article class="chapter-body">
+        <Content />
+      </article>
+    ) : (
+      <div class="unwritten">
+        <p class="unwritten-lede">
+          This chapter is in the outline but hasn't been written yet. The book's structure is here
+          from the start so you can see what's coming — there's just nothing to read on this page.
+        </p>
+
+        {nearest.length > 0 && (
+          <div class="unwritten-next">
+            <p class="label">Closest chapters that are ready</p>
+            <ul>
+              {nearest.map((n) => (
+                <li>
+                  <a href={chapterHref(n.chapter.slug)}>
+                    <span class="mono">{n.chapter.number > 0 ? n.chapter.number : '—'}</span>
+                    {n.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/*
+          The instructions for filling this page in belong to whoever is
+          building the site, not to whoever is reading it. Folded away.
+        */}
+        <details class="unwritten-how">
+          <summary>Writing this chapter?</summary>
+          <p>
+            Create <code>src/content/chapters/{chapter.slug}.mdx</code> with frontmatter like:
+          </p>
+          <pre>
+            <code>{`---
+title: ${chapter.title}
+section: Chapter ${chapter.number > 0 ? chapter.number : 'A'}
+summary: One sentence on what this chapter covers.
+algorithms: []
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+
+Your prose here.
+
+<AlgorithmPlayer id="merge-sort" />`}</code>
+          </pre>
+          <p>
+            If it needs a new animated algorithm, add the recorder under{' '}
+            <code>src/algorithms/</code>
+            and register it in both <code>registry.ts</code> and <code>lazy.ts</code> — see
+            <code>README.md</code>.
+          </p>
+        </details>
+      </div>
+    )
+  }
+
+  <nav class="pager" aria-label="Chapter navigation">
+    {
+      prev && (
+        <a href={chapterHref(prev.slug)} class="prev">
+          <span class="dir">← Chapter {prev.number > 0 ? prev.number : '—'}</span>
+          <span class="label-text">{prev.title}</span>
+        </a>
+      )
+    }
+    {
+      next && (
+        <a href={chapterHref(next.slug)} class="next">
+          <span class="dir">Chapter {next.number > 0 ? next.number : '—'} →</span>
+          <span class="label-text">{next.title}</span>
+        </a>
+      )
+    }
+  </nav>
+</BaseLayout>
+
+<style>
+  .chapter-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  /* Prose from MDX gets a readable measure; visualizers and cards, which are
+     components rather than text, keep the full column width. */
+  .chapter-body :global(p),
+  .chapter-body :global(ul),
+  .chapter-body :global(ol),
+  .chapter-body :global(blockquote),
+  .chapter-body :global(h2),
+  .chapter-body :global(h3) {
+    max-width: var(--measure);
+    margin: 0;
+  }
+
+  .chapter-body :global(h2) {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    font-size: var(--t-h2);
+    margin-top: 1rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+    width: 100%;
+    max-width: none;
+  }
+
+  .chapter-body :global(h3) {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    font-size: var(--t-h3);
+    margin-top: 0.5rem;
+  }
+
+  .chapter-body :global(p) {
+    line-height: 1.7;
+  }
+
+  .chapter-body :global(ul),
+  .chapter-body :global(ol) {
+    padding-left: 1.3rem;
+    line-height: 1.7;
+  }
+
+  .chapter-body :global(li) {
+    margin-bottom: 0.35rem;
+  }
+
+  .chapter-body :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    padding: 0.12em 0.36em;
+    border-radius: 3px;
+  }
+
+  .chapter-body :global(pre) {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  .chapter-body :global(pre code) {
+    background: none;
+    padding: 0;
+  }
+
+  /* The book's own device, and the thing this site is named after: a claim
+     that holds while everything under it changes. */
+  .chapter-body :global(blockquote) {
+    padding: 0.75rem 1rem;
+    border-left: 2px solid var(--c-scope);
+    background: var(--c-scope-wash);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  /* ---------- unwritten chapters ---------- */
+  .unwritten {
+    max-width: var(--measure);
+  }
+
+  .unwritten-lede {
+    margin: 0 0 1.5rem;
+    color: var(--ink-2);
+    line-height: 1.7;
+  }
+
+  .unwritten-next {
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+  }
+
+  .unwritten-next p {
+    margin: 0 0 0.5rem;
+  }
+
+  .unwritten-next ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .unwritten-next a {
+    display: flex;
+    gap: 0.7rem;
+    align-items: baseline;
+    padding: 0.4rem 0.5rem;
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--ink);
+    font-size: var(--t-small);
+  }
+
+  .unwritten-next a:hover {
+    background: var(--surface);
+  }
+
+  .unwritten-next .mono {
+    font-size: var(--t-micro);
+    color: var(--c-scope);
+    min-width: 1.2rem;
+  }
+
+  .unwritten-how {
+    margin-top: 2rem;
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+  }
+
+  .unwritten-how summary {
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+
+  .unwritten-how summary:hover {
+    color: var(--ink-2);
+  }
+
+  .unwritten-how p {
+    font-size: var(--t-small);
+    color: var(--ink-2);
+    margin: 0.9rem 0 0.6rem;
+  }
+
+  .unwritten-how code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--surface-2);
+    padding: 0.12em 0.36em;
+    border-radius: 3px;
+  }
+
+  .unwritten-how pre {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 1rem;
+    overflow-x: auto;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    margin: 0.6rem 0;
+  }
+
+  .unwritten-how pre code {
+    background: none;
+    padding: 0;
+  }
+</style>

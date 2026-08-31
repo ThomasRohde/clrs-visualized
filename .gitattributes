@@ -1,0 +1,15 @@
+# Line endings are LF in the repository and LF in the working tree, on every
+# platform.
+#
+# Without this, a Windows checkout with core.autocrlf=true materialises CRLF
+# files, and `npm run format:check` fails on all 136 of them while CI — which
+# checks out on Linux — passes. That is the worst shape a gate can have: green
+# where nobody is looking and red where everybody is.
+* text=auto eol=lf
+
+# Binary, so never touched.
+*.png binary
+*.jpg binary
+*.svg text eol=lf
+*.dng binary
+*.pdf binary

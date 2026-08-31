@@ -1,0 +1,82 @@
+---
+title: The Role of Algorithms in Computing
+section: '§1.1–1.2'
+summary: What an algorithm is, and the claim this book spends a thousand pages backing up — that choosing one is engineering, not taste.
+algorithms: []
+---
+
+import { chapterHref } from '../../lib/paths.ts';
+
+An **algorithm** is a procedure that takes some value as input, does something well defined, and
+produces some value as output. It is **correct** if, for every legal input, it halts with the right
+answer.
+
+That definition is short and does real work, because both halves are load-bearing. _For every legal
+input_ — an incorrect algorithm may be right on almost everything and still be wrong, and this book
+spends a great deal of its effort on the "almost". _Halts_ — an algorithm that is right when it
+finishes and sometimes does not finish is not correct, which is why every loop in the book comes
+with a reason it terminates.
+
+## §1.1 — Problems, and what makes one hard
+
+A **problem** is a relation between inputs and acceptable outputs. The sorting problem says: given a
+sequence, produce a permutation of it in non-decreasing order. That statement mentions no algorithm,
+and the distinction matters — the whole of <a href={chapterHref('sorting-in-linear-time')}>chapter 8</a> turns on the difference between a
+lower bound for _the sorting problem_ under comparisons and the running time of any _algorithm_ for
+it.
+
+Problems come with a shape, and recognising the shape is most of the work. A handful worth having
+in mind, all developed later:
+
+- **Sorting and selection.** Rarely the goal; constantly the enabling step. A large fraction of the
+  algorithms in this book begin by sorting, and their bound is the sort's.
+- **Shortest paths.** In a road network, in a build graph, in a state machine. Chapters 22 and 23.
+- **Matching and flow.** Assigning jobs to machines, students to schools, packets to routes.
+  Chapters 24 and 25.
+- **String matching.** Chapter 32, and everything from a text editor to a genome aligner.
+- **Optimisation under constraints.** Chapter 29, and — when the exact answer turns out to be
+  unobtainable — chapters 33 and 35.
+
+Two things make a problem hard, and they are not the same thing. Some are hard because there are
+**many candidate answers and only a few good ones** — that is what the first two thirds of the book
+is about, and the answer is nearly always a structure that lets you avoid looking at most of them.
+Some are hard because **no efficient algorithm exists**, which is <a href={chapterHref('np-completeness')}>chapter 34</a>, and the answer is to stop looking and start
+approximating.
+
+## §1.2 — Algorithms as a technology
+
+The claim of §1.2 is the one worth arguing with, because it sounds like special pleading from
+people who like algorithms, and it is not.
+
+Suppose a fast machine runs insertion sort in optimised assembly at 10 billion instructions per
+second, and a machine a hundred times slower runs merge sort in an interpreted language 50 times
+less efficient. On ten million numbers, using the constants §1.2 uses:
+
+```
+fast machine, insertion sort   2·(10⁷)² instructions / 10¹⁰ per second  ≈  5.6 hours
+slow machine, merge sort       50·10⁷·lg(10⁷)  / 10⁸  per second        ≈  20 minutes
+```
+
+**The slower computer, running the slower language, wins by a factor of seventeen** — and the gap
+widens with every additional element, without limit. There is no version of the hardware story that
+catches up, because the two are not competing on the same term.
+
+That is the whole argument, and it generalises past sorting. Hardware and compilers buy you a
+constant factor. An algorithm can buy you an exponent, and exponents compound.
+
+The corollary that matters more in practice: **algorithms are what make some things possible at
+all.** A route planner over a continent, public-key cryptography, a search engine over the web, an
+assembled genome — none of these is a fast version of something people used to do slowly. Each one
+exists because somebody found an algorithm, and would not exist otherwise at any clock speed.
+
+## Where this shows up
+
+This chapter has no algorithm to animate, which is the point of it. It is the argument for why the
+next thirty-eight chapters are worth reading, and the two habits it asks for run through all of them:
+
+**Say what the problem is before you say what the algorithm is.** Half the difficulty in practice is
+that the specification was never written down, and a great many arguments about which algorithm is
+better turn out to be arguments about which problem is being solved.
+
+**Count the operations that grow, and ignore the rest.** That is <a href={chapterHref('characterizing-running-times')}>chapter 3</a>'s subject, and it is the tool
+that turns "this feels slow" into a claim you can check before writing any code.

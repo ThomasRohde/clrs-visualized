@@ -1,0 +1,135 @@
+---
+title: Augmenting Data Structures
+section: '§17.1–17.3'
+summary: Add one field to a balanced tree and it answers questions it was never designed for — order statistics and overlapping intervals, both still O(lg n).
+algorithms: ['order-statistic-tree', 'interval-tree']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Most of the time you do not need a new data structure. You need an existing one that answers one
+extra question, and the way to get it is to **augment** the structure: store a little more
+information in each node, keep it correct as the structure changes, and use it to answer the new
+question.
+
+This chapter does that twice to the red-black tree of chapter 13, and the two examples are chosen
+to show different things. The first adds a field that any structure could have maintained; the
+second adds one that turns an unsearchable set into a searchable one.
+
+## §17.1 — Dynamic order statistics
+
+Chapter 9 found the i-th smallest element of an array in Θ(n). That algorithm needs the whole array
+in hand and rearranges it as it goes, which is no use for a set that is being inserted into and
+deleted from between queries. The dynamic version of the question is what an **order-statistic
+tree** answers:
+
+- `OS-SELECT(x, i)` — which key is the i-th smallest?
+- `OS-RANK(T, x)` — how many keys are less than or equal to this one?
+
+The augmentation is one integer per node: **`x.size`, the number of nodes in x's subtree**. That
+is enough for both, because `x.left.size + 1` is x's own rank _within its subtree_ — so a single
+comparison per level decides which way to go.
+
+<AlgorithmPlayer id="order-statistic-tree" size={8} />
+
+The badge on each node is its size. Watch the insertions first: every node on the path from the
+root down to the new leaf has its size incremented, and nothing else in the tree is touched. **The
+augmentation is free** — the walk was already happening, and the extra work is one addition per
+level.
+
+Then watch `OS-SELECT`. At each node it compares `i` with `r = x.left.size + 1`. Equal, and the
+answer is here. Smaller, and the answer is to the left, with `i` unchanged. Larger, and the answer
+is to the right — but now it is the `i − r`-th smallest of that subtree, because everything at this
+node and to its left has been ruled in as smaller. That subtraction is the part worth stepping
+through slowly; it is where the rank being asked for changes meaning.
+
+`OS-RANK` runs the same idea upwards. Start with x's rank in its own subtree, then walk to the root:
+every time you step up from a **right** child, the parent and its entire left subtree are smaller
+than x, so add their count in. Step up from a left child and nothing is added, because everything up
+there is larger.
+
+## §17.2 — How to augment a data structure
+
+The chapter turns that into a recipe with four steps:
+
+1. **Choose an underlying data structure.** Usually a red-black tree, because it is already
+   O(lg n) for everything.
+2. **Determine additional information to maintain.** Here, `size`.
+3. **Verify that the information can be maintained** through the structure's own modifying
+   operations. This is the step that fails when augmentation fails.
+4. **Develop new operations** that use it.
+
+Step 3 is the whole game, and for a red-black tree it has a sharp answer. Insertion walks down and
+then **rotates**, and a rotation moves whole subtrees between parents — so the question is whether
+the new field can be recomputed after one, cheaply.
+
+> **Theorem 17.1.** If the field `f(x)` depends only on `x`, `x.left` and `x.right` — including the
+> `f` values of those children — then it can be maintained through insertion and deletion without
+> changing their O(lg n) running time.
+
+`size` qualifies: after a rotation, each of the two nodes that moved can recompute its size from its
+new children's sizes, in Θ(1), and no other node's size changed. That is why the augmentation is
+cheap, and it is the criterion to check before committing to a field.
+
+**The player above maintains `size` down the insertion path rather than through rotations**, which
+is where the idea is clearest; the rotation case is Θ(1) per rotation and there are at most two per
+insertion, so it changes nothing about the bound.
+
+## §17.3 — Interval trees
+
+Now a case where the augmentation is not a convenience but the whole point. The set is **intervals**
+— `[16, 21]`, `[8, 9]`, `[25, 30]` — and the query is: find one that overlaps `[22, 25]`.
+
+Order the tree by low endpoint and you have a search tree that you cannot search. An interval
+overlapping the query can perfectly well have a lower low endpoint than the node you are standing
+on, so comparing lows gives no rule for which way to go, and you are back to scanning all n.
+
+The fix is one number per node: **`x.max`, the largest high endpoint anywhere in x's subtree.** It
+turns the walk into a decision.
+
+<AlgorithmPlayer id="interval-tree" size={7} />
+
+Each node shows its interval's two endpoints, and its badge is `max`. The rule is on line 3: if the
+left subtree's `max` is at least `i.low`, go left; otherwise go right.
+
+Why that is correct is the theorem of §17.3, and it is worth stating both halves, because only one
+of them is obvious:
+
+- **If it goes right**, everything in the left subtree ends before `i` begins — that is exactly
+  what `left.max < i.low` says — so nothing there could have overlapped. Nothing is lost.
+- **If it goes left**, either the left subtree contains an overlap, or the whole tree contains
+  none. The second half is the surprising one: the interval achieving `left.max` starts at or
+  before it ends, and if it does not overlap `i` then no interval further right can either,
+  because they all start later.
+
+So one root-to-leaf walk decides it, and the search is O(lg n). The run above ends with a query
+that overlaps nothing at all — watch it walk down and stop, rather than backtrack.
+
+<ComplexityCard id="interval-tree">
+  **Without `max` this query is Θ(n)**, which is the difference between an augmentation that is
+  convenient and one that is load-bearing. There is no rule for descending a tree of intervals
+  ordered on their low endpoints; the extra field is what supplies one.
+
+**`max` satisfies Theorem 17.1**: it is the largest of the node's own high endpoint and its two
+children's `max` values, so a rotation restores it in Θ(1).
+
+**Finding _every_ overlap** rather than one is O(k lg n) for k results — repeat the search, deleting
+each one found, then put them all back.
+
+</ComplexityCard>
+
+## What to take from this
+
+The recipe is worth remembering as a habit rather than as two examples. When a structure almost
+answers the question you have:
+
+- Ask what extra information at each node would decide the query. Often it is a single number.
+- Check that it depends only on the node and its children — Theorem 17.1's condition — because that
+  is what makes it survive rotations.
+- Only then write the new operation. It usually turns out to be short, because the augmentation has
+  already done the work.
+
+Chapter 18 takes the opposite approach to the same underlying problem. Instead of adding a field to
+a binary tree, it changes how many keys a node holds at all — because when following a pointer means
+reading a block from a disk, the number of levels is the only cost that counts.

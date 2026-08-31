@@ -1,0 +1,130 @@
+---
+title: Online Algorithms
+section: '§27.1–27.3'
+summary: Decide now, without knowing what comes next — and measure the cost of not knowing against an opponent who does.
+algorithms: ['move-to-front', 'online-caching']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Every algorithm so far has been handed its whole input before it started. This chapter takes that
+away. The input arrives one piece at a time, each decision is **irrevocable**, and the next piece may
+be chosen by an adversary who has watched everything you have done.
+
+That changes what "correct" can even mean. There is no optimal answer to compete for — for any
+online algorithm there is a sequence that defeats it. So the question is reframed:
+
+> **How much worse than an algorithm that knew the future can you be forced to be?**
+
+An online algorithm is **c-competitive** if its cost is never more than `c` times the optimal
+offline cost (plus a constant). That is the chapter's only measure, and it is a genuinely different
+kind of guarantee from the rest of the book: not "this is the best", but "**not knowing costs at most
+a factor of c**".
+
+## §27.1 — Waiting for an elevator
+
+The chapter opens with a decision anyone has made. You press the button. Do you wait, or take the
+stairs? Waiting is free if the elevator arrives soon and wasted if it does not; the stairs cost a
+fixed amount but always work. You do not know when the elevator will come.
+
+The strategy that is best in the worst case is **wait exactly as long as the stairs would cost, then
+give up**. If the elevator comes first, you win. If it does not, you have spent at most twice what
+you would have spent taking the stairs immediately — so the strategy is **2-competitive**, and no
+deterministic strategy does better.
+
+That "wait until you have spent what the alternative costs, then switch" rule is worth carrying
+around. It is the same argument as rent-versus-buy, as when to abandon a retry loop, and as the
+doubling in chapter 16's dynamic table.
+
+## §27.2 — Maintaining a search list
+
+A linked list holding a set, searched from the front. Finding the item at position i costs i, the
+requests arrive one at a time, and you may reorder the list as you go. How should you order it?
+
+With the sequence known in advance the answer is trivial: sort by frequency. The point is that it is
+not.
+
+<AlgorithmPlayer id="move-to-front" size={9} />
+
+**Move-to-front**: after each access, move the item you just found to the front. That is the entire
+algorithm — no counters, no statistics, no memory beyond the list itself. It looks far too crude to
+be good, and it is **4-competitive** against any offline algorithm whatsoever.
+
+Watch the bracket. Its width **is** the cost of the access, and keeping it narrow is the only thing
+move-to-front is trying to do. It is betting that an item asked for once will be asked for again
+soon — **locality of reference**, the same assumption every cache in the world runs on. Type a
+uniformly random sequence into the box and watch the bracket stay wide: the bet stops paying, and
+nothing else would have done better either.
+
+The proof is a **potential-function** argument, exactly like chapter 16's. Take the potential to be
+the number of pairs the two lists disagree about, charge each access its amortised cost, and the
+constant falls out. That is the third time in this book that a potential function turns a
+hard-to-bound sequence into an easy one.
+
+The player's `verify` computes the true offline optimum by dynamic programming over every reachable
+list order — something only possible because the lists here are five items long — and asserts the
+factor of four on every generated input.
+
+## §27.3 — Online caching
+
+Now the same problem chapter 15 solved, with the future removed.
+
+§15.4 evicted the block **whose next request is furthest in the future** and proved that unbeatable.
+It is also unimplementable: no real cache knows what is coming. So what should one do instead?
+
+<AlgorithmPlayer id="online-caching" size={12} />
+
+**Least-recently-used** is what everything actually runs: evict the block that has gone longest
+without being asked for. It is the backwards-looking guess at the forward-looking rule, and it rests
+on the same bet move-to-front makes.
+
+**Compare the two brackets.** Chapter 15's points forward along the requests still to come, which is
+all its rule consults. This one points backward, over the requests already served, which is all an
+online policy is allowed to see. That single difference is the chapter.
+
+LRU is **k-competitive**, where k is the cache size — and that is the best any deterministic online
+algorithm can manage. The lower bound is the simplest adversary argument in the book: **always ask
+for the block the algorithm just evicted**. Whatever the policy, it misses every single time, while
+an offline algorithm with k blocks and the sequence in hand misses only once every k requests.
+
+Randomization escapes it. A policy that evicts a random unmarked block is O(lg k)-competitive
+against an _oblivious_ adversary — one who must fix the sequence before seeing any coin flips —
+which is the same reason chapter 7's randomized quicksort has no bad input.
+
+## Comparing them
+
+Run this chapter's LRU and chapter 15's offline caching on the **same** request sequence — type the
+same numbers into both boxes — and compare the miss counts under each player.
+
+LRU is usually close and never far. The gap you see is the exact price of not knowing the future on
+that particular input, and it is almost always much smaller than the factor of k the theorem
+allows. That is the honest relationship between a competitive ratio and reality: the bound is a
+promise about the worst case, and the worst case has to be constructed on purpose.
+
+<ComplexityCard id="online-caching">
+  **Competitive analysis measures regret, not running time.** Both algorithms here are trivially
+  cheap per operation; what is being bounded is the quality of their decisions against an opponent
+  with perfect information.
+
+**The adversary is the definition.** A competitive ratio is a worst case over all inputs, and for
+deterministic online algorithms the adversary can simply simulate you and choose accordingly. That
+is why every deterministic caching policy is stuck at k, and why randomization is not a trick here
+but the only way out.
+
+**These bounds are pessimistic on purpose.** Real request sequences have locality; adversarial ones
+do not. LRU's k-competitiveness is what you are guaranteed, not what you get.
+
+</ComplexityCard>
+
+## Where else this shows up
+
+The online framing is more common than the offline one, once you look for it. A scheduler placing
+jobs on machines does not know the jobs still to come. A router forwarding a packet cannot see the
+traffic behind it. A load balancer, a memory allocator, an auction accepting bids, a self-driving
+car deciding when to brake — all of them commit before the input is complete.
+
+Chapter 35's approximation algorithms are the offline cousin of this idea: there, the whole input is
+known and the difficulty is that computing the optimum is intractable. Here the optimum is easy and
+the difficulty is that you cannot see it yet. Both settle for a provable factor, and both are
+honest about it in the same way.

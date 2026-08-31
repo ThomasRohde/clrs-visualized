@@ -1,0 +1,156 @@
+/*
+  Design tokens.
+
+  ---------------------------------------------------------------------------
+  THE COLOUR SYSTEM IS THE LEGEND
+  ---------------------------------------------------------------------------
+  Six coded colours carry the whole identity, and each one has exactly one
+  meaning wherever it appears — in a bar, on the trace tape, in a badge:
+
+    --c-rest    untouched element, not currently involved
+    --c-look    being read or compared
+    --c-move    being written, shifted or swapped
+    --c-done    settled in its final position
+    --c-mark    a distinguished element (pivot, key, cursor)
+    --c-scope   the subarray or region the current call owns
+
+  Nothing else in the UI is allowed to use these. If a colour appears on
+  screen, a reader can look it up in the legend above the visualization and
+  it will mean the same thing there. Chrome (borders, surfaces, text) is
+  built from the neutral ramp only.
+
+  Because hue alone is not a safe channel, the renderer pairs every role with
+  a second cue: settled bars get square tops where every other bar is
+  rounded, moving bars get an ink outline, and marked bars get a labelled
+  chip. See src/visualizers/array-bars.ts.
+
+  ---------------------------------------------------------------------------
+  THREE THEME STATES, NOT TWO
+  ---------------------------------------------------------------------------
+    1. bare :root            — the light palette, and the default when the
+                               viewer's OS setting is "system" in a light env
+    2. prefers-color-scheme  — dark, guarded so an explicit light choice wins
+    3. [data-theme]          — an explicit choice from the header toggle
+
+  Every colour must be defined on bare :root and only *redefined* in the other
+  two blocks. A colour whose only definition lives inside a media query or a
+  [data-theme] block will be missing in the un-stamped state.
+*/
+
+:root {
+  /* --- neutral ramp: cool, not warm --------------------------------- */
+  --bg: #eaeef6;
+  --surface: #ffffff;
+  --surface-2: #dde4f0;
+  --surface-3: #ccd6e8;
+  --ink: #0e1426;
+  --ink-2: #465072;
+  --ink-3: #6d789a;
+  --line: #c7d1e4;
+  --line-strong: #a9b7d3;
+  --shadow: rgba(14, 20, 38, 0.08);
+  --shadow-lift: rgba(14, 20, 38, 0.14);
+
+  /* --- the six coded colours ---------------------------------------- */
+  --c-rest: #5a6a93;
+  --c-look: #b87708;
+  --c-move: #c23b2b;
+  --c-done: #17795f;
+  --c-mark: #6d3fc4;
+  --c-scope: #0f6e96;
+
+  /* Tinted washes of the same six, for bands and fills. */
+  --c-look-wash: rgba(184, 119, 8, 0.14);
+  --c-move-wash: rgba(194, 59, 43, 0.12);
+  --c-done-wash: rgba(23, 121, 95, 0.12);
+  --c-mark-wash: rgba(109, 63, 196, 0.12);
+  --c-scope-wash: rgba(15, 110, 150, 0.1);
+
+  /* --- type --------------------------------------------------------- */
+  /* Display is a monospace, deliberately: the subject of this site is
+     typeset pseudocode, so the code voice leads. Martian Mono is wide and
+     blocky where Plex Mono is narrow and neutral, which keeps the two from
+     reading as the same face at different sizes. */
+  --font-display: 'Martian Mono', 'IBM Plex Mono', ui-monospace, monospace;
+  --font-body: 'Literata', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+
+  --t-hero: clamp(1.7rem, 3.1vw, 2.45rem);
+  --t-h1: clamp(1.5rem, 2.6vw, 2rem);
+  --t-h2: 1.1rem;
+  --t-h3: 0.95rem;
+  --t-body: 1.0625rem;
+  --t-small: 0.86rem;
+  --t-micro: 0.72rem;
+
+  /* Display type is set tight and slightly wide-tracked at small sizes;
+     Martian Mono is already wide, so large settings need negative tracking
+     to stop headlines falling apart. */
+  --track-display: -0.045em;
+  --track-label: 0.1em;
+
+  /* --- layout ------------------------------------------------------- */
+  --shell-max: 1560px;
+  --measure: 66ch;
+  --toc-col: 250px;
+  --radius: 4px;
+  --radius-lg: 8px;
+
+  --focus: var(--c-scope);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0f1524;
+    --surface: #171f34;
+    --surface-2: #1e2842;
+    --surface-3: #283350;
+    --ink: #e9edf8;
+    --ink-2: #a3b0cd;
+    --ink-3: #7d8bab;
+    --line: #2c3854;
+    --line-strong: #3e4c6e;
+    --shadow: rgba(0, 0, 0, 0.4);
+    --shadow-lift: rgba(0, 0, 0, 0.55);
+
+    --c-rest: #7488b2;
+    --c-look: #e9a93a;
+    --c-move: #f0705e;
+    --c-done: #35c39c;
+    --c-mark: #a98cf5;
+    --c-scope: #52bfe3;
+
+    --c-look-wash: rgba(233, 169, 58, 0.16);
+    --c-move-wash: rgba(240, 112, 94, 0.14);
+    --c-done-wash: rgba(53, 195, 156, 0.14);
+    --c-mark-wash: rgba(169, 140, 245, 0.14);
+    --c-scope-wash: rgba(82, 191, 227, 0.12);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0f1524;
+  --surface: #171f34;
+  --surface-2: #1e2842;
+  --surface-3: #283350;
+  --ink: #e9edf8;
+  --ink-2: #a3b0cd;
+  --ink-3: #7d8bab;
+  --line: #2c3854;
+  --line-strong: #3e4c6e;
+  --shadow: rgba(0, 0, 0, 0.4);
+  --shadow-lift: rgba(0, 0, 0, 0.55);
+
+  --c-rest: #7488b2;
+  --c-look: #e9a93a;
+  --c-move: #f0705e;
+  --c-done: #35c39c;
+  --c-mark: #a98cf5;
+  --c-scope: #52bfe3;
+
+  --c-look-wash: rgba(233, 169, 58, 0.16);
+  --c-move-wash: rgba(240, 112, 94, 0.14);
+  --c-done-wash: rgba(53, 195, 156, 0.14);
+  --c-mark-wash: rgba(169, 140, 245, 0.14);
+  --c-scope-wash: rgba(82, 191, 227, 0.12);
+}

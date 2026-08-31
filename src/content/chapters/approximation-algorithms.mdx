@@ -1,0 +1,249 @@
+---
+title: Approximation Algorithms
+section: '§35.1–35.5'
+summary: When the exact answer is out of reach, settle for one that is provably close — and know exactly how close before you run it.
+algorithms: ['approx-vertex-cover', 'approx-tsp-tour', 'greedy-set-cover', 'approx-subset-sum']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 34 ends badly. A long list of problems people actually need solved turns out to be
+NP-complete, and unless P = NP none of them has a polynomial-time algorithm. That is a proof, not a
+gap in anyone's cleverness, and no amount of engineering will get around it.
+
+But the problems do not go away. Crews still have to be scheduled, trucks still have to be routed.
+So the question changes: **if you cannot have the best answer, what can you have?**
+
+Three things are on the table, and you must give up one of them: optimality, speed, or generality.
+This chapter gives up the first, and — this is what makes it a chapter rather than a shrug —
+gives it up by a **measured amount**.
+
+An algorithm is a **ρ(n)-approximation** if, on every input of size n, the answer it returns is
+within a factor of ρ(n) of the optimal one:
+
+```
+max( C / C*, C* / C ) ≤ ρ(n)
+```
+
+The ratio is written to work either way round, so the same definition covers minimizing a cost and
+maximizing a profit. ρ = 1 means exact; larger ρ means worse. And ρ is a **guarantee**, proved in
+advance against an optimum C\* that nobody computed and nobody can compute.
+
+That last point is what makes this chapter strange and worth reading slowly. Every proof here
+compares an algorithm's output against a quantity that is, by assumption, unobtainable. The trick,
+every time, is to find something you _can_ see that is provably no bigger than the optimum — a
+matching, a spanning tree, a harmonic sum — and squeeze the answer between them.
+
+Every player on this page does exactly that, and then checks it. Each one's `verify` computes the
+true optimum by brute force and asserts the chapter's bound on every input the page generates. That
+is only possible because the instances here are tiny, which is itself the point: brute force is
+precisely what these algorithms exist to avoid.
+
+## §35.1 — Vertex cover
+
+A **vertex cover** is a set of vertices touching every edge; find the smallest. This is NP-hard, and
+the algorithm for it is close to the simplest thing that could possibly work.
+
+<AlgorithmPlayer id="approx-vertex-cover" size={9} />
+
+Take any uncovered edge. Put **both** endpoints in the cover. Delete every edge either of them
+touches. Repeat.
+
+Taking both ends is obviously wasteful — one of them would have sufficed for that edge — and the
+waste is exactly what buys the proof. Because every picked edge has both its ends removed from play,
+**no two picked edges share a vertex**: they form a matching, drawn in the mark colour and left on
+screen for the whole run.
+
+Now the squeeze. Any vertex cover at all, including the optimal one, must contain at least one
+endpoint of every matching edge, so `C* ≥ |M|`. This algorithm returns exactly `2|M|`. Therefore
+
+```
+|C| = 2|M| ≤ 2·C*
+```
+
+and the factor of two is proved without ever knowing what C\* is.
+
+The matching, in other words, is not a by-product. It is the certificate. Count those edges on
+screen, double the number, and you are holding both the answer and a proof of its quality.
+
+**This bound is not pessimistic.** On randomly generated graphs this player lands at about 1.84×
+optimal and frequently hits 2.00 exactly — unlike everything else on this page, the worst case here
+is the ordinary case, and you will see it in a few clicks of Randomize.
+
+It is worth knowing what does _not_ help. The obvious improvement — repeatedly take the vertex of
+highest degree — feels far smarter and is strictly worse: its ratio grows as Θ(lg V). Being greedy
+about a plausible-looking quantity can cost you more than not being clever at all.
+
+## §35.2 — The travelling salesperson
+
+Visit every city once, return home, spend as little as possible. Here the news is worse than
+NP-hardness: §35.2 proves that for the general problem, **no constant-factor approximation exists at
+all** unless P = NP. A polynomial ρ-approximation for any constant ρ could be used to decide whether
+a graph has a Hamiltonian cycle, which is itself NP-complete.
+
+So the section adds one assumption, and the picture changes completely. Require the **triangle
+inequality** — going direct is never worse than going via somewhere else — and there is a
+two-line algorithm within a factor of 2.
+
+<AlgorithmPlayer id="approx-tsp-tour" size={8} />
+
+**Build a minimum spanning tree, then walk it.** A preorder walk lists the cities in the order the
+tree first reaches them; visit them in that order and go home. Chapter 21's algorithm, used as a
+subroutine, and nothing else.
+
+Two inequalities, and both are on the screen.
+
+**w(T) ≤ C\*.** Delete any single edge from an optimal tour and what remains is a spanning tree.
+A spanning tree cannot be cheaper than the minimum one. So the tree the player builds — a thing you
+can watch being built — is a lower bound on an optimum nobody computed.
+
+**c(H) ≤ 2·w(T).** A full walk of the tree crosses every edge exactly twice, so it costs `2w(T)`.
+The tour is that walk with the repeat visits skipped, and the triangle inequality says a shortcut
+is never longer than the path it replaces.
+
+Together, `c(H) ≤ 2w(T) ≤ 2·C*`.
+
+The second phase is where that assumption gets spent, and it is visible. As the walk runs, the tree
+stays on screen dashed and the tour is drawn solid over it. Most tour edges follow a tree edge
+downwards; then the walk finishes a branch and has to get back, and the next tour edge **leaps
+across the picture** to a city the tree reaches by a long way round. Every one of those leaps is a
+use of the triangle inequality. Without it, that edge could be arbitrarily expensive and the whole
+argument collapses — which is precisely why the general problem admits no constant factor.
+
+Cities here are points in the plane and cost is distance, rounded **up**. The ceiling is not
+fussiness: `⌈a⌉ + ⌈b⌉ ≥ a + b ≥ c`, and the left-hand side is a whole number, so it is at least
+`⌈c⌉`. Ordinary rounding can lose the triangle inequality by 1 on three nearly collinear cities, and
+the guarantee would go with it. Type your own cities in and the metric still holds by construction —
+which is also why the box asks for **points** rather than an edge list. A human typing 45 pairwise
+costs would violate the assumption within about four of them.
+
+In practice this player runs at about **1.17× optimal**, and the worst case seen in a few hundred
+random instances is 1.36 — comfortably inside the promised 2, which is the usual relationship
+between a worst-case bound and a typical input. Christofides' refinement, the same tree plus a
+minimum matching on its odd-degree vertices, brings the guarantee down to 3/2.
+
+## §35.3 — Set covering
+
+You have a universe X of things that must be covered and a family F of subsets you may buy; use as
+few as possible. This is the abstract form of an enormous number of real problems — which crews to
+hire, which servers to site, which tests to run in a suite — and it generalizes vertex cover.
+
+The greedy rule is the one anybody would try first: take whichever set covers the most
+still-uncovered elements, and repeat.
+
+<AlgorithmPlayer id="greedy-set-cover" size={10} />
+
+**The right-hand column is the algorithm.** It holds `|S ∩ U|` for every set — what each one is
+worth _right now_ — and the whole of line 4 is "take the largest number in that column". Watch the
+column after each pick: a set that looked excellent a moment ago can be worth nothing once another
+set has taken its elements, and greedy re-reads the whole column every round precisely because those
+numbers move.
+
+The ratio is **H(d)**, the d-th harmonic number, where d is the size of the largest set — at most
+`ln|X| + 1`. That is a much weaker promise than the previous two sections' constants, and it is the
+best available: no polynomial-time algorithm beats `ln|X|`, up to lower-order terms, unless P = NP.
+Greedy here is not a stopgap on the way to something better. It is the answer.
+
+On random instances greedy usually finds the optimum outright — it fell short on about 9% of the
+ones this generator produces. To see it fail, type this into the box:
+
+```
+1,2,3,4; 1,2,5; 3,4,6
+```
+
+Greedy takes S₁ first, because four is more than three. That leaves 5 and 6 stranded in different
+sets, so it needs both, and finishes with three. But S₂ and S₃ cover everything between them. The
+mistake is visible at the very first step and greedy cannot see it, because seeing it would require
+knowing what the _rest_ of the run will need — which is the same blindness chapter 27's online
+algorithms have, arrived at from the opposite direction.
+
+## §35.4 — Randomization, and linear programming
+
+Two general techniques rather than two algorithms, which is why this section is prose here.
+
+**Randomization.** For MAX-3-CNF satisfiability — satisfy as many three-literal clauses as you can
+— set every variable to true or false by a **coin flip**. A clause fails only if all three of its
+literals come out wrong, which happens with probability 1/8, so each clause is satisfied with
+probability 7/8 and by linearity of expectation you satisfy 7/8 of them in expectation. That is a
+randomized 8/7-approximation, and it does not look at the input at all. The lesson is the one
+chapter 7 taught about quicksort: an adversary can defeat any fixed choice, and cannot defeat a coin.
+
+**Linear programming.** For weighted vertex cover, write the problem as an integer program — one
+0/1 variable per vertex, one constraint per edge — and then _drop_ the integrality requirement.
+The resulting linear program is solvable in polynomial time, and its optimum is a lower bound on the
+integer one, since every integer solution is also a fractional one. Then **round**: take every
+vertex whose fractional value reached 1/2. Each edge's constraint `x(u) + x(v) ≥ 1` guarantees at
+least one of its ends clears that bar, so the rounded set is a cover, and no vertex's weight is
+inflated by more than a factor of 2.
+
+Relax, solve, round. It is the most productive single recipe in the field, and the lower bound it
+leans on is the same kind of object as §35.1's matching and §35.2's spanning tree: something
+computable that provably sits below the optimum.
+
+Chapter 29 covers the linear programs themselves; the 4th edition drops the simplex algorithm, so
+there is no solver to animate here.
+
+## §35.5 — Subset sum, and dialling in the accuracy
+
+Given a set of numbers and a target t, find the subset summing as close to t as possible without
+going over. The exact algorithm is easy to write and hopeless to run: keep the list of every sum you
+can reach, and each new number doubles it.
+
+<AlgorithmPlayer id="approx-subset-sum" size={5} />
+
+One idea fixes it. **If two reachable sums are within a hair of each other, keep only one.**
+Trimming by a factor of `1 + δ` collapses the list to `O(ln t / δ)` entries however many numbers
+there are, and the error introduced compounds by at most `1 + δ` per round. Choose `δ = ε/2n` and
+the run comes back within a factor of `1 − ε` of the true best.
+
+Three things happen to L every round, and the row's length tells the whole story:
+
+- **it doubles**, because every sum plus xᵢ is also reachable;
+- **it is trimmed**, which is the only reason it does not explode — and the only place accuracy is
+  lost;
+- **it is cut at t**, since a sum over the target can never come back under it.
+
+The running time is polynomial in n **and** in 1/ε. That makes this a **fully polynomial-time
+approximation scheme**, the strongest thing in the chapter and the only place in the book where you
+get to _dial_ how good an answer you want and pay a predictable, published price for it. Halving ε
+doubles the list, and so doubles the work.
+
+ε is fixed at 0.4 here, matching the book's own worked example — type `308; 104, 102, 201, 101` to
+run it. The guarantee at that setting is only that the answer is within 40% of the best, and yet in
+practice the player lands at about **97.7% of optimal**, with the worst case over a few hundred runs
+at 92.5%. The bound is not a prediction. It is a promise about an adversary who is not there.
+
+<ComplexityCard id="approx-subset-sum">
+  **A ratio is a promise, not an estimate.** Every bound on this page is a worst case over all
+  inputs, and three of the four players beat theirs comfortably on ordinary ones. Vertex cover is
+  the exception worth remembering: its factor of 2 is routinely achieved, so there the guarantee
+  really is a description.
+
+**The proof always needs a visible lower bound.** A matching, a spanning tree, a harmonic sum, an
+LP relaxation. You cannot compare against the optimum directly — the whole premise is that you
+cannot have it — so every argument here finds a computable quantity that provably sits below it and
+squeezes the answer between the two.
+
+**The assumptions are load-bearing.** TSP has no constant-factor approximation without the triangle
+inequality; it has a 2-approximation with it. When an approximation guarantee is quoted at you,
+the first question is what it assumed.
+
+</ComplexityCard>
+
+## Where else this shows up
+
+This is the chapter that comes closest to describing what most working software actually does. A
+scheduler packing jobs onto machines, a compiler allocating registers, a delivery service planning
+routes, a cloud provider placing containers — all of these are NP-hard in their exact form and all
+of them ship anyway, running something with a ratio attached.
+
+Chapter 27's online algorithms are the same bargain struck against a different obstacle. There the
+input is not hard to process, it is merely not all there yet; here it is all present and the
+difficulty is that computing the optimum would take longer than the universe has left. Both settle
+for a provable factor, both prove it against an optimum they cannot reach, and both are honest
+about the gap in the same way.
+
+The habit is worth taking away from the book whole. When a problem turns out to be intractable, the
+useful next question is not "is there a clever trick" but **"what can I prove about how close I can
+get, and what does that proof cost me?"**

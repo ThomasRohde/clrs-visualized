@@ -1,0 +1,97 @@
+---
+import '../styles/global.css';
+import ThemeToggle from '../components/ThemeToggle.astro';
+import BookNav from '../components/BookNav.astro';
+import { href } from '../lib/paths';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Slug of the current chapter, to highlight it in the sidebar. */
+  current?: string;
+  /** Hide the sidebar (used by the index page). */
+  fullWidth?: boolean;
+}
+
+const {
+  title,
+  description = 'An interactive, animated companion to Introduction to Algorithms (CLRS, 4th ed.).',
+  current,
+  fullWidth = false,
+} = Astro.props;
+
+// The six coded colours, in the order the legend lists them. The wordmark
+// draws them as ticks under a rule: the site's own subject in miniature.
+const MARK_COLOURS = ['--c-rest', '--c-look', '--c-move', '--c-done', '--c-mark', '--c-scope'];
+const MARK_HEIGHTS = [7, 12, 9, 15, 6, 11];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href={href('/favicon.svg')} type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Martian+Mono:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+
+    <header class="topbar">
+      <div class="topbar-inner">
+        <a class="wordmark" href={href('/')}>
+          <svg
+            class="wordmark-mark"
+            width="34"
+            height="22"
+            viewBox="0 0 34 22"
+            aria-hidden="true"
+            focusable="false"
+          >
+            {
+              MARK_COLOURS.map((c, i) => (
+                <rect
+                  x={i * 5.6}
+                  y={20 - MARK_HEIGHTS[i]}
+                  width="4"
+                  height={MARK_HEIGHTS[i]}
+                  fill={`var(${c})`}
+                />
+              ))
+            }
+            <rect x="0" y="3" width="33" height="1.5" fill="var(--ink)"></rect>
+          </svg>
+          <span class="wordmark-text">
+            <span class="name">LOOP INVARIANT</span>
+            <span class="tag">Introduction to Algorithms, 4th edition</span>
+          </span>
+        </a>
+        <div class="topbar-right">
+          <ThemeToggle />
+        </div>
+      </div>
+    </header>
+
+    <div class:list={['shell', { wide: fullWidth }]}>
+      {!fullWidth && <BookNav current={current} />}
+      <main id="content">
+        <slot />
+      </main>
+    </div>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        An unofficial teaching companion to <em>Introduction to Algorithms</em>, 4th edition, by
+        Cormen, Leiserson, Rivest and Stein. Pseudocode is transcribed from the book for study
+        purposes; the text itself is © MIT Press.
+      </div>
+    </footer>
+  </body>
+</html>

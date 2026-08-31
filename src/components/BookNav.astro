@@ -1,0 +1,88 @@
+---
+import { getCollection } from 'astro:content';
+import { BOOK } from '../lib/book';
+import { chapterHref } from '../lib/paths';
+
+interface Props {
+  /** Slug of the chapter currently being viewed, if any. */
+  current?: string;
+}
+
+const { current } = Astro.props;
+
+// A chapter is "ready" when an MDX file exists for it; everything else
+// renders as planned, so the whole book is navigable from day one.
+const ready = new Set((await getCollection('chapters')).map((entry) => entry.id));
+const currentTitle = BOOK.flatMap((p) => p.chapters).find((c) => c.slug === current)?.title;
+---
+
+{
+  /*
+  A <details> so the 35-chapter list can collapse to one line on a phone.
+  It ships open, so with no JavaScript the full contents are always
+  reachable; the inline script below closes it on narrow screens only.
+*/
+}
+<details class="toc-shell" id="toc" open>
+  <summary class="toc-heading">
+    <svg class="chev" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.6"></path>
+    </svg>
+    <span>{currentTitle ? `Contents · ${currentTitle}` : 'Contents'}</span>
+  </summary>
+
+  <nav class="toc-list" aria-label="Book contents">
+    {
+      BOOK.map((part) => (
+        <>
+          <div class="toc-part">
+            <span class="numeral">{part.numeral}</span>
+            <span class="part-name">{part.title}</span>
+          </div>
+          {part.chapters.map((c) => (
+            <a
+              href={chapterHref(c.slug)}
+              class:list={[
+                'toc-item',
+                {
+                  active: c.slug === current,
+                  ready: ready.has(c.slug),
+                  planned: !ready.has(c.slug),
+                },
+              ]}
+              aria-current={c.slug === current ? 'page' : undefined}
+            >
+              <span class="num">{c.number > 0 ? c.number : '—'}</span>
+              <span class="name">{c.title}</span>
+            </a>
+          ))}
+        </>
+      ))
+    }
+    <p class="toc-note">
+      Dimmed chapters are still being written. Everything else is live, with the algorithms animated
+      against the book's pseudocode.
+    </p>
+  </nav>
+</details>
+
+<script is:inline>
+  // Collapse the contents on narrow screens so a chapter page opens on the
+  // chapter, not on a full table of contents. Runs before paint via the
+  // module-free inline path; re-checked on resize.
+  (function () {
+    const toc = document.getElementById('toc');
+    if (!toc) return;
+    const narrow = window.matchMedia('(max-width: 1000px)');
+    let touched = false;
+    toc.addEventListener('toggle', function () {
+      touched = true;
+    });
+    function sync() {
+      if (touched) return;
+      toc.open = !narrow.matches;
+    }
+    sync();
+    narrow.addEventListener('change', sync);
+  })();
+</script>

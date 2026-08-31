@@ -1,0 +1,177 @@
+---
+title: Dynamic Programming
+section: '§14.1–14.5'
+summary: Solve each subproblem once and write the answer down — four tables, and the two properties that decide whether a problem has one.
+algorithms: ['rod-cutting', 'matrix-chain-order', 'lcs', 'optimal-bst']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Dynamic programming has the worst name in computer science. It is not dynamic and it is not
+programming; Richard Bellman picked the words in the 1950s partly because they were impossible to
+object to in a funding proposal.
+
+What it actually is: **solve each subproblem once, and write the answer down.**
+
+That is the whole technique. Everything else in this chapter is about recognising when it applies,
+and working out what to keep in the table.
+
+The tables below are not illustrations of these algorithms. They **are** the algorithms — the entire
+computation is the order the cells get filled in and where each one looks to. That is the one thing
+worth carrying out of the chapter: when a dynamic program is hard to understand, draw its table and
+the difficulty usually turns out to have been about the order, not the idea.
+
+## §14.1 — Rod cutting
+
+A rod of length n can be cut into pieces; a piece of length i sells for `p[i]`. What is the rod
+worth?
+
+The recursive answer is immediate and useless. Try every possible first cut, and solve the remainder
+the same way — obviously correct, and Θ(2ⁿ), because it re-solves the same remainder over and over.
+A rod of length 40 takes longer than the exercise is worth.
+
+Nothing about the recursion is wrong. What is wrong is doing it twice.
+
+<AlgorithmPlayer id="rod-cutting" size={8} />
+
+Fill a table instead: solve length 1, then length 2, and so on, so that by the time a subproblem is
+needed its answer is already sitting there. Θ(2ⁿ) becomes Θ(n²), and the code is if anything simpler.
+
+Watch each new entry take **one price from the top row and one revenue from a cell already filled**.
+Those two arrows are the recurrence, and the reason the whole thing is quadratic is that there are n
+entries and each looks at at most n such pairs.
+
+The number under each revenue is `s[j]`: **the length of the first piece** in a best cutting of that
+length. It costs one extra write per cell, and it is the difference between knowing what the rod is
+worth and knowing where to cut it. The run reconstructs the cuts at the end by following those
+stored choices back — a walk the table was built to make possible.
+
+## §14.3 — When does this work?
+
+Two properties, and they are what you actually check when deciding whether a problem is a dynamic
+program.
+
+**Optimal substructure.** An optimal solution contains optimal solutions to its subproblems. This
+sounds like it must always be true and is not: the longest _simple_ path between two vertices does
+not have this property, because the two halves of a longest path can share vertices, and gluing two
+optimal halves together may not give a path at all. Shortest paths have it. Longest paths do not —
+and that difference is exactly why chapter 22 is easy and longest-path is NP-hard.
+
+**Overlapping subproblems.** The same subproblem comes up again and again. Without this, there is
+nothing to gain by remembering: merge sort's subproblems are all distinct, which is why it is
+divide-and-conquer and not dynamic programming.
+
+A third practical matter, and the one the chapter spends most time on: **the table needs a fill
+order** in which every entry's dependencies are already there when it is reached. In §14.1 that is
+left to right; in the next two sections it is up the diagonals, which is less obvious and is the
+only fiddly part of either.
+
+**Top-down memoization is the same algorithm.** Write the natural recursion, and cache each answer
+the first time it is computed. It fills exactly the same entries, usually a little slower for the
+recursion overhead, and it has one real advantage: it only touches the subproblems actually needed.
+Where a bottom-up table computes entries nothing ever reads, memoization skips them.
+
+## §14.2 — Matrix-chain multiplication
+
+Matrix multiplication is associative, so `A(BC)` and `(AB)C` give the same answer — and can cost
+wildly different amounts of arithmetic. Multiplying a `p × q` matrix by a `q × r` one costs `p·q·r`
+scalar multiplications, so where the parentheses go decides how much work the chain takes. The
+book's example differs by a factor of ten.
+
+The number of parenthesisations is a Catalan number, Ω(4ⁿ/n^{3/2}), so trying them all is out.
+
+<AlgorithmPlayer id="matrix-chain-order" size={6} />
+
+Whatever the best parenthesisation is, it splits somewhere: it multiplies some `Aᵢ‥A_k` by some
+`A_{k+1}‥A_j` at the top, and both halves must themselves be optimal. So the recurrence tries every
+split point and takes the cheapest.
+
+**The fill order is the thing to watch.** Entries are computed by chain _length_, moving up the
+diagonals, because `m[i, j]` needs answers for shorter chains inside it. The two arrows on each step
+are the two subchains — one running left along the row, one running down the column — and watching
+them sweep across the row as `k` moves is watching the min being taken.
+
+The bottom half of the table stays empty, and should: `m[i, j]` means nothing when `i > j`. The
+diagonal is zero, because one matrix on its own takes no multiplications at all.
+
+## §14.4 — Longest common subsequence
+
+A **subsequence** keeps the order but not the adjacency: `BCDB` is a subsequence of `ABCBDAB`,
+because you can strike letters out and be left with it. The longest one two sequences share measures
+how alike they are — and it is the measure `diff` uses, so every file comparison you have ever read
+is this table.
+
+<AlgorithmPlayer id="lcs" size={7} />
+
+The recurrence comes from looking at the last letter of each sequence. If they match, that letter is
+in some longest common subsequence and the rest of the answer is the LCS of everything before both.
+If they do not, at least one of the two is not in the answer, so take the better of dropping one or
+dropping the other.
+
+Three cases, three places an entry can come from, and the arrow in each cell records which. **A
+diagonal arrow means the letters matched and the count went up; up or left means one sequence gave
+up a letter and the count stayed the same.** Following the arrows back from the bottom-right corner
+spells out an actual subsequence, which is what the run does at the end.
+
+Note what the corner cell alone tells you: the _length_. Recovering the subsequence itself is why
+the arrows are stored. This is the same trade as `s[j]` in §14.1 and `s[i, j]` in §14.2, and it is
+the general shape — **a dynamic program computes a number, and a second table records the choice
+that produced it.**
+
+## §14.5 — Optimal binary search trees
+
+Chapter 12 built search trees and chapter 13 kept them balanced. Balance minimises the **worst**
+search. This section minimises the **average** one, and the answer is often a deliberately
+unbalanced tree.
+
+If you know how often each key is looked for, the best tree puts popular keys near the root even at
+the cost of pushing rare ones deep. A key at depth d costs d + 1 comparisons, so a tree's expected
+cost is the sum over every key of frequency × depth, plus the same for the **unsuccessful** searches
+— the gaps between keys, which is where a search for a key that is not there ends up. Ignore the
+gaps and you get the wrong tree.
+
+<AlgorithmPlayer id="optimal-bst" size={5} />
+
+The recurrence has §14.2's shape, for the same reason: whatever the optimal tree is, some key is its
+root, and its two subtrees must themselves be optimal. So try every key as the root of every stretch.
+
+The term worth understanding is the one added to both subtree costs. When a subtree gains a parent,
+**every node in it goes one level deeper**, so its cost rises by the total frequency of everything
+inside it. That is `w(i, j)`, and it is why the two subtree costs cannot simply be added together.
+
+The note in each cell is the root that achieves that cost. Following those roots recursively builds
+the actual tree, which is what the run prints at the end.
+
+<ComplexityCard id="matrix-chain-order">
+  **Count subproblems, then multiply by the work each one costs.** That is the whole running-time
+  analysis for every dynamic program in the chapter: rod cutting has Θ(n) subproblems at O(n) each;
+  matrix chains and optimal trees have Θ(n²) at O(n) each; LCS has Θ(mn) at O(1) each.
+
+**The space is usually reducible and the reconstruction usually is not.** LCS needs only two rows to
+compute the length, but recovering the subsequence needs the whole table of choices — which is the
+trade every one of these makes.
+
+**Memoization gets the same bound**, and only touches subproblems that are actually reached.
+Bottom-up wins on constants; top-down wins on sparse dependency structures.
+
+</ComplexityCard>
+
+## Comparing the four
+
+Open the **trace tape** — the strip under the transport — on rod cutting and then on matrix-chain
+order, and the difference in shape is the difference in the recurrence.
+
+Rod cutting's tape is a steadily lengthening sawtooth: each new entry scans one more candidate than
+the last. Matrix-chain order's is a series of shorter and shorter bursts, because the diagonals get
+shorter as they get longer — there are n − 1 chains of length 2 and only one of length n. LCS's tape
+is almost flat, because every entry costs the same O(1). The tape is drawing the sum that gives each
+one its running time.
+
+## Where this goes next
+
+Chapter 23 is dynamic programming on a matrix of distances rather than of subsequences —
+Floyd-Warshall is a three-line recurrence with a table exactly like these. Chapter 15's greedy
+algorithms are what happens when the table turns out to be unnecessary because one choice is
+provably safe. And §32.4's string matching builds a table of a rather different kind, over states
+rather than over subproblems.

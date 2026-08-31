@@ -1,0 +1,172 @@
+---
+title: Machine-Learning Algorithms
+section: '§33.1–33.3'
+summary: Three algorithms that search rather than compute — and three quite different kinds of promise about what they find.
+algorithms: ['k-means', 'multiplicative-weights', 'gradient-descent']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+import { chapterHref } from '../../lib/paths.ts';
+
+Every algorithm in the book so far has been given a specification and has met it. Sort this. Find
+the shortest path. Match the pattern. You could say precisely what the right answer was before the
+algorithm ran, which is what made "correct" a meaningful word.
+
+Chapter 33 is not like that. Its three algorithms **search**, and each comes with a guarantee of a
+different kind — one weaker than anything in chapter 35, one stronger and stranger, and one that
+holds only under an assumption you usually cannot check.
+
+They are also the first algorithms here whose pictures are not structures. There is no array, no
+tree, no table: there are points in a space, a running total, the shape of a function. What matters
+on screen is a **distance** or a **slope**, which is why this chapter is the one that finally earns
+the site its sixth and last renderer.
+
+## §33.1 — Clustering, and an algorithm that promises almost nothing
+
+Split n points into k groups so that each group is tight. Made precise: minimise the sum, over every
+point, of the **squared distance to its group's centre**.
+
+Finding the best such split is NP-hard even for k = 2. So this is <a href={chapterHref('approximation-algorithms')}>chapter 35</a>'s predicament
+again — except that the standard algorithm comes with no approximation ratio at all.
+
+<AlgorithmPlayer id="k-means" size={21} />
+
+Two steps, alternating. **Assign** every point to the nearest centre. **Update** every centre to the
+mean of the points that chose it. Repeat until nothing changes.
+
+**The spokes are the cost.** Each point is drawn joined to the centre it belongs to, and the sum of
+the squares of those lengths _is_ the objective function. Watching them shorten is watching the
+algorithm work, and when they stop shortening it has finished.
+
+What makes it terminate is that neither step can make things worse:
+
+- assignment moves nothing, so the only change is a point joining a closer centre — which cannot
+  raise the total;
+- update moves each centre to the mean, and the mean is _by definition_ the point minimising the sum
+  of squared distances to a set — so that cannot raise it either.
+
+Finitely many assignments, and the cost never rises: therefore it stops. That is the entire
+convergence proof, and notice what it does not say. It says nothing whatever about the answer being
+good. The player's `verify` asserts exactly the two things that are true — every point has no nearer
+centre, every centre is the mean of its own points — and refuses to assert anything about quality,
+because there is nothing there to assert.
+
+In practice this converges in about **three rounds** on the instances here. It is fast, it is
+simple, and it will happily hand you a bad clustering with total confidence.
+
+Which is why the seeding matters more than the algorithm. These centres are placed by
+**k-means++**: the first at random, then each next one with probability proportional to its squared
+distance from the nearest centre already chosen — that is, deliberately far away. Uniform random
+seeding routinely drops two centres into one clump and none into another, and **every step
+afterwards only goes downhill from where it started**. There is no mechanism for noticing, and none
+for recovering. The initialisation is not a detail; on this algorithm it is most of the quality.
+
+## §33.2 — Learning from advice, and a bound that is better than it should be
+
+A room of n advisors. Each round they tell you what to do, you commit, and then the world reveals
+who was wrong. You do not know which advisor is any good, and the good one may change.
+
+You cannot beat the best advisor. The question is how close you can come to the best one **in
+hindsight** — without ever being told who that is.
+
+<AlgorithmPlayer id="multiplicative-weights" size={18} />
+
+Keep a weight per advisor. Bet in proportion to the weights. After each round, **multiply down the
+weight of everyone who was wrong**. That is the whole algorithm, and the guarantee it buys is:
+
+```
+L  ≤  (1 + η) · min L_i  +  ln(n)/η
+```
+
+Read the second term carefully, because it is the surprising part. The price of not knowing which of
+n advisors to trust is **logarithmic in n**. Going from ten advisors to a thousand roughly doubles
+it. You can throw an enormous number of hypotheses at this and pay almost nothing for the ones that
+turn out to be wrong.
+
+**The picture is the theorem.** Every line is somebody's running total of mistakes; the faint ones
+are advisors, the marked one is you. You never dip below the best line — you cannot — but you track
+it, having had no way at the start to tell which line that would be. The gap at the right-hand edge
+is the **regret**, and over 18 rounds it averages about 3 mistakes here, comfortably inside a bound
+that allows about 5.
+
+Nothing is ever set to zero, which is deliberate: an advisor who has a bad week must be able to
+recover, because the sequence is not required to be kind and the best advisor in hindsight might be
+one who started badly. Multiplying down instead of eliminating is what makes the bound hold against
+an adversary rather than merely against noise.
+
+This is the most portable idea in the chapter. The same argument, barely changed, is boosting in
+machine learning, the fastest approximate solvers for packing linear programs, and a route to
+equilibria in game theory. It is worth recognising when you meet it again.
+
+## §33.3 — Gradient descent, and the assumption underneath everything
+
+Almost every other algorithm in this book computes. This one _looks_ for an answer, by a rule that
+fits on one line: **go downhill.**
+
+<AlgorithmPlayer id="gradient-descent" size={8} />
+
+The derivative says which way the ground falls and how steeply. Step against it, in proportion, and
+repeat until the ground is flat. The tangent drawn at each step is that gradient; the step taken is
+the slope times η.
+
+Two things decide whether this works, and both are knobs on the player.
+
+**The step size η is the slider.** Drag it down and the descent crawls — a dense line of dots
+inching along, each step technically correct and going nowhere. Drag it up and each step overshoots
+the bottom and lands further up the far side. Past η = 2/f″ the oscillation grows instead of
+shrinking and the iterate leaves entirely. There is no safe default, because the threshold depends
+on the curvature of the function you happen to be standing on, which you generally do not know.
+
+That conditionality is worth stating precisely, because the player's `verify` had to. Gradient
+descent does **not** promise that f falls every step. It promises that f falls when η is small
+against the local curvature, and the check computes that condition per step and only then requires
+the decrease — a large η is _allowed_ to overshoot, which is exactly what you want to be able to
+watch.
+
+**Where you start decides where you end.** This function is deliberately not convex: it has two
+valleys of different depths. §33.3's guarantees are all stated for convex functions, where the only
+flat point is the global minimum and there is nothing more to say. Here, start to the right of the
+ridge and the algorithm settles contentedly into the shallower valley, having done nothing wrong and
+with no way of knowing a better one exists.
+
+And it is worse than that, in a way worth seeing once. Type `0.2, 0.3` into the box. That starts the
+iterate exactly on the ridge, where the gradient is already zero — so it stops immediately, on a
+**maximum**. Flat is the only thing the rule can test for, and the top of a hill is flat.
+
+This loop, on millions of parameters instead of one, is how essentially every modern model is
+trained. The guarantees do not get better at that scale; the practice just gets very good at
+choosing η.
+
+<ComplexityCard id="gradient-descent">
+  **Three algorithms, three grades of promise.** k-means guarantees only that it stops. Gradient
+  descent guarantees a decrease, but conditionally on a constant you do not know. Multiplicative
+  weights guarantees a bound against an adversary who chose the input after seeing the algorithm —
+  by far the strongest of the three, and on the least likely-looking problem.
+
+**Where the answer comes from matters more than usual.** In every earlier chapter the input
+determined the output. Here the seeding, the step size and the starting point change the answer, and
+none of them is part of the problem statement.
+
+**Local is not global, and nothing here notices the difference.** Both k-means and gradient descent
+find fixed points of their own update rule. That is all they look for, and it is all they can check.
+
+</ComplexityCard>
+
+## Where else this shows up
+
+These are the three loops underneath a great deal of what is currently called machine learning.
+Gradient descent, with the gradients supplied by backpropagation, trains neural networks; k-means is
+the default first thing anyone tries on unlabelled data; multiplicative weights is boosting, and it
+is also the algorithm behind a surprising number of results that have nothing to do with learning.
+
+The habit worth taking from this chapter is the one the book has been building since chapter 3.
+When an algorithm is described to you as working well, ask what it is guaranteed to do, and then ask
+what that guarantee is _conditional on_. Convexity, a step size, a seeding, a bound on the losses.
+Every promise in this chapter is real, and every one of them has a precondition that does most of
+the work.
+
+Chapter 34's <a href={chapterHref('np-completeness')}>NP-completeness</a> and chapter 35's <a href={chapterHref('approximation-algorithms')}>approximation algorithms</a> are the same
+conversation from the other end: there the problem is provably hard and the algorithm is honest
+about the factor it gives up. Here the problem is often not even stated as an optimisation you could
+be exactly right about, and the algorithm gives up something harder to name.

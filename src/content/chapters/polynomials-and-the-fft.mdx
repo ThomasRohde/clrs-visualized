@@ -1,0 +1,134 @@
+---
+title: Polynomials and the FFT
+section: '§30.1–30.3'
+summary: Multiply polynomials in Θ(n lg n) by changing what a polynomial *is* — and the butterfly diagram that makes the change of representation cheap.
+algorithms: ['iterative-fft']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Multiplying two polynomials of degree n by the obvious method takes Θ(n²): every coefficient of one
+against every coefficient of the other. This chapter gets it down to **Θ(n lg n)**, and the way it
+does so is one of the best ideas in the book — not a cleverer multiplication, but a different
+representation in which multiplication is almost free.
+
+## §30.1 — Two ways to be a polynomial
+
+A polynomial of degree less than n can be written as **n coefficients**, or as its **values at n
+distinct points**. Both descriptions are complete: n points determine a degree-(n−1) polynomial
+uniquely, which is the interpolation theorem.
+
+The two forms are good at opposite things.
+
+|                       | coefficients   | point-values          |
+| --------------------- | -------------- | --------------------- |
+| evaluate at one point | Θ(n) by Horner | Θ(n) by interpolating |
+| add                   | Θ(n)           | Θ(n)                  |
+| **multiply**          | **Θ(n²)**      | **Θ(n)**              |
+
+Multiplication in point-value form is Θ(n) because the value of a product at a point is just the
+product of the two values there. Multiply pointwise, and you are done.
+
+So the plan writes itself:
+
+1. **evaluate** both polynomials at 2n points — coefficients to point-values;
+2. **multiply** the values pointwise, Θ(n);
+3. **interpolate** back — point-values to coefficients.
+
+And the plan is worthless unless steps 1 and 3 are cheap, because evaluating at 2n arbitrary points
+costs Θ(n²) by any direct method. The whole chapter is about making them cheap.
+
+## §30.2 — The points are the roots of unity
+
+The trick is that **we get to choose the points**, and choosing them well makes evaluation
+recursive.
+
+Take the n complex nth roots of unity: `ω_n = e^(2πi/n)` and its powers. They have a property no
+other set of points has — squaring them collapses the set to half its size. The squares of the n
+nth roots are exactly the n/2 (n/2)th roots, each hit twice.
+
+That is what makes divide-and-conquer possible. Split a polynomial into its even-indexed and
+odd-indexed coefficients:
+
+```
+A(x) = A^even(x²) + x · A^odd(x²)
+```
+
+Evaluating `A` at all n roots of unity needs `A^even` and `A^odd` at all the _squares_ of those
+roots — which is only n/2 distinct points. Two half-size problems and Θ(n) work to combine:
+
+```
+T(n) = 2 T(n/2) + Θ(n)  →  Θ(n lg n)
+```
+
+by the master method, exactly as merge sort. **Interpolation is the same algorithm** with `ω_n`
+replaced by `ω_n⁻¹` and a division by n, because the matrix that evaluates and the matrix that
+interpolates are inverses with that pleasing a form.
+
+## §30.3 — FFT circuits, and the iterative version
+
+The recursive algorithm is the derivation; this is the version that gets written. Same Θ(n lg n),
+no recursion, no allocation, and a memory access pattern a cache can follow.
+
+<AlgorithmPlayer id="iterative-fft" size={8} />
+
+Two things turn one into the other, and both are on screen.
+
+**The bit-reversal permutation** is the first row of the run. The recursion splits into even and odd
+indices, then splits each half the same way, until it reaches single elements. Reading those choices
+as bits — even is 0, odd is 1 — the leaf a coefficient lands in is **its own index with the bits
+reversed**. So the entire recursion's rearranging can be done once, up front, and the algorithm can
+then work bottom-up. Watch index 1 and index 4 trade places in an eight-point transform: 001
+reversed is 100.
+
+**The butterfly** is every row after it. Once the leaves are in place, each stage combines adjacent
+blocks in pairs:
+
+```
+y_k = u + ω·v      y_{k+m/2} = u − ω·v
+```
+
+The same product `ω·v` appears in both, so it is computed once and used twice, and the two results
+overwrite the two inputs in place. There are n/2 butterflies per stage and lg n stages — which is
+the whole running time.
+
+The four arrows into each pair of cells are that butterfly: **both inputs feed both outputs**, which
+is where the name comes from. Traced over the whole run they draw the diagram every
+signal-processing textbook opens with.
+
+## One player, not two
+
+`RECURSIVE-FFT` from §30.2 has no player of its own here, and that is deliberate rather than a gap.
+
+The two procedures compute the _same butterfly diagram_; §30.3's entire content is that the
+recursion's leaf order is the bit-reversal permutation and its combine steps are the stages. So the
+player above **is** the recursive algorithm with the recursion unrolled, and the first row of it is
+the recursion's fingerprint — the order in which the leaves would have been reached. Animating the
+recursion separately would show the same values arriving in a different order, which is a fact about
+control flow rather than about the transform.
+
+<ComplexityCard id="iterative-fft">
+  **Θ(n lg n) is for the change of representation.** The multiplication itself, once both
+  polynomials are in point-value form, is Θ(n) — the cheapest step in the whole chapter and the one
+  the other two exist to enable.
+
+**Multiplying two degree-n polynomials** costs three transforms and one pointwise pass: two forward,
+one inverse, Θ(n lg n) overall. Pad to a power of two at least 2n, so the product has room.
+
+**Large integers are polynomials** with x set to the base. So this is also how big-number libraries
+multiply once the operands get long enough — below a few thousand digits the constant factors keep
+Karatsuba or the schoolbook method ahead.
+
+</ComplexityCard>
+
+## Where else this turns up
+
+The FFT is probably the most-used algorithm in this book that is not a sort. It is how audio is
+compressed, how images are compressed, how radio is decoded, how convolutions in a neural network
+are sometimes evaluated, and how partial differential equations are solved numerically.
+
+All of those are the same observation in different clothes: **convolution is expensive and pointwise
+multiplication is cheap, and the transform converts one into the other.** Polynomial multiplication
+is convolution of coefficient sequences, which is why this chapter's version is the one a book about
+algorithms tells.

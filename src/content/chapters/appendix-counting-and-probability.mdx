@@ -1,0 +1,111 @@
+---
+title: 'C — Counting and Probability'
+section: '§C.1–C.5'
+summary: How to count arrangements, and the one probability identity that does most of the work in this book.
+algorithms: []
+---
+
+import { chapterHref } from '../../lib/paths.ts';
+
+Randomized algorithms and average-case analysis both cash out into counting, and this appendix is
+the toolkit. It is also where **linearity of expectation** lives, which is the single most useful
+technique in the book's analytical chapters.
+
+## §C.1 — Counting
+
+```
+strings of length k over an alphabet of n      nᵏ
+permutations of n items                        n!
+ordered k-subsets of n                         n!/(n − k)!
+unordered k-subsets of n  ("n choose k")       C(n,k) = n!/(k!(n − k)!)
+all subsets of n                               2ⁿ
+```
+
+The two identities used most often:
+
+**C(n,k) = C(n−1,k−1) + C(n−1,k)** — Pascal's rule, and the reason binomial coefficients have a
+dynamic-programming flavour: either the n-th item is in the subset or it is not.
+
+**C(n,k) ≤ (en/k)ᵏ**, and **n! ≈ √(2πn)(n/e)ⁿ** (Stirling). The second gives **lg(n!) = Θ(n lg n)**,
+which is the whole of <a href={chapterHref('sorting-in-linear-time')}>chapter 8</a>'s lower bound: a
+comparison sort's decision tree needs n! leaves, so it needs height lg(n!) = Θ(n lg n), so merge sort
+is asymptotically optimal and no cleverness will improve it.
+
+## §C.2 — Probability
+
+A sample space, events as subsets, a probability distribution. Two rules do nearly everything:
+
+`Pr{A ∪ B} = Pr{A} + Pr{B} − Pr{A ∩ B}`, and the **union bound** `Pr{∪Aᵢ} ≤ ΣPr{Aᵢ}`, which needs
+no independence at all and is therefore usable when nothing else is.
+
+`Pr{A | B} = Pr{A ∩ B} / Pr{B}`, conditional probability, and **independence** when
+`Pr{A ∩ B} = Pr{A}·Pr{B}`.
+
+The word to be careful with is _independent_, because analyses quietly assume it and the assumption
+is often false. <a href={chapterHref('hash-tables')}>Chapter 11</a> is explicit about this: simple
+uniform hashing is an assumption, universal hashing is what you do when you are not willing to make
+it, and the difference between the two is the difference between an average-case result and a
+guarantee.
+
+## §C.3 — Random variables and expectation
+
+A random variable maps outcomes to numbers; its **expectation** is `E[X] = Σ x·Pr{X = x}`.
+
+And then the identity that matters more than the rest of this appendix combined:
+
+```
+E[X + Y] = E[X] + E[Y]        — always, whether or not X and Y are independent
+```
+
+**Linearity of expectation** needs no independence. That is what makes it so powerful, because
+independence is exactly the thing that is usually missing.
+
+The pattern it enables is worth learning as a pattern, since the book uses it a dozen times:
+
+1. write the quantity you want as a sum of **indicator** random variables — one per event, worth 1 if
+   the event happens and 0 otherwise;
+2. note that `E[Iₐ] = Pr{A}`;
+3. add up the probabilities, ignoring entirely how tangled the dependencies are.
+
+That is <a href={chapterHref('probabilistic-analysis')}>chapter 5</a>'s whole method. The hiring
+problem: `E[hires] = Σ 1/i = ln n + O(1)`, because candidate i is hired exactly when it is the best
+of the first i. Quicksort's expected comparisons: sum over pairs of the probability that they are
+ever compared, which is `2/(j − i + 1)`, and the pairs are wildly dependent — and it does not matter.
+Universal hashing's expected chain length falls out the same way.
+
+Also here: **Markov's inequality**, `Pr{X ≥ t} ≤ E[X]/t`, which is the cheapest possible tail bound
+and needs only that X is non-negative. It is what turns an expected running time into a statement
+about how often you get an unlucky one.
+
+## §C.4 — The distributions that come up
+
+**Bernoulli**: one trial, success with probability p. **Binomial**: the number of successes in n
+independent trials, with mean np. **Geometric**: the number of trials until the first success, with
+mean 1/p.
+
+The geometric distribution is the one to recognise on sight, because "keep trying until it works"
+is a recurring algorithmic shape and its expected cost is always 1/p. It is why a randomized
+algorithm that succeeds with probability ½ per attempt costs about two attempts, and why <a href={chapterHref('hash-tables')}>open addressing</a>'s expected probe count is `1/(1 − α)` —
+each probe hits an occupied slot with probability about α.
+
+## §C.5 — Tail bounds (★)
+
+The starred section bounds the probability of landing far from the mean. The practical summary:
+binomial tails fall **exponentially** in the distance from the mean, which is what makes
+"with high probability" statements possible at all.
+
+The consequence worth carrying: a randomized algorithm whose expected cost is good is usually also
+_reliably_ good, not merely good on average. That is the real reason <a href={chapterHref('quicksort')}>randomized quicksort</a> is trusted in practice — not that its
+average is Θ(n lg n), but that the probability of being much worse than the average shrinks
+exponentially, and it does so **on every input**, because the randomness is in the algorithm rather
+than in an assumption about the data.
+
+## Where this shows up
+
+This appendix is <a href={chapterHref('probabilistic-analysis')}>chapter 5</a> applied — the
+hiring problem, the birthday paradox, randomized permutation. <a href={chapterHref('quicksort')}>Chapter 7</a>'s randomized analysis, <a href={chapterHref('hash-tables')}>chapter 11</a>'s hashing, <a href={chapterHref('medians-and-order-statistics')}>chapter 9</a>'s expected-linear-time
+selection, and <a href={chapterHref('approximation-algorithms')}>§35.4</a>'s randomized MAX-3-CNF
+all reduce to linearity of expectation over indicators.
+
+If you take one thing from this appendix, take that pattern. It converts problems whose dependencies
+are hopeless into sums of probabilities you can look up.

@@ -1,0 +1,137 @@
+---
+title: Matrix Operations
+section: '§28.1–28.3'
+summary: Solving linear systems by factoring — and the one line of pseudocode that separates an algorithm that is right on paper from one that is right in floating point.
+algorithms: ['lup-decomposition', 'lup-solve']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 4 multiplied matrices. This chapter solves with them: given `A` and `b`, find the `x` with
+`Ax = b`. It is the most-executed numerical computation there is — every simulation, every
+regression, every renderer's transform pipeline bottoms out here.
+
+It is also the chapter where **finite precision stops being someone else's problem.** Everywhere
+else in the book, arithmetic is exact and an algorithm is correct or it is not. Here an algorithm
+can be perfectly correct on paper and return nonsense in practice, and the difference between the
+two versions is one line.
+
+## §28.1 — Factoring instead of solving
+
+You could solve `Ax = b` by Gaussian elimination directly, and for one right-hand side that is fine.
+But the elimination does not depend on `b` at all — so doing it again for a second right-hand side
+repeats Θ(n³) work that has not changed.
+
+So do the elimination once and **keep it**. The result is a factorization `PA = LU`: a permutation
+`P`, a lower-triangular `L` with ones on its diagonal, and an upper-triangular `U`.
+
+<AlgorithmPlayer id="lup-decomposition" size={3} />
+
+This is Gaussian elimination with the multipliers written down instead of discarded, and it
+transforms **one matrix in place** — a trick worth understanding rather than being startled by.
+Below the diagonal an entry holds the multiplier that eliminated it, which is an entry of `L`. On and
+above the diagonal it holds `U`. The two triangles never collide, because `L`'s diagonal is all ones
+and is not stored.
+
+**The P is not decoration.** Without row exchanges the algorithm divides by whatever happens to be on
+the diagonal. That may be zero, in which case it fails outright on a perfectly invertible matrix. Or
+— worse — it may be merely _tiny_, in which case it survives and returns garbage, because dividing
+by a small number magnifies every rounding error accumulated before it.
+
+**Partial pivoting** fixes both: before eliminating a column, swap in the row whose entry there is
+largest in absolute value. Watch the pivot search at the start of each step in the run. It chooses
+for size, not for convenience, and that is the whole of numerical stability in this book — the
+algorithm that is right on paper and the one that is right in floating point differ by a `max`.
+
+## §28.1 — And then solving is cheap
+
+Once `PA = LU`, the system falls apart into two triangular ones:
+
+```
+Ax = b  →  LUx = Pb  →  solve Ly = Pb, then Ux = y
+```
+
+<AlgorithmPlayer id="lup-solve" size={3} />
+
+`L` is lower triangular with unit diagonal, so `Ly = Pb` solves **forwards**: the first equation has
+one unknown, the second has one new unknown once the first is known, and so on down. `Ux = y` solves
+**backwards** for the same reason from the other end.
+
+Watch which entries each step reads. Forward substitution only ever looks left of the diagonal; back
+substitution only ever looks right of it; neither touches the other's triangle. And notice there is
+no division in the forward pass at all — `L`'s diagonal is 1.
+
+Two Θ(n²) passes, against Θ(n³) to factor. **That ratio is the point of the whole section.** With
+twenty right-hand sides you factor once and substitute twenty times, and the twenty substitutions
+together cost less than the single factoring.
+
+## §28.2 — Inverting a matrix
+
+You almost never should. But the section is about what it costs, and the answer is instructive.
+
+To compute `A⁻¹`, solve `AX = I` one column at a time: the i-th column of `A⁻¹` is the solution to
+`Ax = eᵢ`. That is one factoring (Θ(n³)) plus n substitutions (Θ(n²) each) — Θ(n³) in total.
+
+So inversion costs the same as factoring, asymptotically. And the section's real result is that
+inversion and **multiplication** cost the same as each other: each can be done with a constant
+number of the other plus Θ(n²) work, so a faster algorithm for either gives a faster algorithm for
+both. Strassen's Θ(n^2.81) multiplication therefore buys a Θ(n^2.81) inversion for free.
+
+The practical advice runs the other way. If you want to solve `Ax = b`, **solve it — do not compute
+`A⁻¹b`.** Inverting costs more arithmetic and, more importantly, loses accuracy: it computes n
+solutions you did not ask for and then multiplies by them.
+
+## §28.3 — Least squares
+
+Given m data points and a model with n ≪ m parameters, no exact fit usually exists — the system is
+overdetermined. So minimise the total squared error instead, which is the same as solving the
+**normal equations**:
+
+```
+AᵀA x = Aᵀ y
+```
+
+`AᵀA` is n × n, symmetric, and positive-definite whenever `A` has full column rank — and
+positive-definiteness is what guarantees the factoring above never needs to pivot at all, so it
+cannot fail and is numerically well behaved. Form `AᵀA` and `Aᵀy` with chapter 4's multiplication,
+then solve with the player above.
+
+## Two players, not four
+
+`MATRIX-INVERSE` and `LEAST-SQUARES-APPROXIMATION` have no players of their own here, and that is a
+decision rather than an omission.
+
+Both are **compositions of what is already on this page**. Inverting a matrix is LUP-SOLVE run n
+times with the columns of the identity as right-hand sides — the same trace, n times over, with a
+different vector each time. Least squares is chapter 4's matrix multiplication to build `AᵀA` and
+`Aᵀy`, and then LUP-SOLVE. Animating either would replay traces the reader has already stepped
+through, under a different name, which is what a chapter's worth of prose says better.
+
+What is genuinely distinct in both — that inversion and multiplication are equally hard, and that
+positive-definiteness makes pivoting unnecessary — are theorems, and they are above.
+
+<ComplexityCard id="lup-decomposition">
+  **Θ(n³) once, Θ(n²) per right-hand side.** That split is why numerical libraries hand back a
+  factorization object rather than a solution, and why calling a "solve" routine in a loop is a
+  common and expensive mistake.
+
+**Pivoting costs Θ(n²) comparisons in total** and is never optional. Partial pivoting — searching
+only the current column — is what every library does. Complete pivoting searches the whole remaining
+submatrix, is more stable still, and is almost never worth the extra Θ(n³) comparisons.
+
+**The determinant is free** once you have the factorization: multiply U's diagonal and apply the
+sign of P. Computing it by cofactor expansion instead is Θ(n!), which is the most dramatic gap
+between a definition and an algorithm anywhere in the book.
+
+</ComplexityCard>
+
+## Why this chapter feels different
+
+Everywhere else, an algorithm's correctness is a property of the algorithm. Here it is a property of
+the algorithm **and the arithmetic it runs on**, and the two can disagree.
+
+That is not a footnote — it is the reason numerical linear algebra is a field. The version of
+Gaussian elimination in a first algebra course and the version in LAPACK compute the same thing on a
+blackboard and different things on a machine, and the pivot search in the run above is where they
+part company.

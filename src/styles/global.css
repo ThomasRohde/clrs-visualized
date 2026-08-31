@@ -1,0 +1,631 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--c-scope-wash);
+}
+
+a {
+  color: var(--c-scope);
+  text-underline-offset: 0.18em;
+}
+
+button,
+select,
+input {
+  font-family: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: var(--track-display);
+  text-wrap: balance;
+  margin: 0;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A small uppercase mono label. Used for anything that names a thing rather
+   than saying something: eyebrows, part titles, control captions. */
+.label {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-weight: 500;
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.skip-link {
+  position: absolute;
+  left: 0.5rem;
+  top: -3rem;
+  z-index: 20;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.85rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-small);
+  color: var(--ink);
+  text-decoration: none;
+  transition: top 0.12s;
+}
+
+.skip-link:focus {
+  top: 0.5rem;
+}
+
+/* ---------- shell ---------- */
+.topbar {
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0.85rem 2rem;
+}
+
+.wordmark {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  text-decoration: none;
+  color: var(--ink);
+  min-width: 0;
+}
+
+/* The mark is the site's own idea in miniature: a rule that holds while the
+   elements under it change. Six ticks in the six coded colours. */
+.wordmark-mark {
+  display: block;
+  flex-shrink: 0;
+}
+
+.wordmark-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.wordmark .name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.wordmark .tag {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  color: var(--ink-2);
+}
+
+.theme-btn:hover {
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.theme-btn svg {
+  flex-shrink: 0;
+}
+
+.shell {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 1.75rem 2rem 4rem;
+  display: grid;
+  grid-template-columns: var(--toc-col) minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
+}
+
+.shell.wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+  min-width: 0;
+}
+
+footer.site-footer {
+  border-top: 1px solid var(--line);
+}
+
+.footer-inner {
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 1.5rem 2rem 3rem;
+  color: var(--ink-3);
+  font-size: var(--t-small);
+  max-width: min(var(--shell-max), 90ch);
+}
+
+/* ---------- table of contents ---------- */
+.toc-shell {
+  position: sticky;
+  top: 1rem;
+  max-height: calc(100vh - 2rem);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.toc-heading {
+  display: none;
+}
+
+.toc-list {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  min-height: 0;
+  padding-right: 0.25rem;
+}
+
+.toc-part {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin: 1.15rem 0 0.4rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.toc-part:first-child {
+  margin-top: 0;
+}
+
+.toc-part .numeral {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-micro);
+  color: var(--ink);
+  letter-spacing: 0;
+}
+
+.toc-part .part-name {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  line-height: 1.3;
+}
+
+.toc-item {
+  display: grid;
+  grid-template-columns: 1.5rem minmax(0, 1fr);
+  gap: 0.5rem;
+  align-items: baseline;
+  text-decoration: none;
+  color: var(--ink-2);
+  padding: 0.3rem 0.45rem;
+  border-radius: var(--radius);
+  font-size: var(--t-small);
+  line-height: 1.35;
+  border-left: 2px solid transparent;
+}
+
+.toc-item .num {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  text-align: right;
+}
+
+.toc-item.ready {
+  color: var(--ink);
+}
+
+.toc-item:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+
+.toc-item.active {
+  background: var(--surface);
+  border-left-color: var(--c-scope);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px var(--shadow);
+}
+
+.toc-item.active .num {
+  color: var(--c-scope);
+}
+
+/* Planned chapters read as unemphasised rather than broken: same list, less
+   weight, no extra glyph to decode. */
+.toc-item.planned {
+  color: var(--ink-3);
+}
+
+.toc-note {
+  margin-top: 1rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+/* ---------- panels ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+/* ---------- chapter header ---------- */
+.chapter-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0 1.25rem;
+  align-items: start;
+}
+
+/* The book numbers its own chapters, so the number is real information and
+   earns the margin position. Planned chapters show the same slot. */
+.chapter-num {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 3.4vw, 2.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.06em;
+  color: var(--line-strong);
+  padding-top: 0.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.chapter-head .eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  letter-spacing: var(--track-label);
+  text-transform: uppercase;
+  color: var(--c-scope);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.chapter-head h1 {
+  font-size: var(--t-h1);
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.chapter-head .summary {
+  margin: 0.7rem 0 0;
+  max-width: var(--measure);
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+/* ---------- prose ---------- */
+.prose {
+  max-width: var(--measure);
+  line-height: 1.7;
+}
+
+.prose h2,
+.prose h3 {
+  letter-spacing: -0.03em;
+}
+
+.prose h2 {
+  font-size: var(--t-h2);
+  margin: 2rem 0 0.6rem;
+}
+
+.prose h3 {
+  font-size: var(--t-h3);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.prose p {
+  margin: 0 0 1rem;
+}
+
+.prose ul,
+.prose ol {
+  margin: 0 0 1rem;
+  padding-left: 1.3rem;
+}
+
+.prose li {
+  margin-bottom: 0.35rem;
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--surface-2);
+  padding: 0.12em 0.36em;
+  border-radius: 3px;
+}
+
+.prose pre {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background: none;
+  padding: 0;
+}
+
+/* A quoted claim that holds across the loop — the book's own device, and the
+   thing this site is named after. */
+.prose blockquote {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 2px solid var(--c-scope);
+  background: var(--c-scope-wash);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.prose blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- chapter pager ---------- */
+.pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+}
+
+.pager a {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-decoration: none;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.pager a:hover {
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 6px var(--shadow);
+}
+
+.pager .dir {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pager .label-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.82rem;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+.pager .next {
+  text-align: right;
+  grid-column: 2;
+}
+
+.pager .prev {
+  grid-column: 1;
+}
+
+/* ---------- responsive ---------- */
+@media (max-width: 1000px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    padding: 1.25rem 1.25rem 3rem;
+  }
+
+  .topbar-inner,
+  .footer-inner {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  /* The full contents list is 35 chapters long. On a phone it collapses to a
+     one-line disclosure so the chapter you opened is the first thing you
+     see, not the last. */
+  .toc-shell {
+    position: static;
+    max-height: none;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+
+  .toc-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 0.9rem;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-2);
+    list-style: none;
+  }
+
+  .toc-heading::-webkit-details-marker {
+    display: none;
+  }
+
+  .toc-heading .chev {
+    flex-shrink: 0;
+    transition: transform 0.15s;
+  }
+
+  .toc-shell[open] .toc-heading .chev {
+    transform: rotate(90deg);
+  }
+
+  .toc-list {
+    padding: 0 0.9rem 0.9rem;
+    max-height: 60vh;
+  }
+
+  .toc-note {
+    display: none;
+  }
+
+  .chapter-head {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.25rem;
+  }
+
+  .chapter-num {
+    padding-top: 0;
+    font-size: 1.4rem;
+  }
+
+  .pager {
+    grid-template-columns: 1fr;
+  }
+
+  .pager .next,
+  .pager .prev {
+    grid-column: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ---------- auxiliary value chips ---------- */
+/*
+  These are injected by the player with innerHTML, so they never carry Astro's
+  scope attribute and cannot be styled from inside the component. They live
+  here on purpose.
+*/
+.aux-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15em;
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  padding: 0.3em 0.45em;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+
+/* The element the merge is reading right now, or the key in flight. */
+.aux-chip.ptr {
+  background: var(--c-look-wash);
+  border-color: var(--c-look);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* Nothing held right now. Keeps the row the same width whether or not a value
+   is in flight, so the chart underneath never shifts. */
+.aux-chip.empty {
+  color: var(--ink-3);
+  background: none;
+  border-style: dashed;
+}
+
+/* Counting sort's C is indexed by key, not by position, so a bare row of
+   counts says nothing without the key under each one. */
+.aux-index {
+  font-size: 0.82em;
+  font-weight: 400;
+  color: var(--ink-3);
+}

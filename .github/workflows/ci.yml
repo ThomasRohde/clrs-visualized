@@ -1,0 +1,83 @@
+# Every gate this project has, on every push.
+#
+# The generative suite is the safety net for 79 recorders: each one is checked
+# against its own `result` contract on random and edge-case inputs, and several
+# of those contracts are theorems rather than re-runs. It has caught real bugs
+# that no amount of reading would have — an RSA exponent that made the cipher
+# the identity, a gradient-descent guarantee asserted unconditionally when it
+# only holds below a curvature bound. It has to run automatically.
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A second push supersedes the first; nothing here is worth finishing twice.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Everything that needs no browser. Ordered cheapest-first, so a formatting
+  # slip fails in seconds rather than after the test suite.
+  gates:
+    name: types, lint, format, tests, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # 23.6+ strips TypeScript types natively, which is what lets
+          # `node --test "tests/**/*.test.ts"` run the recorders unbuilt.
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run check
+      # The README's contents block is derived, not remembered.
+      - run: npm run readme -- --check
+      - run: npm test
+      - run: npm run build
+
+  # The pass `npm test` cannot make: every player, stepped through in a real
+  # browser in both themes at three widths. Separate job because it needs a
+  # browser download, and because a red cross here means something different
+  # from a red cross above.
+  players:
+    name: step every player in a browser
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Starts its own dev server and stops it again; exits non-zero on a
+      # console error, a player that never boots, a canvas that drew nothing,
+      # a step with no narration or the wrong number of highlighted lines,
+      # panel height changing mid-trace, or an algorithm embedded nowhere.
+      - run: npm run verify:players
+
+  # A subpath deploy is the case that breaks silently, because every link still
+  # resolves locally. This builds under one and asserts that every internal
+  # href and src actually carries the prefix — the claim `src/lib/paths.ts`
+  # exists to make.
+  base-path:
+    name: build under a subpath
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          BASE_PATH: /subpath-probe
+          SITE_URL: https://example.invalid
+      - run: node scripts/check-base-path.mjs /subpath-probe

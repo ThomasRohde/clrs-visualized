@@ -1,0 +1,153 @@
+---
+title: Characterizing Running Times
+section: '§3.1–3.3'
+summary: The notation the rest of the book is written in — what it promises, what it deliberately throws away, and where n₀ comes from.
+algorithms: ['asymptotic-bound']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+import { chapterHref } from '../../lib/paths.ts';
+
+Back in <a href={chapterHref('getting-started')}>chapter 2</a>, insertion sort's steps were counted exactly, and
+the answer was a quadratic with six constants in it that depend on the machine. That is the last
+time this book does that. Everything after it is written in the notation of this chapter, so it is
+worth understanding precisely what that notation keeps and what it throws away.
+
+It throws away **constant factors** and **lower-order terms**, and it says nothing whatever about
+**small inputs**. What survives is the shape of the growth, which is the only part that is a
+property of the algorithm rather than of the computer it ran on.
+
+## §3.1 — Three symbols, informally
+
+**O(g(n))** is an upper bound: f grows no faster than g. **Ω(g(n))** is a lower bound: no slower.
+**Θ(g(n))** is both at once, and is the one you should reach for when you know the answer.
+
+Two habits are worth forming immediately.
+
+**Say which case you mean.** "Quicksort is O(n²)" and "quicksort is Θ(n lg n) on average" are both
+true and are about different things. The notation describes a function; _which_ function — worst
+case, average case, best case — is a separate choice you have to state. Insertion sort's worst case
+is Θ(n²) and its best case is Θ(n), and both are exact.
+
+**O is not "the answer".** Saying merge sort is O(n²) is true and useless, the way saying a journey
+took under a week is true and useless. Θ is a claim; O alone is only half of one. The book uses O
+where the lower bound is genuinely unknown or genuinely irrelevant, and Θ everywhere else — and
+that distinction carries information.
+
+## §3.2 — The definition, and the two things people misread
+
+Formally, `f(n) = Θ(g(n))` means:
+
+```
+there exist positive constants c₁, c₂ and n₀
+such that for all n ≥ n₀:   0 ≤ c₁·g(n) ≤ f(n) ≤ c₂·g(n)
+```
+
+Two quantifiers, in an order that matters. Both are visible in one picture.
+
+<AlgorithmPlayer id="asymptotic-bound" size={24} />
+
+What is plotted is the **ratio f(n)/n²**, not f itself. §3.2 draws f between the two curves c₁·n²
+and c₂·n², and on paper that is the right picture; here it is not. Over the two dozen values of n it
+takes to see f settle down, a quadratic grows by a factor of six hundred, so the crossing — the
+entire point — happens in the bottom few pixels. Dividing through by n² is the same statement with
+the scale removed: the band becomes two horizontal lines, the limit becomes a third, and n₀ is
+visibly where the ratio enters the band for good.
+
+**You choose the constants.** They are existentially quantified — you only have to exhibit _some_
+c₁, c₂, n₀ that work, and they never have to be the tightest ones. The band here is c₁ = a/2 and
+c₂ = 2a for the leading coefficient a, chosen with no cleverness whatever, precisely to show that no
+cleverness is required.
+
+**Nothing before n₀ counts.** Watch the ratio sit outside the band for the first few values of n. f
+is still Θ(n²). An algorithm that spends a million steps on a fixed setup and then runs in linear
+time is Θ(n), and that is not a loophole in the definition — it is what the definition is _for_,
+because the setup cost stops being what you care about long before n gets large.
+
+**And there is no such thing as _the_ n₀.** §3.2's own worked example takes f(n) = ½n² − 3n and
+chooses c₁ = 1/14, c₂ = 1/2, arriving at n₀ = 7. Type `0.5, -3, 0` into the box and this player,
+with its own blunter constants, gets **12** on the same function. Both are correct. n₀ is a
+consequence of the constants you picked, not a property of f.
+
+What makes the band inescapable is the shape of that ratio. It equals `a + b/n + c/n²`, so it
+differs from the leading coefficient by at most `(|b| + |c|)/n` — which goes to zero however large b
+and c are, and which is why the points flatten onto the dashed line at a. That inequality is checked
+on every value of n the player tests, and it is the whole content of "lower-order terms do not
+matter".
+
+They do matter, enormously, for small n. **n₀ is exactly the measure of how long they go on
+mattering**, and reading it as "the point where the asymptotics take over" is the most useful thing
+you can do with it.
+
+O and Ω are the same picture with one of the two lines rubbed out. Ω keeps the lower one, O the
+upper — and the asymmetry in practice is that a wrong Ω claim is usually caught, while a loose O
+claim usually goes unchallenged.
+
+## §3.3 — What the shapes actually cost
+
+The reason to care is that the differences are not subtle. Suppose one operation takes a microsecond
+and you have a second to spend. The largest input each growth rate can finish:
+
+```
+   running time     largest n in one second
+   lg n             astronomically large
+   √n               10¹²
+   n                1,000,000
+   n lg n           62,746
+   n²               1,000
+   n³               100
+   2ⁿ               19
+   n!               9
+```
+
+Two readings, and the second is the one that changes decisions.
+
+**Between Θ(n²) and Θ(n lg n) there is a factor of sixty in the size of problem you can handle.**
+Between Θ(n lg n) and Θ(2ⁿ) there is no comparison at all — one of them scales and the other does
+not, and a faster computer moves 19 to about 20.
+
+**A better constant buys you a multiple; a better exponent buys you a category.** Doubling the
+machine speed doubles the n an Θ(n) algorithm can handle, multiplies an Θ(n²) algorithm's n by 1.4,
+and adds _one_ to an Θ(2ⁿ) algorithm's. This is why <a href={chapterHref('np-completeness')}>chapter 34</a> is a chapter about
+categories rather than about speed.
+
+A few standard facts the book leans on without re-deriving, all in §3.3:
+
+- **logs**: base doesn't matter inside Θ, since log_a n = log_b n / log_b a is a constant factor —
+  which is why the book writes lg n and stops worrying;
+- **n! ≈ √(2πn)(n/e)ⁿ** (Stirling), so **lg(n!) = Θ(n lg n)** — the bound that makes
+  <a href={chapterHref('sorting-in-linear-time')}>chapter 8</a>'s comparison-sorting lower bound
+  come out at exactly the running time merge sort achieves;
+- **any polynomial beats any polylogarithm, and any exponential beats any polynomial**: nᵇ = o(aⁿ)
+  for a > 1, and lgᵇ n = o(nᵃ) for a > 0;
+- **floors and ceilings** differ from the exact value by less than 1, which vanishes inside Θ — which
+  is why the recurrences in chapter 4 can drop them.
+
+<ComplexityCard id="asymptotic-bound">
+  **Asymptotic notation is a statement about a limit, made useful for engineering.** It is precise,
+  it is provable, and it deliberately answers a slightly different question from "how long will this
+  take" — which is why measuring is still required, and why nobody should be surprised when an
+  Θ(n lg n) sort loses to an Θ(n²) one on twenty elements.
+
+**Θ is a claim; O is half of one.** Prefer Θ where you can prove it. When you see O in this book
+where Θ would have fitted, the gap is usually deliberate and usually interesting.
+
+**n₀ is not decoration.** For most algorithms it is small and can be ignored. For a few — matrix
+multiplication by Strassen and its descendants, some FFT variants — it is large enough that the
+asymptotically better algorithm is the wrong one to write, and the notation is telling you so if you
+read it carefully.
+
+</ComplexityCard>
+
+## Where this shows up
+
+Everywhere after this page. It is the vocabulary of every complexity card on this site, and the
+reason a card can say "Θ(n lg n)" without asking which computer you have.
+
+The interesting cases are the ones where the notation's own blind spots become the story. <a href={chapterHref('divide-and-conquer')}>Chapter 4</a>'s Strassen is asymptotically faster than
+the obvious matrix multiplication and slower in practice below a few hundred rows — n₀ again. <a href={chapterHref('disjoint-sets')}>Chapter 19</a>'s union-find has an amortised bound involving
+α(n), a function that is at most 4 for any input the universe can hold, so an asymptotic statement
+about it is a statement about nothing you will ever run. And <a href={chapterHref('probabilistic-analysis')}>chapter 5</a>'s randomized analysis is what happens
+when the worst case is real but so rare that describing an algorithm by it would be a lie of a
+different kind.

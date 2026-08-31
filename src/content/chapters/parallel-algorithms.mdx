@@ -1,0 +1,185 @@
+---
+title: Parallel Algorithms
+section: '§26.1–26.3'
+summary: An algorithm with two running times — how much work there is, and how much of it cannot be avoided doing in order.
+algorithms: ['p-fib', 'p-matrix-multiply', 'p-merge']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+// Cross-chapter links go through chapterHref so a future base path (GitHub
+// Pages, say) stays a one-line change in astro.config.mjs.
+import { chapterHref } from '../../lib/paths.ts';
+
+Every algorithm in this book so far has had one running time. A parallel one has **two**, and
+almost everything in chapter 26 follows from the gap between them.
+
+**Work, T₁** — the total number of steps, which is what a single processor would take. Erase every
+`spawn` and `sync` from a parallel program and what is left is an ordinary serial program, its
+**serial elision**; the work is that program's running time. Going parallel does not make work
+disappear. It usually adds a little.
+
+**Span, T∞** — the longest chain of steps that _must_ happen in order, which is what infinitely many
+processors would take. Nothing can outrun its own dependencies.
+
+Their ratio, **T₁/T∞, is the parallelism**: the greatest speedup any number of processors could ever
+give you. Two processors on a computation with parallelism 1.5 will not help much, and two thousand
+will help exactly as little.
+
+Both numbers are well defined because a fork-join computation is a **directed acyclic graph**.
+Vertices are _strands_ — runs of code with no parallel control in them — and edges say "this must
+finish before that starts". Work is the number of vertices. Span is the longest path. Everything
+else in the chapter is a statement about that graph.
+
+## The vocabulary, in three keywords
+
+`spawn` says the called procedure **may** run in parallel with the caller, which continues
+immediately. It is permission, not instruction; a scheduler is free to ignore it.
+
+`sync` says the caller waits here until everything it spawned has finished.
+
+`parallel for` says all the iterations may run at once. It is not primitive — a compiler turns it
+into a balanced binary tree of spawns, which costs Θ(lg n) span and some extra work.
+
+Because `spawn` is only permission, the serial elision is always a legal execution. That is a
+remarkably useful property: **a correct parallel program is one whose serial elision is correct**,
+and you can debug it on one processor. It holds only if the program is free of **determinacy races**
+— two strands touching the same location with at least one writing — which is why §26.1 spends as
+long on races as it does on speedup.
+
+## §26.1 — The DAG, and the two numbers
+
+<AlgorithmPlayer id="p-fib" size={5} />
+
+P-FIB is deliberately a bad algorithm: exponential work to compute what a loop does in linear time.
+That is exactly why it is the example. Three lines generate an enormous DAG, which is what you need
+in order to see the shape of one.
+
+The whole tree is on screen from the first frame, so nothing moves as it runs. Watch two phases.
+The first lights it up in the order **one** processor would execute it — that is the work, one
+vertex at a time, and there is a great deal of it. The second traces a single path from the root
+down: that is the span, and it is all that stands between this computation and finishing instantly.
+
+**Work is the area of the picture. Span is its depth.** Every technique in the chapter is an attempt
+to keep the first large and the second small.
+
+The numbers are exact rather than asymptotic. An invocation with n ≤ 1 is one strand; any other is
+three — the code before the spawn, the continuation that calls P-FIB(n−2), and the code after the
+sync. Push the slider and watch the ratio move:
+
+```
+n        2     3     4     5     6
+T₁       5     9    17    29    49
+T∞       4     6     8    10    12
+T₁/T∞  1.3   1.5   2.1   2.9   4.1
+```
+
+Work grows like φⁿ and span like n, so parallelism grows very fast — but at n = 5 it is 2.9, and a
+third processor would already be mostly idle. Asymptotic parallelism is a promise about large
+inputs, and the small print is the same as everywhere else in the book.
+
+### What you actually get from P processors
+
+You will not get T₁/T∞. You get, from a **greedy scheduler** — one that never leaves a processor idle
+while there is work ready — a guarantee that is much better than it has any right to be:
+
+```
+T_P  ≤  T₁/P + T∞
+```
+
+That is within a factor of 2 of optimal, because no schedule can beat either `T₁/P` (the **work
+law** — P processors do at most P steps per unit time) or `T∞` (the **span law**). So the greedy
+schedule is at most the sum of two things, each of which is a lower bound.
+
+The practical reading is the ratio **T₁/(P·T∞)**, the _parallel slackness_. When it is comfortably
+above 1, the `T₁/P` term dominates and you get near-linear speedup. When it approaches 1, you are
+span-bound and adding processors stops helping. That single number is what to compute before buying
+a bigger machine.
+
+## §26.2 — Matrix multiplication, in n steps instead of n³
+
+Now the same triple loop as chapter 4, with two words changed: the outer two `for`s become
+`parallel for`.
+
+<AlgorithmPlayer id="p-matrix-multiply" size={4} />
+
+Nothing about _what_ is computed differs. The work counter still reaches n³, because every one of
+those multiply-adds still happens. What changed is that `c(i, j)` depends on no other entry of C, so
+all n² of them can be computed at once, and the only thing left that must happen in order is the
+k-loop inside each. Span Θ(n), parallelism Θ(n²).
+
+**Each step of this trace is one step of parallel time.** Watch a column of A and a row of B light
+up together: between them they hold exactly one term for every entry of C, and all n² entries take
+that term simultaneously. The product is built in n passes.
+
+The clearest way to feel this is to run the two players side by side. Open <a href={chapterHref('divide-and-conquer')}>chapter 4</a>, push its slider to 4, and step its
+matrix multiply; then step this one. Same size, same work, same product: **97 steps there, 7 here.**
+
+That is not the whole story, and §26.2 says so. The span here is Θ(n) rather than Θ(lg n) because
+the sum over k is still serial. Doing the sum as a parallel reduction — or using the recursive
+divide-and-conquer version that spawns eight sub-multiplications — gets the span down to Θ(lg n) and
+the parallelism up to Θ(n³/lg n). The price is temporary space, which is the recurring trade in this
+chapter.
+
+## §26.3 — Merging, which does not look divisible at all
+
+Merge sort should parallelise beautifully and does not. Spawning the two recursive sorts is easy;
+the problem is `MERGE` itself, which is a left-to-right scan in which every step depends on the one
+before. Its span is Θ(n), so the whole sort is stuck at Θ(n) span and parallelism Θ(lg n), no matter
+how many processors you own. Hardly worth the trouble.
+
+So §26.3 replaces the merge. The replacement is genuinely surprising, because two sorted lists look
+like the last thing in the world you could split.
+
+<AlgorithmPlayer id="p-merge" size={9} />
+
+**Take the median of the longer run, and binary-search for it in the other.** That single choice
+splits _both_ runs at once: everything left of both split points is below the median, everything
+right is above. So the median's final position is known immediately — it is just the count of
+elements below it — and what remains is two smaller merges that share nothing.
+
+**The bracket over A is the subproblem.** Every call owns a contiguous slice of the output and fills
+it without ever consulting another call, and that non-overlap is the entire licence to run them at
+the same time. Watch the bracket shrink.
+
+Why the median of the _longer_ run? Because that is what bounds the shrinking. The longer run holds
+at least half the elements, so halving it leaves each side with at most **3/4** of what the call
+started with — even in the worst case, where the binary search sends the whole of the shorter run
+one way. Depth Θ(lg n), span Θ(lg² n), and merge sort as a whole reaches Θ(lg³ n) span with
+parallelism Θ(n/lg² n). The player's `verify` asserts that 3/4 on every recursive call the run
+makes, rather than quoting it: an implementation that halved the _shorter_ run would still merge
+perfectly and would quietly have a linear span.
+
+P-MERGE-SORT itself is not a separate player here, because it is <a href={chapterHref('getting-started')}>chapter 2's merge sort</a> with `spawn` in front of one recursive call and this merge in place of the other. The interesting half is on this page.
+
+<ComplexityCard id="p-merge">
+  **Work is conserved; span is what you design for.** Every algorithm in this chapter does the same
+  number of operations as its serial version, sometimes a few more. The whole art is arranging for
+  as few of them as possible to be forced into a sequence.
+
+**Parallelism is a ratio, and ratios have small print.** T₁/T∞ is an upper bound on speedup at every
+number of processors. What decides whether a real machine gets near it is the slackness T₁/(P·T∞),
+and that depends on your input size, not just your algorithm.
+
+**The serial elision is the specification.** A race-free fork-join program computes exactly what its
+spawn-free version computes, which means correctness can be reasoned about serially and only
+performance needs the DAG. Determinacy races are what forfeit that, and they are the reason this
+chapter's model is worth having.
+
+</ComplexityCard>
+
+## Where else this shows up
+
+The fork-join model here is not a textbook abstraction — it is Cilk, and it is what OpenMP tasks,
+Intel TBB, Java's ForkJoinPool, Rust's Rayon and Go's goroutine-plus-WaitGroup idiom all implement.
+The work-stealing scheduler underneath them is what delivers the `T₁/P + T∞` bound in practice.
+
+Work and span also explain a result you may have met from the other direction. A GPU has thousands
+of processors and helps enormously with matrix multiplication, whose parallelism is Θ(n²), and not
+at all with a linear scan, whose span equals its work. That is not a fact about hardware. It is
+the span law.
+
+And the habit generalizes past processors. Any time work is split across machines, requests or
+people, the same two numbers apply: how much there is to do, and how long the longest unavoidable
+chain of dependencies is. The second one is the critical path on a project plan, and it is why
+adding people to a late project makes it later.

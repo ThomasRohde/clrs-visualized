@@ -1,0 +1,111 @@
+---
+title: Minimum Spanning Trees
+section: '§21.1–21.2'
+summary: Connect everything as cheaply as possible — one theorem, and two greedy algorithms that look nothing alike and always agree.
+algorithms: ['mst-kruskal', 'mst-prim']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+You have a set of places and the cost of laying a cable between each pair that could be joined. You
+want every place connected to every other, and you want to spend as little as possible.
+
+The answer is a **spanning tree** — every vertex included, no cycles, since a cycle would mean one
+cable you could remove and still be connected — and among all the spanning trees, a **minimum** one.
+There can be an astronomical number of spanning trees to choose from. A complete graph on n vertices
+has n^(n−2) of them, which for twenty places is over a quintillion.
+
+Both algorithms in this chapter find the cheapest one by never looking at more than one edge at a
+time, and never changing their minds. That is the whole surprise of chapter 21, and §21.1 is the one
+theorem that explains it.
+
+## §21.1 — The cut property
+
+A **cut** splits the vertices into two groups. An edge **crosses** the cut if its two ends are on
+opposite sides. A **light** edge is a cheapest one that crosses.
+
+Take any set of edges A that is part of some minimum spanning tree. Take any cut that **no edge of A
+crosses**. Then a light edge crossing that cut can be added to A and the result is still part of some
+minimum spanning tree.
+
+The proof is a swap and it fits in a paragraph. Some minimum spanning tree T contains A. If T already
+has the light edge, there is nothing to prove. If not, adding the light edge to T makes exactly one
+cycle, that cycle has to cross the cut somewhere else, and the other crossing edge is at least as
+heavy — so swapping them gives another spanning tree no more expensive than T, which contains A and
+the light edge. Since T was minimum, so is the new one.
+
+That is why greed works here and not everywhere. **A locally cheapest choice is provably part of a
+globally optimal answer**, so there is nothing to reconsider later. Both algorithms below are the
+same theorem applied with a different cut.
+
+## §21.2 — Kruskal's algorithm
+
+Sort every edge by weight. Take them in order. Keep each one unless both its ends are already
+connected.
+
+<AlgorithmPlayer id="mst-kruskal" size={8} />
+
+The cut is implicit and it is a different one every step: whatever component the current edge's ends
+sit in. Since the edges arrive cheapest first, the first edge encountered that joins two different
+components is automatically a light edge crossing between them, so the cut property applies and
+taking it is safe.
+
+The rings on screen are the components — and they are chapter 19's disjoint sets, doing the only
+job Kruskal needs an implementation for. "Would this edge close a cycle?" is
+`FIND-SET(u) ≠ FIND-SET(v)`, which is why chapter 19 came before this one and why the running time
+here is dominated by the sort rather than by anything the algorithm itself does.
+
+Watch the rings merge two at a time. The tree is finished when one ring holds every vertex, and it
+always takes exactly |V| − 1 edges to get there.
+
+## §21.2 — Prim's algorithm
+
+The same theorem with the cut held fixed. There is one tree, it starts at a single vertex, and at
+every step it takes the cheapest edge leaving it.
+
+<AlgorithmPlayer id="mst-prim" size={8} />
+
+Because the cut is always "the tree against everything else", the light edge crossing it is exactly
+what the algorithm has to find, and the whole implementation question is how to find it fast. The
+answer is a priority queue over the vertices **not yet in the tree**, each holding one number: the
+cost of the cheapest known edge from it into the tree. Not a list of edges — one number.
+
+The number on each vertex is that key, and the ring marks the vertices that have a finite one, which
+is precisely the set with an edge into the tree. Watch a key **drop** as the tree grows nearer to a
+vertex: that is chapter 6's DECREASE-KEY, and it is the operation that decides the running time.
+
+## Comparing them
+
+Run both on the same graph and open the **trace tape** — the strip under the transport — on each.
+
+They tell completely different stories. Kruskal's tape is a long even run: every edge gets exactly
+one comparison, most of them produce nothing, and the taken edges are scattered through it with no
+pattern. Prim's alternates in bursts — an extraction, then a cluster of relaxations as the new
+vertex's edges are priced, then another extraction.
+
+And yet the edges they end up choosing are the same. With distinct weights the minimum spanning tree
+is **unique**, so this is not a coincidence to be checked but a theorem to be seen: two algorithms
+with nothing in common structurally, both landing on the one right answer, because both are the cut
+property in different clothes. The generated graphs here always have distinct weights, so you can
+compare the two pictures at the end directly.
+
+<ComplexityCard id="mst-prim">
+  **Both are O(E lg V) as usually implemented**, and they get there differently: Kruskal spends it
+  on the sort, Prim on |V| extractions and up to |E| decrease-keys.
+
+**With a Fibonacci heap Prim improves to O(E + V lg V)** and Kruskal does not improve at all, since
+its cost is the sort. On a dense graph that is a real difference; on a sparse one it is not.
+
+**Neither needs the graph to be connected to be useful.** Run either on a disconnected graph and you
+get a minimum spanning _forest_ — one tree per component.
+
+</ComplexityCard>
+
+## Where this turns up
+
+Minimum spanning trees are the most directly applied algorithm in Part VI. Laying out a network at
+minimum cost is the original motivation and still a real one. Single-linkage clustering is Kruskal's
+algorithm stopped early — cut it off after k−1 fewer edges than a full tree and the components are
+your k clusters. And the MST gives a 2-approximation for the travelling salesman problem on metric
+inputs, which is chapter 35's best-known result and is built entirely on a walk around this tree.

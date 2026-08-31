@@ -1,0 +1,102 @@
+---
+title: 'B — Sets, Etc.'
+section: '§B.1–B.5'
+summary: The vocabulary the rest of the book assumes — sets, relations, functions, graphs and trees, and the definitions that turn out to carry weight later.
+algorithms: []
+---
+
+import { chapterHref } from '../../lib/paths.ts';
+
+This appendix is a glossary, and most of it will already be familiar. What is worth reading it for is
+the handful of definitions that look like formalities and turn out to decide a theorem several
+hundred pages later. Those are flagged below.
+
+## §B.1 — Sets
+
+Membership, subset, union, intersection, difference, complement, the empty set. Two facts that get
+used:
+
+**|A ∪ B| = |A| + |B| − |A ∩ B|**, the inclusion–exclusion principle, which generalises to more sets
+with alternating signs and is how several counting arguments avoid double-counting.
+
+**The power set of an n-element set has 2ⁿ members.** That number is the reason brute force is
+brute force. Every "try all subsets" algorithm in this book — <a href={chapterHref('approximation-algorithms')}>chapter 35</a>'s brute-forced optima, the exact
+subset-sum — is Θ(2ⁿ), and it is the thing NP-completeness is about failing to avoid.
+
+## §B.2 — Relations
+
+A relation on a set is a subset of its pairs. The properties worth naming:
+
+- **reflexive**: a R a for all a;
+- **symmetric**: a R b implies b R a;
+- **transitive**: a R b and b R c implies a R c;
+- **antisymmetric**: a R b and b R a implies a = b.
+
+Reflexive + symmetric + transitive is an **equivalence relation**, and it **partitions** the set into
+disjoint classes. That is not a formality — it is exactly the structure <a href={chapterHref('disjoint-sets')}>chapter 19</a>'s union-find data structure maintains, and the
+reason `FIND-SET` is allowed to return any member as the representative.
+
+Reflexive + antisymmetric + transitive is a **partial order**. A **total order** additionally
+compares every pair. The distinction is worth holding onto: a <a href={chapterHref('elementary-graph-algorithms')}>topological sort</a> is precisely the act of
+extending a partial order (the DAG's edges) to a total one, and the reason several such orders can
+exist is that the partial order left pairs uncompared.
+
+## §B.3 — Functions
+
+Domain, codomain, range. **Injective** (one-to-one), **surjective** (onto), **bijective** (both).
+
+A bijection between finite sets proves they are the same size, which sounds trivial and is the
+engine of most counting arguments — including <a href={chapterHref('sorting-in-linear-time')}>chapter 8</a>'s lower bound, where the argument is
+that a correct comparison sort's decision tree must have at least n! leaves because the mapping from
+inputs to leaves is surjective onto the permutations.
+
+The **pigeonhole principle** — n items in fewer than n boxes means some box has two — is the other
+one, and it is what makes <a href={chapterHref('hash-tables')}>chapter 11</a>'s collisions
+unavoidable rather than merely likely.
+
+## §B.4 — Graphs
+
+Directed and undirected, vertices and edges, degree, path, cycle, connectivity. The definitions to
+be careful with, because the book relies on the precision:
+
+- **simple path**: no repeated vertices. Shortest paths in a graph with no negative cycles are
+  automatically simple; **longest** simple path is NP-hard, and the word "simple" is doing all the
+  work in that sentence.
+- **connected** (undirected) vs **strongly connected** (directed): reachable both ways, which is
+  what <a href={chapterHref('elementary-graph-algorithms')}>§20.5</a>'s two-pass algorithm computes.
+- **bipartite**: the vertices split into two sides with no edge inside a side. Equivalent to having
+  no odd cycle, and it is what makes
+  <a href={chapterHref('bipartite-matching')}>chapter 25</a>'s matching tractable where general
+  matching is much harder.
+- **complete**, **sparse** vs **dense**: |E| near |V| or near |V|². Which one you have decides
+  between an adjacency list and an adjacency matrix, and between Kruskal and Prim.
+
+## §B.5 — Trees
+
+A **free tree** is a connected acyclic undirected graph. A **rooted tree** designates a root, which
+induces parent, child, ancestor, descendant, depth and height. A **binary tree** is a rooted tree
+where each node has a distinguishable left and right child — and the distinguishability matters: <a href={chapterHref('binary-search-trees')}>chapter 12</a>'s trees are not the same objects as free
+trees with two neighbours, and a node with only a left child is a different tree from one with only
+a right child.
+
+The equivalences that make trees so useful, all of which say "any two of these imply the third":
+
+```
+a free tree on n vertices is connected, acyclic, and has exactly n − 1 edges
+```
+
+That is why a spanning tree always has |V| − 1 edges, why Kruskal stops when it has that many, and
+why adding any edge to a tree creates exactly one cycle — the fact <a href={chapterHref('minimum-spanning-trees')}>chapter 21</a>'s cut and cycle properties are built
+on.
+
+**A binary tree of height h has at most 2^(h+1) − 1 nodes**, so a tree with n nodes has height at
+least lg(n+1) − 1. That single inequality is the floor under every balanced-tree result in the book:
+it is why <a href={chapterHref('red-black-trees')}>red-black trees</a> aim for Θ(lg n) and cannot do
+better, and why <a href={chapterHref('heapsort')}>a heap</a>'s operations are Θ(lg n).
+
+## Where this shows up
+
+Nowhere by name, and everywhere in effect. The reason to skim this appendix once is to notice the
+three or four definitions that are load-bearing — equivalence classes for union-find, partial orders
+for topological sort, "simple" for path problems, and n − 1 edges for spanning trees — because each
+of them is the hinge of a later theorem that looks arbitrary without it.

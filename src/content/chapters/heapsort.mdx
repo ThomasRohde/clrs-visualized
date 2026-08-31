@@ -1,0 +1,89 @@
+---
+title: Heapsort
+section: '§6.1–6.5'
+summary: A binary max-heap packed into the array itself, then repeatedly emptied from the top — sorting in place at Θ(n log n).
+algorithms: ['heapsort', 'max-priority-queue']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Heapsort gets the best of both worlds: the Θ(n log n) guarantee of merge sort and the O(1) space of
+insertion sort. It manages this with a data structure that exists only implicitly — a binary tree
+whose parent-child links are arithmetic on array indices rather than pointers.
+
+## The array is the tree
+
+For a node at index `i`, its children live at `2i` and `2i+1` and its parent at `⌊i/2⌋`. No
+pointers, no allocation — the tree is just a way of reading the array. The **max-heap property**
+says every parent is at least as large as its children, so the maximum is always sitting at `A[1]`.
+
+## Two phases
+
+Heapsort runs in two distinct phases, and the dashed line in the visualization marks the
+boundary between them. First `BUILD-MAX-HEAP` imposes the heap property on the whole array. Then
+the sorting loop repeatedly swaps `A[1]` — the maximum — into its final position at the end, shrinks
+the heap by one, and calls `MAX-HEAPIFY` to restore the property at the root.
+
+Watch the settled region grow leftward from the right edge: that is the sorted tail, and once a
+bar squares off it never moves again.
+
+<AlgorithmPlayer id="heapsort" />
+
+<ComplexityCard id="heapsort">
+  **Why BUILD-MAX-HEAP is only O(n):** `MAX-HEAPIFY` costs O(log n) and `BUILD-MAX-HEAP` calls it
+  n/2 times, so the obvious bound is O(n log n). But that bound is loose. The real cost depends on
+  node height, and a heap is overwhelmingly bottom-heavy: half its nodes are leaves that need no
+  work at all, a quarter sit one level up, and so on. Summing height × count over all levels gives
+  a series that converges to O(n).
+
+The n−1 extractions that follow are genuinely O(log n) each, so the overall cost is Θ(n log n) —
+the build phase is not the bottleneck.
+
+**Not stable:** the swap in the sorting loop moves elements across long distances, so equal keys
+do not keep their original relative order.
+
+</ComplexityCard>
+
+## §6.5 — Keeping the heap instead of consuming it
+
+Heapsort builds a heap and then destroys it. A **max-priority queue** keeps it: the same array,
+the same `MAX-HEAPIFY`, but now it is a live structure you can query, drain and refill. Four
+operations are enough.
+
+`HEAP-MAXIMUM` is the reason to bother. The largest key is always at `A[1]`, so asking for it is
+one array read and no work at all — Θ(1), against Θ(n) for an unsorted array.
+
+`HEAP-EXTRACT-MAX` takes that maximum out. It moves the last leaf up to the root, shrinks
+`heap-size` by one, and calls `MAX-HEAPIFY` to let the new root sink to wherever it belongs. This
+is the same move heapsort's inner loop makes, which is not a coincidence: heapsort is exactly
+`BUILD-MAX-HEAP` followed by n−1 extractions.
+
+`HEAP-INCREASE-KEY` runs the other way. Raising a key can only break the heap property upwards, so
+the element climbs, exchanging with its parent until the parent is at least as large. Nothing below
+it can be disturbed, which is why one path to the root — O(log n) — is enough.
+
+`MAX-HEAP-INSERT` is a trick rather than a new procedure: extend the heap by one slot, put −∞ in
+it, and then raise that placeholder to the key you actually wanted. Since −∞ is smaller than
+everything, the raise is always legal, and `HEAP-INCREASE-KEY` does the real work.
+
+The player below runs one of each on your array, in that order. The dashed line is `heap-size`:
+watch it retreat when a key is extracted and advance again when one is inserted, reclaiming the
+slot the extraction gave up.
+
+<AlgorithmPlayer id="max-priority-queue" />
+
+<ComplexityCard id="max-priority-queue">
+  **Every operation is one root-to-leaf path.** A heap on n elements has height ⌊log n⌋, and
+  `MAX-HEAPIFY` and the climb inside `HEAP-INCREASE-KEY` each walk at most one such path. That is
+  the whole analysis; there is no amortization and no averaging hidden in it.
+
+**What a priority queue is not.** It will not give you the second-largest key in Θ(1), or list its
+contents in order without emptying itself. A heap is much weaker than a sorted array — and that
+weakness is what makes insertion O(log n) instead of O(n).
+
+**Where this gets used later.** Prim's minimum-spanning-tree algorithm and Dijkstra's
+shortest-paths algorithm are both loops around `EXTRACT-MIN` and `DECREASE-KEY`, the mirror image
+of the two operations above. Chapters 21 and 22 do not re-derive any of this; they simply call it.
+
+</ComplexityCard>

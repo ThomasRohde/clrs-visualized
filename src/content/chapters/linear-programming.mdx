@@ -1,0 +1,116 @@
+---
+title: Linear Programming
+section: '§29.1–29.3'
+summary: One problem shape that swallows a surprising number of the others — and a duality theorem that turns "here is my answer" into "and here is why you cannot beat it".
+algorithms: []
+---
+
+import { chapterHref } from '../../lib/paths.ts';
+
+A **linear program** asks for the best value of a linear function subject to linear constraints:
+
+```
+maximise    cᵀx
+subject to  Ax ≤ b
+            x ≥ 0
+```
+
+That is all. No products of variables, no conditionals, no integrality — and it is astonishing how
+much fits into it anyway.
+
+Geometrically, the constraints carve out a convex polytope in n dimensions and the objective picks a
+direction; the answer is the furthest point of the polytope in that direction. Because the region is
+convex and the objective is linear, **the optimum is always attained at a vertex**, which is the
+fact every algorithm for the problem exploits.
+
+The 4th edition drops the simplex algorithm, so this chapter has no procedure to animate. What it
+has instead is a way of thinking, and one theorem that is worth more than most algorithms.
+
+## §29.1 — What a linear program is, and what solving one costs
+
+There are three outcomes: an optimal solution, an unbounded objective, or an empty feasible region.
+Real formulations hit the last two more often than you would expect, and usually because the model
+was wrong rather than because the problem was.
+
+Two families of algorithm exist and they are strange mirror images.
+
+**Simplex** walks from vertex to vertex along the edges of the polytope, always improving. It is
+exponential in the worst case — Klee–Minty's cube forces it to visit all 2ⁿ vertices — and it is what
+almost everybody actually runs, because on real instances it takes a small number of steps.
+
+**Interior-point methods** cut through the middle of the polytope instead and are provably
+polynomial. They are the reason "linear programming is in P" is a true statement, and they are
+competitive in practice on large sparse problems.
+
+That an exponential-worst-case algorithm is the practical default and a polynomial one is the
+theoretical answer is a good corrective to reading complexity classes as advice. It is the same
+lesson <a href={chapterHref('quicksort')}>chapter 7</a> teaches with quicksort, at a larger scale.
+
+## §29.2 — Formulating problems as linear programs
+
+The skill this chapter is really teaching is recognising a linear program when it is not written as
+one. Several problems that already have their own chapters are LPs underneath:
+
+**Maximum flow** is immediate. One variable per edge, capacity constraints on each, conservation at
+each vertex, maximise what leaves the source. <a href={chapterHref('maximum-flow')}>Chapter 24</a>
+solves it with a combinatorial algorithm because that is faster, not because it has to.
+
+**Shortest paths** is an LP too, and its shape is instructive: _maximise_ d(t) subject to
+`d(v) ≤ d(u) + w(u,v)` for every edge and `d(s) = 0`. The constraints are exactly the triangle
+inequality that <a href={chapterHref('single-source-shortest-paths')}>chapter 22</a>'s relaxation
+step enforces, and maximising is right because the constraints push the estimates _down_.
+
+**Minimum-cost flow, assignment, and multicommodity flow** are LPs with no comparably fast
+combinatorial algorithm, which is when you actually reach for a solver.
+
+And one that is not: **integer** linear programming, where the variables must be whole numbers, is
+NP-hard. That single added requirement moves the problem from P to the far side of <a href={chapterHref('np-completeness')}>chapter 34</a>, which is as sharp a demonstration as the
+book offers that difficulty lives in the details of a specification.
+
+The gap between an integer program and its **relaxation** — the same program with integrality
+dropped — is exactly the lever <a href={chapterHref('approximation-algorithms')}>§35.4</a> pulls: solve the easy relaxation, round
+the fractional answer, and bound how much the rounding cost you.
+
+## §29.3 — Duality, which is the reason to read the chapter
+
+Every linear program has a **dual**, obtained by transposing the problem: the primal's constraints
+become the dual's variables and vice versa.
+
+```
+primal:   maximise cᵀx   s.t.  Ax ≤ b,   x ≥ 0
+dual:     minimise bᵀy   s.t.  Aᵀy ≥ c,  y ≥ 0
+```
+
+**Weak duality** says any feasible dual solution is an upper bound on any feasible primal one. That
+is easy to prove and immediately useful: it means a dual solution is a **certificate**. You can hand
+someone a number and a reason nobody can do better, and they can check it without redoing your work.
+
+**Strong duality** says the two optima are _equal_. That is not obvious and it is the theorem.
+
+Once you have it, several results elsewhere in the book stop being separate facts:
+
+- **Max-flow min-cut** is the primal-dual pair for flow. The minimum cut is the dual solution, which
+  is why <a href={chapterHref('maximum-flow')}>chapter 24</a>'s algorithm can prove its flow optimal
+  by exhibiting a cut rather than by searching further.
+- **König's theorem** — in a bipartite graph, the maximum matching equals the minimum vertex cover —
+  is the same duality restricted to a 0/1 case, and is why
+  <a href={chapterHref('bipartite-matching')}>chapter 25</a>'s matching comes with a proof attached.
+- The **Hungarian algorithm**'s potentials are a dual solution, and the reason that player can
+  certify its assignment is optimal with a single sum rather than by trying all n! of them.
+
+The habit worth taking from this chapter is that one. **When an algorithm can prove its own answer
+optimal, there is usually a dual hiding in it** — and finding it turns a program you have to trust
+into one that hands you a receipt.
+
+## Where this shows up
+
+Solvers are a commodity now, and the practical consequence is that the expensive skill is modelling
+rather than solving: getting a real problem into the form above, and knowing when it will not go.
+Production planning, portfolio allocation, network design, diet and blending problems, scheduling
+under resource limits — all of them are LPs when the quantities are continuous and integer programs
+the moment something has to be a whole number.
+
+The other reason to know this chapter is defensive. When you meet an optimisation problem in the
+wild, "is this a linear program?" is a cheap question with a very large payoff if the answer is yes,
+and a useful one if the answer is "yes, but with integrality" — because that tells you immediately
+which of the last two chapters of the book to read next.

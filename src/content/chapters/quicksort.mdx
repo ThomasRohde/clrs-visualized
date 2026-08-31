@@ -1,0 +1,88 @@
+---
+title: Quicksort
+section: '§7.1–7.3'
+summary: Divide-and-conquer that does its work before the recursion — partition around a pivot, then sort each side. Fast in practice, quadratic in the worst case.
+algorithms: ['quicksort', 'randomized-quicksort']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Merge sort splits the array trivially and does the real work when combining. Quicksort inverts
+that: `PARTITION` does all the work up front, and once both sides are sorted there is nothing left
+to combine. That is why quicksort sorts in place while merge sort needs a buffer.
+
+## Partitioning
+
+`PARTITION` picks the last element as the pivot, then sweeps `j` across the subarray maintaining a
+simple invariant: everything left of `i` is ≤ the pivot, everything between `i` and `j` is greater.
+When an element ≤ pivot turns up, `i` advances and the two swap. At the end the pivot itself swaps
+into position `i+1` — and that slot is correct forever after, so the bar squares off and settles.
+
+<AlgorithmPlayer id="quicksort" />
+
+<ComplexityCard id="quicksort">
+  **The worst case is easy to trigger.** With the last element always chosen as the pivot, an
+  already-sorted array makes every partition peel off exactly one element. The recursion becomes n
+  levels deep with Θ(n) work at each, giving Θ(n²).
+
+Try it: paste `1,2,3,4,5,6,7,8,9,10,11,12` into the box above and compare the step count against a
+random array of the same size. Then try a reverse-sorted array, which is just as bad.
+
+**The fix is randomization**, and §7.3 is where it happens. Read on.
+
+</ComplexityCard>
+
+## §7.3 — Moving the worst case off the input
+
+The trouble with §7.1's quicksort is not that a bad case exists — every comparison sort has one —
+but that the bad case is a _specific input_, and a common one at that. Sorted data is not a rare
+adversarial construction; it is what half your inputs look like.
+
+`RANDOMIZED-QUICKSORT` changes one line. Before partitioning, it draws a uniformly random index
+from the subarray and exchanges that element into the pivot slot, so `PARTITION` finds it exactly
+where it always looks. The algorithm below the change is untouched.
+
+<AlgorithmPlayer id="randomized-quicksort" />
+
+That single exchange is enough to break the connection between the input and the running time. The
+Θ(n²) case has not disappeared — it is still reachable — but it now requires a long run of unlucky
+draws rather than a particular arrangement of data. No input is bad any more, because the algorithm
+no longer behaves the same way twice on the same input.
+
+### Watch it on a sorted array
+
+This is the experiment worth running. Paste `1,2,3,4,5,6,7,8,9,10,11,12` into both players above
+and compare their **tapes**.
+
+Deterministic quicksort draws the same picture every time: a long, thinning staircase, one element
+peeled off per level, n levels deep. Randomized quicksort draws a different picture on every
+click of "Randomize" — and almost always a much shorter one, because a pivot chosen at random from
+a sorted array is just as likely to be the median as an endpoint. Press it several times: the point
+of the section is precisely that you cannot predict what you will get, only what you will get _on
+average_.
+
+<ComplexityCard id="randomized-quicksort">
+  **Expected Θ(n log n) on every input.** The analysis turns on a neat observation: two elements are
+  compared at most once in the entire run, and only if one of them is chosen as a pivot before any
+  element between them is. For the i-th and j-th smallest, that has probability 2/(j−i+1). Summing
+  over all pairs gives O(n log n) expected comparisons — with no assumption whatsoever about the
+  input distribution.
+
+**"Expected" here means something stronger than "average case".** An average-case bound is an
+average over inputs, and it is worthless if your inputs are not typical. This is an average over
+the algorithm's own coin flips, holding the input fixed — so it holds for _every_ input, including
+the ones an adversary picked.
+
+**The cost is one random draw per partition**, which is why randomized quicksort is what
+general-purpose library sorts actually ship, in one form or another.
+
+</ComplexityCard>
+
+## Why it wins in practice
+
+Quicksort's constant factors are small: the inner loop is a comparison and an occasional swap, with
+excellent cache locality because it walks the array linearly. Merge sort's Θ(n log n) is more
+dependable, but each merge touches a separate buffer. In practice most standard-library sorts are a
+hybrid — introsort, for example, runs quicksort but switches to heapsort when recursion gets too
+deep, capping the worst case at Θ(n log n) without giving up quicksort's speed.

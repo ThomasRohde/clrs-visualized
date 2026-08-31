@@ -1,0 +1,76 @@
+---
+title: 'A — Summations'
+section: '§A.1–A.2'
+summary: The sums that come out of loops, and the three ways to bound one you cannot evaluate.
+algorithms: []
+---
+
+import { chapterHref } from '../../lib/paths.ts';
+
+Every loop is a summation. Analysing an algorithm nearly always ends with a sum you have to either
+evaluate or bound, and this appendix is the reference for both.
+
+## §A.1 — The ones worth memorising
+
+```
+arithmetic       Σ(k = 1..n) k          = n(n+1)/2                 = Θ(n²)
+squares          Σ(k = 1..n) k²         = n(n+1)(2n+1)/6           = Θ(n³)
+geometric        Σ(k = 0..n) xᵏ         = (x^(n+1) − 1)/(x − 1)
+  |x| < 1        Σ(k = 0..∞) xᵏ         = 1/(1 − x)
+harmonic         Σ(k = 1..n) 1/k        = ln n + O(1)              = Θ(lg n)
+telescoping      Σ(k = 1..n) (aₖ − aₖ₋₁) = aₙ − a₀
+lg of factorial  lg(n!)                 = Θ(n lg n)
+```
+
+Three of these carry most of the weight in this book, and it is worth knowing which analysis each
+one comes from.
+
+**The arithmetic series is where Θ(n²) comes from.** Insertion sort's inner loop runs 1, 2, 3, …
+times; selection sort's does the same in reverse. Whenever you see a nested loop whose inner bound
+depends on the outer index, this is the sum, and the answer is n²/2 — half of n², which is exactly
+the constant factor asymptotic notation then discards.
+
+**The geometric series is why divide-and-conquer is cheap.** A recursion that halves the problem
+does work n + n/2 + n/4 + … < 2n. The whole tree costs a constant times its root, which is the
+reason merge sort's Θ(n lg n) comes from the _depth_ rather than from the branching. The same sum
+is why <a href={chapterHref('amortized-analysis')}>chapter 16</a>'s doubling table is Θ(1)
+amortised: the copies cost 1 + 2 + 4 + … + n < 2n over the whole run.
+
+**The harmonic series is where the surprising lg n's come from.** It is the reason randomized
+quicksort is Θ(n lg n) in expectation, the reason the hiring problem hires Θ(lg n) times, and the
+reason a randomly built BST has Θ(lg n) expected depth. Whenever an analysis says "the k-th thing
+has probability 1/k of mattering", this sum is what turns that into a logarithm.
+
+## §A.2 — Bounding a sum you cannot evaluate
+
+Three techniques, in increasing order of effort, and the first is usually enough.
+
+**Bound every term by the largest.** `Σ aₖ ≤ n · max aₖ`. Crude, and it is exactly right when the
+terms are within a constant factor of each other. It is what proves the n² bound for insertion sort's
+worst case in one line.
+
+**Split the sum.** Bound the first part one way and the rest another. The harmonic series is done
+this way: group terms into blocks of 1, 2, 4, 8, … whose sums are each at most 1, and there are lg n
+blocks. This is also the trick behind the analysis of <a href={chapterHref('sorting-in-linear-time')}>bucket sort</a> and several average-case arguments —
+when a sum has a few big terms and many small ones, treat them separately rather than looking for a
+single bound that covers both.
+
+**Compare with an integral.** For a monotonic f, `∫f ≤ Σf ≤ ∫f + f(n)`, with the integral taken over
+the matching range. This is where `Σ 1/k ≈ ln n` actually comes from, and it is the tool that turns
+almost any smooth sum into a closed form good enough for a Θ.
+
+A fourth, worth naming separately because it is the one most often forgotten: **a geometric series
+with ratio bounded away from 1 is Θ(its largest term)**. Not Θ(n × largest) — Θ(largest). If a
+recursion's levels shrink geometrically, only one level matters, and which one it is (the root or
+the leaves) is exactly what the master theorem's three cases distinguish.
+
+## Where this shows up
+
+The place these become a single tool is <a href={chapterHref('divide-and-conquer')}>chapter 4</a>'s recursion trees. The tree method costs a
+sum over levels; the master theorem is a pre-solved catalogue of what that sum comes to in the three
+cases where it is geometric-increasing, flat, or geometric-decreasing. Everything on that page is a
+summation bound with the work already done.
+
+The other place is any analysis with the word "expected" in it. Linearity of expectation turns a
+probability into a sum, and then this appendix takes over — which is <a href={chapterHref('probabilistic-analysis')}>chapter 5</a>'s method in its entirety, and the
+reason its results feel like they arrive from nowhere.

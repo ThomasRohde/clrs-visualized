@@ -1,0 +1,148 @@
+---
+title: Single-Source Shortest Paths
+section: '§22.1–22.5'
+summary: One operation — relax an edge — and three algorithms that differ only in what order they apply it, at costs from linear to quadratic.
+algorithms: ['bellman-ford', 'dag-shortest-paths', 'dijkstra']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 20 found the path with the fewest edges. Now the edges have weights, and the shortest path
+by weight may have many more edges than the shortest by count — a motorway detour beats a direct
+route through town.
+
+What is remarkable about this chapter is how little machinery it takes. There is **one operation**,
+and all three algorithms are made of nothing else:
+
+```
+RELAX(u, v, w)
+1  if v.d > u.d + w(u, v)
+2      v.d = u.d + w(u, v)
+3      v.π = u
+```
+
+`v.d` is the best distance to `v` found so far — always an upper bound on the true one, starting at
+∞ — and `v.π` is the vertex you came from. Relaxing an edge asks "is going through `u` better than
+what `v` already had?" and takes the improvement if so.
+
+That is the whole toolkit. **The three algorithms differ only in what order they relax edges, and
+how many times.** Every difference in speed and in what they can handle comes from that one choice.
+
+## §22.5 — Why relaxing is enough
+
+Two properties, and together they are the correctness proof for all three.
+
+**A `d` value is never too small.** It starts at ∞ and only ever changes to the length of a path
+that actually exists, so it is always the length of some real path — an upper bound on the shortest
+one.
+
+**When no edge is slack, every `d` is exactly right.** If no edge (u, v) has `d[v] > d[u] + w`, then
+following the parent links back from any vertex traces a path whose length is exactly that vertex's
+`d`, and no shorter one can exist. That second half is what the three algorithms are all working
+towards, by different routes: get every edge un-slack, and stop.
+
+Both properties are asserted on every generated input here. Each algorithm's run is checked for a
+slack edge and for a parent that does not justify its child's estimate, which is the proof of §22.5
+rather than a second copy of the code.
+
+## §22.1 — Bellman-Ford
+
+The most general and the least clever. Relax **every** edge, **|V| − 1 times**, and stop.
+
+<AlgorithmPlayer id="bellman-ford" size={6} />
+
+The number of passes is exact rather than cautious. A shortest path has at most |V| − 1 edges, since
+a path visiting a vertex twice can have its loop cut out. After one pass over every edge, every
+shortest path of one edge is correct; after two, every one of two edges; and so on. Nothing about
+the order the edges come in matters, which is why there is no queue anywhere.
+
+**Most relaxations do nothing**, and that is not waste to be optimised away. It is the price of not
+knowing which ones will, and it is exactly why the bound is Θ(VE).
+
+What this buys is **negative weights**, which neither other algorithm can handle. And the final loop
+is not an afterthought: relax everything once more, and if any edge is still slack, there is a
+**negative cycle** — a loop you can go round again for less, so no finite answer exists. Bellman-Ford
+returns FALSE and says so. The generated graphs here have negative edges and real cycles, and the
+back edges are made heavy enough that no cycle can be negative, so the final pass always reports
+TRUE and you can watch it check.
+
+## §22.2 — Shortest paths in a DAG
+
+If the graph has no cycles, the general algorithm is enormous overkill. Take the vertices in
+topological order and relax each one's edges once. **Θ(V + E) total** — one look per edge, and done.
+
+<AlgorithmPlayer id="dag-shortest-paths" size={8} />
+
+The topological order is the entire idea. When the loop arrives at a vertex, every edge that could
+possibly reach it has already been relaxed, because every such edge comes from a vertex earlier in
+the order. So its estimate is already final on arrival, and there is nothing to come back for.
+
+Negative weights are fine here too, and there are some in the run. Nothing in the argument assumes
+that adding an edge makes a path longer — which is exactly the assumption the next algorithm needs.
+
+This is more useful than it looks. Any problem of the form "a sequence of stages, each depending on
+earlier ones" is a DAG path problem: the critical path through a project schedule, the longest chain
+of dependencies in a build, the best sequence of decisions over time. Negate every weight and this
+same code finds the **longest** path, which for a general graph is NP-hard and for a DAG is linear.
+
+## §22.3 — Dijkstra's algorithm
+
+Breadth-first search with a priority queue instead of a queue. Take the vertex with the smallest
+outstanding estimate, declare that estimate final, and relax its edges.
+
+<AlgorithmPlayer id="dijkstra" size={8} />
+
+The greedy step is the part worth pausing on. Why is it safe to declare the smallest outstanding
+estimate final? Because any path to that vertex has to leave the settled set somewhere, and every
+other way out already has an estimate at least as large — so no route through any of them could
+arrive cheaper.
+
+That argument uses **non-negative weights** and collapses without them. A negative edge further along
+could make a longer-looking route cheaper after all, and a vertex declared final would simply have
+been wrong. This is why §22.1 comes first: Dijkstra is the faster algorithm, not the better one.
+
+The square vertices are settled and their numbers will not change again. The ringed ones are the
+frontier: reachable, but not yet certain. And watch an estimate **drop** while its vertex waits —
+that is DECREASE-KEY, and it can happen once per edge, which is where the lg factor in the running
+time goes.
+
+## Comparing them
+
+Run Bellman-Ford and Dijkstra with the **trace tape** open — the strip under the transport — and the
+difference is immediate.
+
+Bellman-Ford's tape is a flat, repetitive field: pass after pass of the same edges being tested,
+with the occasional improvement scattered through it, and long stretches near the end where nothing
+happens at all because the answer settled several passes ago and the algorithm has no way to know.
+Dijkstra's tape is structured — one extraction followed by a burst of relaxations, over and over,
+and it stops the moment the queue empties.
+
+That picture is the Θ(VE) against the O(E lg V), drawn. Bellman-Ford does not know when it is
+finished; Dijkstra's queue tells it.
+
+<ComplexityCard id="dijkstra">
+  **All three are the same operation in a different order**, and the ordering is what everything
+  else follows from: no order at all costs Θ(VE), topological order costs Θ(V + E), and cheapest-first
+  costs O(E lg V).
+
+**Choose by what the graph is, not by the running time.** Acyclic — use §22.2, it is linear.
+Non-negative weights — use Dijkstra. Negative weights anywhere — Bellman-Ford is the only option, and
+it is also the only one that will tell you the question has no answer.
+
+**Unweighted is a special case, not a separate problem.** Set every weight to 1 and Dijkstra's
+priority queue degenerates into chapter 20's plain queue.
+
+</ComplexityCard>
+
+## What is not here
+
+Two things the chapter covers in prose that this page does not animate.
+
+**§22.4's difference constraints.** A system of inequalities of the form `xⱼ − xᵢ ≤ b` is a shortest-
+path problem in disguise: make a vertex per variable, an edge per constraint, and Bellman-Ford either
+solves the system or reports that it is infeasible — which is the same thing as finding a negative
+cycle. It is a reduction rather than an algorithm, and it is the most surprising two pages in Part VI.
+
+**All-pairs shortest paths**, which is chapter 23 and a different shape entirely: a matrix rather
+than a graph, dynamic programming rather than a queue.

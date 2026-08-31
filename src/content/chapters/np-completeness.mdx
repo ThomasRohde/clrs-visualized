@@ -1,0 +1,148 @@
+---
+title: NP-Completeness
+section: '§34.1–34.5'
+summary: The chapter that tells you to stop looking — what "efficient" means formally, why a reduction is a proof, and how the whole edifice hangs off one problem.
+algorithms: []
+---
+
+import { chapterHref } from '../../lib/paths.ts';
+
+Every chapter so far has ended with an algorithm. This one ends with a proof that, for a large and
+important family of problems, you are not going to find one — and, more usefully, with a technique
+for recognising when you are in that family before you have spent a month trying.
+
+The whole subject is built on **reductions**, and a reduction is a strange kind of argument: it
+transfers _hardness_ in the opposite direction from the one intuition suggests. Getting the arrow
+the right way round is most of what there is to learn here.
+
+## §34.1 — "Efficient" means polynomial, and why that is a good definition
+
+A problem is in **P** if some algorithm solves it in O(nᵏ) time for some constant k.
+
+That is a strange place to draw the line, and the objections are all correct. An n¹⁰⁰ algorithm is
+not efficient. A 2^(n/1000) algorithm is fine for anything you will meet. And yet the definition has
+earned its place for two reasons.
+
+**It is robust.** Polynomial time is the same class on a Turing machine, a random-access machine, a
+Lisp interpreter and a parallel machine with polynomially many processors. Composing two polynomial
+algorithms leaves you with a polynomial one. Almost no other threshold has that property, and a
+definition that changed when you changed the model would be describing the model rather than the
+problem.
+
+**Empirically the exponents are small.** Problems shown to be in P mostly land at n³ or below, and
+the ones that first arrive with an absurd exponent tend to get better. Problems shown to be
+NP-complete stay stubbornly exponential. The line predicts something.
+
+The chapter works with **decision problems** — yes/no questions — rather than optimisation ones,
+purely for tidiness. "Is there a vertex cover of size ≤ k?" is not really easier than "what is the
+smallest vertex cover?", and either can be built from the other with a binary search, so nothing is
+lost.
+
+## §34.2 — NP is about checking, not finding
+
+A problem is in **NP** if a claimed yes-answer can be **verified** in polynomial time, given a
+certificate.
+
+Is this graph Hamiltonian? Finding a Hamiltonian cycle looks hopeless. But if someone hands you the
+cycle, checking it is a walk through n vertices. That asymmetry — hard to find, easy to check — is
+the whole of NP, and it is worth noticing how much of the world it describes: a proof is hard to
+find and easy to check, a factorisation, a solution to a puzzle, a bug's reproduction steps.
+
+P ⊆ NP, since if you can find an answer you can certainly check one. **Whether P = NP** is the
+question of whether finding is fundamentally harder than checking. Nobody knows. Essentially
+everybody believes not.
+
+Note what NP does _not_ say. There is no requirement that a **no**-answer be checkable — that is a
+different class, co-NP — and the asymmetry is real rather than an artefact of the definition.
+
+## §34.3 — Reductions, and the direction of the arrow
+
+Problem A is **polynomial-time reducible** to B, written `A ≤_P B`, if a polynomial-time function
+turns any instance of A into an instance of B with the same answer.
+
+```
+instance of A  ──f──▶  instance of B  ──solve B──▶  yes/no  ──▶  answer for A
+```
+
+Read that diagram twice, because it says two opposite-sounding things at once.
+
+**If B is easy, A is easy.** Solve A by translating and calling B's algorithm.
+
+**If A is hard, B is hard.** Contrapositive of the same sentence — and this is the direction the
+chapter uses, essentially always.
+
+So the arrow points _from_ the problem you already know is hard _to_ the one you are trying to
+convict. To show your problem is hard, you do **not** reduce it to a known hard problem; you reduce
+a known hard problem to _it_. Getting this backwards is the single most common error in the subject,
+and it produces proofs that look fine and establish nothing.
+
+A problem is **NP-complete** if it is in NP and _every_ problem in NP reduces to it. Such a problem
+is a hardest problem in NP: a polynomial algorithm for any one of them would give a polynomial
+algorithm for all of them, and P would equal NP.
+
+## §34.4 — The first one, and the ones after it
+
+The definition is only useful once you have one member, because "every problem in NP reduces to it"
+is not something you can check directly. **Cook and Levin** did it the hard way, showing that
+circuit satisfiability — and hence boolean formula satisfiability — is NP-complete by encoding the
+computation of an arbitrary polynomial-time verifier as a circuit.
+
+After that, every subsequent proof is a two-line pattern:
+
+1. show your problem is in NP (exhibit a certificate and a checker);
+2. reduce a **known** NP-complete problem to it, in polynomial time.
+
+The chain the chapter builds is worth remembering as a shape, because each link is a small trick and
+the same tricks come back:
+
+```
+CIRCUIT-SAT  ─▶  SAT  ─▶  3-CNF-SAT  ─┬─▶  CLIQUE  ─▶  VERTEX-COVER  ─▶  HAM-CYCLE  ─▶  TSP
+                                      └─▶  SUBSET-SUM
+```
+
+The 3-CNF step is the pivot. Reducing SAT to a fixed clause size costs almost nothing and makes
+everything downstream easier, because a 3-clause is small enough to build a gadget for. **Gadgets**
+are the recurring technique: a little sub-structure that forces the target problem to make exactly
+the choice the source problem needed. The clique reduction builds a triple of vertices per clause and
+joins compatible literals; the vertex-cover reduction is complement-and-flip.
+
+The reductions are also where the intuition about _why_ these problems are related actually lives.
+CLIQUE and VERTEX-COVER are the same problem inside out. HAM-CYCLE and TSP differ by a cost
+function. The family is not a list of unrelated hard problems; it is one problem in many costumes.
+
+## §34.5 — The list worth knowing
+
+CLRS proves a handful and mentions many. The ones worth recognising on sight, because they turn up
+disguised:
+
+- **SAT / 3-CNF-SAT** — the ancestor, and still the practical workhorse: modern SAT solvers are
+  extremely good, and reducing _to_ SAT is a genuine engineering strategy.
+- **CLIQUE**, **VERTEX-COVER**, **INDEPENDENT-SET** — three views of one problem.
+- **HAM-CYCLE**, **TSP** — routing, and everything shaped like it.
+- **SUBSET-SUM**, **KNAPSACK**, **PARTITION** — packing and budgeting.
+- **GRAPH-COLOURING** — register allocation, scheduling, frequency assignment.
+- **SET-COVER** — crew scheduling, test selection, sensor placement.
+
+And a short list of near-misses that are in P, because the boundary is sharper than it looks:
+**2-CNF-SAT** is in P where 3-CNF-SAT is not; **bipartite** matching is in P where general 3-matching
+is not; **shortest** path is in P where **longest** simple path is NP-hard. In every case one small
+clause of the specification moved the problem across the line, which is the practical reason to read
+this chapter — the difficulty is rarely where you expect.
+
+## What to do about it
+
+Proving your problem NP-complete is not a dead end; it is a redirection, and the book supplies three
+exits.
+
+**Approximate it.** <a href={chapterHref('approximation-algorithms')}>Chapter 35</a> — accept a
+provable factor. Vertex cover within 2, metric TSP within 2, set cover within ln n.
+
+**Exploit the instance.** Worst-case hardness is a statement about the worst case. Real instances
+have structure: bounded treewidth, few variables, a good starting guess. Branch and bound, SAT
+solvers and integer-programming solvers all win by finding it.
+
+**Change the problem.** Often the intractable constraint is one nobody actually needed. This is the
+cheapest fix available and the most frequently overlooked.
+
+The one thing not to do is keep looking for the polynomial algorithm. That is what this chapter is
+for — it is the only chapter in the book whose practical value is telling you to stop.

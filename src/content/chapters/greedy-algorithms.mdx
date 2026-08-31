@@ -1,0 +1,166 @@
+---
+title: Greedy Algorithms
+section: '§15.1–15.4'
+summary: Take the best-looking option and never look back — when that works, why it works, and three problems where it provably does.
+algorithms: ['activity-selection', 'huffman', 'offline-caching']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+A **greedy algorithm** makes the choice that looks best right now and never reconsiders it. That is
+all. There is no search, no backtracking, no comparing of alternatives — which makes greedy
+algorithms both the simplest strategy in the book and the one that most often quietly returns the
+wrong answer.
+
+So the interesting question is never "what does greedy do here" — it is **when is greedy right**,
+and the answer is a property you have to prove about the problem rather than about the algorithm.
+This chapter proves it three times.
+
+## §15.1 — Selecting activities
+
+`n` activities each want the same hall, each has a start and a finish time, and two of them can
+both run only if they do not overlap. Find the **largest** compatible set. Not the busiest hall,
+not the longest activities — the most activities.
+
+Several plausible rules come to mind, and most of them are wrong:
+
+- **Shortest first** fails: one short activity in the middle can block two long ones on either side.
+- **Fewest conflicts first** fails too, though it takes a more contrived arrangement.
+- **Earliest start first** is obviously wrong — one activity that runs all day wins immediately.
+
+The rule that works is **earliest finish first**: of everything still compatible, take whatever
+frees the hall soonest.
+
+<AlgorithmPlayer id="activity-selection" size={8} />
+
+Each row is one activity, drawn across the span of time it occupies, so two activities overlap
+exactly when their bars share a column — compatibility is something you can see rather than
+compute. The activities arrive sorted by finish time, which is why the bars end further right as
+you go down, and once sorted the whole algorithm is a single pass with one comparison per activity.
+
+Watch what the comparison actually uses. It is never the activity's length, never how many
+conflicts it has, never anything about the activities still to come: it is the finish time of the
+**last one chosen** against the start time of the next. The entire past of the run compresses into
+one number.
+
+Why is that optimal? Because of an **exchange argument**. Take any optimal solution and look at its
+first activity. If it is not the first-finishing one, swap it for the first-finishing one — the
+swap cannot conflict with anything, because the replacement frees the hall no later than what it
+replaced. So there is always an optimal solution containing the greedy choice, and choosing it
+throws nothing away. Then recurse.
+
+The run above is checked against brute force on every input the site generates: the module compares
+the greedy answer with the best of all 2ⁿ possible subsets, so if the rule ever failed to be
+optimal the build would fail rather than the page.
+
+## §15.2 — When greedy works
+
+Two properties have to hold, and the first is the one that does the real work.
+
+**The greedy-choice property.** A globally optimal solution can be reached by making a locally
+optimal choice. This is what an exchange argument proves, and it is not automatic — it is the whole
+content of a greedy correctness proof.
+
+**Optimal substructure.** An optimal solution contains optimal solutions to subproblems. Greedy
+shares this with dynamic programming; it is what makes "and then recurse" legitimate.
+
+The difference between the two techniques is worth being precise about, because it is the reason
+chapter 14 exists:
+
+|            | Dynamic programming                | Greedy                          |
+| ---------- | ---------------------------------- | ------------------------------- |
+| Choices    | tries all of them, keeps the best  | makes one, immediately          |
+| Depends on | subproblem answers, computed first | the current state alone         |
+| Direction  | usually bottom-up                  | top-down                        |
+| Cost       | typically polynomial in n          | typically one pass, plus a sort |
+
+The classic pair that shows the line between them: the **fractional knapsack** problem, where you
+may take part of an item, is solved greedily by taking the highest value per unit weight. The
+**0-1 knapsack** problem, where each item is all-or-nothing, is not — the greedy choice can leave a
+gap that nothing fills, and it needs dynamic programming. The problems look nearly identical, and
+one small change to what a "choice" is moves the line.
+
+## §15.3 — Huffman codes
+
+A prefix-free code assigns each character a codeword such that no codeword is a prefix of another,
+which is exactly what lets a decoder tell where one ends. Give common characters short codewords
+and rare ones long ones, and you can beat a fixed-length code by 20–90% on real text.
+
+Such a code **is** a binary tree: characters sit at the leaves, and a character's codeword is the
+path down to it. Since no leaf lies on the path to another leaf, no codeword can prefix another —
+the property comes free with the shape. The cost of a code is Σ freq(c) × depth(c), and an optimal
+one is always a **full** tree: an internal node with a single child could be spliced out, making
+everything below it one bit cheaper.
+
+The greedy rule is again one line: **merge the two least frequent trees**, repeatedly, until one is
+left.
+
+<AlgorithmPlayer id="huffman" size={6} />
+
+The forest on screen is the priority queue, kept in frequency order, so `EXTRACT-MIN` is always
+"the two on the left". Each merge makes a new node whose frequency is the sum of its children's,
+and puts it back — so the queue shrinks by one each round, and after n − 1 merges the code tree is
+what remains. Every character under a merged node just got one bit longer, which is the cost being
+paid, and the two rarest characters are merged first precisely so that they end up deepest.
+
+The exchange argument is the same shape as before: in some optimal tree, the two least frequent
+characters are siblings at the deepest level — if they are not, swapping them with whatever is down
+there cannot increase the cost. So merging them first throws nothing away.
+
+<ComplexityCard id="huffman">
+  **The n lg n is the priority queue, not the greedy rule.** The algorithm itself does n − 1
+  merges; each needs the two smallest frequencies, which is what chapter 6's heap is for. With the
+  frequencies already sorted, a queue of two lists makes it Θ(n).
+
+**A worthwhile identity to check the result against:** the cost of the code, Σ freq × depth, always
+equals the sum of the frequencies of the **internal** nodes. Each merge adds its combined frequency
+exactly once, and that is one bit added to everything beneath it.
+
+</ComplexityCard>
+
+## §15.4 — Offline caching
+
+A cache holds `k` blocks out of a much larger memory. A request for a block that is in the cache is
+a **hit**; one for a block that is not is a **miss**, and if the cache is full, something has to be
+evicted. Minimise the misses.
+
+The decision to make is which block to throw out, and the answer depends entirely on what you are
+allowed to know. **Online** — seeing each request only when it arrives — every policy can be
+defeated by an adversary choosing requests. **Offline**, with the whole sequence in hand, there is
+a rule that cannot be beaten: evict the block whose **next request is furthest in the future**.
+
+<AlgorithmPlayer id="offline-caching" size={12} />
+
+The top row is the request sequence and the bottom row is the cache. The bracket marks the requests
+still to come, and it is worth noticing that this is the _only_ thing the eviction decision reads:
+not which block was used least recently, not which has been in the cache longest — how far ahead
+each resident block is next wanted.
+
+Two kinds of miss are worth telling apart as you step through. A **compulsory** miss happens when
+the block has never been loaded and there is room for it; no policy could avoid it. A **capacity**
+miss happens when the cache is full, and it is the only kind the eviction rule can be judged on.
+
+This algorithm cannot be run in a real cache, because it needs the future. Its value is as a
+**bound**: it says what the best conceivable policy would achieve, and every practical policy is
+measured against it. Least-recently-used, which is what real caches actually run, is this rule with
+the arrow of time reversed — it evicts the block used furthest in the past, on the assumption that
+recent use predicts future use.
+
+Like activity selection, the run above is checked against the truth rather than against itself: the
+module searches every possible sequence of evictions and asserts that none of them produces fewer
+misses.
+
+## The pattern
+
+All three proofs have the same shape, and it is worth naming so the next one is recognisable.
+
+1. Show there is an optimal solution that makes the greedy choice — by taking any optimal solution
+   and **exchanging** its first choice for the greedy one, without making it worse.
+2. Show that after making that choice, what is left is a smaller instance of the same problem.
+3. Conclude by induction.
+
+Step 1 is where all the work is, and it is also where a greedy algorithm for the wrong problem
+falls over — the exchange stops being harmless. When you cannot make that argument, the choice has
+to be deferred rather than made, and deferring choices until their subproblems are solved is
+chapter 14.

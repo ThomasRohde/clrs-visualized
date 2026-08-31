@@ -1,0 +1,183 @@
+---
+title: String Matching
+section: '§32.1–32.5'
+summary: Find a pattern in a text five ways — three that refuse to throw away what they have learned, and one that prepares the text instead of the pattern.
+algorithms:
+  ['naive-string-matcher', 'rabin-karp', 'finite-automaton-matcher', 'kmp', 'suffix-array']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Find every place a pattern `P` of length m occurs in a text `T` of length n. Every editor, every
+`grep`, every genome aligner does this, usually millions of times a second.
+
+The first four algorithms here are unusually good company for each other, because they are four
+different answers to the **same** criticism of the first one. They are also the clearest example in
+the book of preprocessing: three of them spend time on the pattern before looking at the text at
+all, and buy a linear scan with it. The fifth prepares the **text** instead, which is a different
+trade entirely.
+
+The first four are drawn the same way — the text on one row, the pattern on a second row shifted
+right by the current offset — so they can be compared directly.
+
+## §32.1 — The naive matcher
+
+Try every shift. Compare until something differs.
+
+<AlgorithmPlayer id="naive-string-matcher" size={13} />
+
+Θ((n − m + 1)m) in the worst case, and the worst case is not exotic: `aaaa…a` against `aaab` hits it
+exactly, because every shift matches almost all the way before failing on the last character.
+
+**What is wasteful here is worth naming precisely**, because the next three sections are three ways
+of not doing it. Having matched three characters at shift 3 and then failed, the naive matcher
+starts again at shift 4 knowing **nothing** — even though what it just read tells it a great deal
+about which shifts could possibly work.
+
+It is worth saying that on random text over a large alphabet this is perfectly good: most shifts die
+after one or two comparisons, and the expected cost is about 2(n − m + 1). It falls apart on
+structured text with a small alphabet — DNA, log files, binary formats — which is exactly where
+string matching is done at scale.
+
+## §32.2 — Rabin-Karp
+
+Compare **numbers** instead of strings.
+
+Read the pattern as a number in base d, where d is the alphabet size; do the same for each window of
+the text. Equal strings have equal numbers, so a window whose number differs is rejected in one
+comparison rather than up to m.
+
+<AlgorithmPlayer id="rabin-karp" size={13} />
+
+Two problems, and their fixes are the algorithm.
+
+**The numbers get too big**, so everything is done modulo a prime q, keeping each one inside a
+machine word. **Modulo loses information**, so a hash hit is only a _candidate_ and must be
+confirmed character by character. Those are **spurious hits**, and the run flags each one. With q
+chosen well they are rare — about one shift in q — and the modulus here is deliberately small so you
+will actually see some.
+
+What makes it fast is the **rolling hash**: the window's number at shift s + 1 comes from the one at
+shift s in constant time — drop the leading digit, shift, add the trailing one. All n − m + 1 window
+numbers cost Θ(n) in total instead of Θ(nm).
+
+The worst case is still Θ((n − m + 1)m), when every shift is spurious. That is why q is chosen at
+random in practice: an adversary who knows q can construct that input, and one who does not, cannot.
+
+## §32.3 — A finite automaton
+
+Build a machine that reads the text once, one character at a time, and announces a match the moment
+it reaches its final state. **Θ(n), one table lookup per character, and no character comparison at
+all during the scan.**
+
+<AlgorithmPlayer id="finite-automaton-matcher" size={12} />
+
+The machine has m + 1 states, and state `q` means "the last q characters read are the pattern's
+first q, and nothing longer works". The transition `δ(q, a)` is defined as the length of the longest
+prefix of P that is a suffix of `P[1‥q]a` — which is exactly what keeps that invariant true.
+
+Pause on the case that looks wrong. Reading one bad character can throw away most of the progress,
+and **the state it drops to is not necessarily zero**: if the pattern's own prefix reappears inside
+what has been read, the machine lands there instead. The table knows where, so the scan never looks
+backwards.
+
+The cost is the table: `m|Σ|` entries, and building it takes O(m|Σ|) with §32.3's method. On a small
+alphabet that is nothing. On a large one it is the whole expense, and it is why the next section
+exists.
+
+This is also the shape of every lexer and every regular-expression engine you have used: compile the
+pattern to an automaton once, then run the input through it in linear time.
+
+## §32.4 — Knuth-Morris-Pratt
+
+The automaton with the table replaced by **one array of m numbers**. Same Θ(n) scan, Θ(m) space, and
+no dependence on the alphabet at all.
+
+<AlgorithmPlayer id="kmp" size={13} />
+
+`π[q]` is the length of the longest proper prefix of `P[1‥q]` that is also a suffix of it. When q
+characters have matched and the next one fails, the algorithm does not go back to the next shift: it
+knows the last `π[q]` characters it read are already a prefix of the pattern, and carries on from
+there. **The text pointer never moves backwards**, which is what makes KMP the algorithm you want on
+a stream — characters can be consumed once and discarded.
+
+The first half of the run computes π, and it does it **by running the matcher on the pattern against
+itself**. That is the neatest thing in the section and easy to miss when reading it: the two inner
+loops are the same code with `T` replaced by `P`.
+
+Watch the fallbacks in the second half. A single mismatch can fire `q = π[q]` several times in a
+row, each giving up on a longer prefix, and every one of those is a whole block of shifts the naive
+matcher would have tried individually. The bound is **amortised**: `q` rises by at most one per
+character, so across the whole text it cannot fall more than n times, however dramatic any one
+fallback looks.
+
+## Comparing them
+
+Run the naive matcher and KMP on the same input with the **trace tape** open — the strip under the
+transport.
+
+The naive tape is a regular sawtooth: a burst of comparisons, a mismatch, restart, repeat, with the
+bursts all much the same length. KMP's is flatter and shorter, and the shape is different in a
+specific way — there is no restart. Where the naive matcher's pointer jumps back into text it has
+already read, KMP's simply carries on, and the tape has no corresponding beat because nothing is
+re-examined.
+
+Then compare the two **step counts**. On random text over three letters the gap is modest — the
+naive matcher is not badly behaved here. Type a pathological input into both instead
+(`aaaaaaaaaaaa, aaab`) and the difference is the whole chapter.
+
+<ComplexityCard id="kmp">
+  **Preprocessing buys a linear scan, and the four differ in what they pay for it**: nothing and
+  Θ(nm) worst case; Θ(m) and an expected Θ(n); Θ(m|Σ|) and a guaranteed Θ(n); Θ(m) and a guaranteed
+  Θ(n).
+
+**KMP dominates the automaton** on space and preprocessing, at no cost in matching time. The
+automaton is still the right mental model — KMP is best understood as the automaton with the
+transitions computed on demand rather than stored.
+
+**Rabin-Karp is the one that generalises.** The other three find one pattern; the rolling hash
+extends naturally to finding any of a set of patterns, to two-dimensional matching, and to
+content-addressed storage, where the "pattern" is a block of a file you have never seen.
+
+</ComplexityCard>
+
+## §32.5 — Suffix arrays
+
+The last section inverts the problem, and it is the one that scales.
+
+Everything above preprocesses the **pattern**. That is the right trade when the text is new each
+time — a file you are grepping, a stream going past. It is the wrong trade when one large text is
+searched over and over, which is what a search engine, a genome database and a code index all are.
+
+A **suffix array** preprocesses the text instead: sort all n of its suffixes and keep their starting
+positions. Every occurrence of any pattern is a prefix of some suffix, and the suffixes sharing a
+given prefix are **contiguous in sorted order** — so a query becomes two binary searches for the
+ends of that block, O(m lg n), with every occurrence found at once. Add the longest-common-prefix
+array and it drops to O(m + lg n).
+
+<AlgorithmPlayer id="suffix-array" size={9} />
+
+The construction is the interesting part and the reason this is a section rather than a footnote.
+Sorting n suffixes naively compares strings of total length Θ(n²), which would cost more than the
+searching ever saves. **Prefix doubling** avoids it: sort by the first character, then use those
+ranks to sort by the first two characters, then four, then eight — each round reusing the last one's
+answer, so every comparison is two integers rather than a string.
+
+Watch the highlighted window widen each round, and watch rows stop moving once their prefix is
+unique. A suffix whose rank differs from its neighbour's is settled, and no later round can reorder
+it — which is why ⌈lg n⌉ rounds are enough.
+
+The last phase is the query. Two binary searches find the ends of the block, and every occurrence is
+inside it, found without ever scanning the text.
+
+## What is not here
+
+**Boyer-Moore**, which is usually the fastest in practice and is a problem rather than a numbered
+section in this edition. It scans each window **right to left**, which lets a mismatch skip several
+shifts at once instead of one — sublinear on average, because it does not read every character of
+the text.
+
+One note on the fourth section. **KMP is starred in the fourth edition** — the book marks it as
+material a course may skip. It has a player here anyway, because it is the classical answer to the
+question the chapter opens with and because the prefix function is the cleanest idea in it.

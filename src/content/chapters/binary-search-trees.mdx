@@ -1,0 +1,124 @@
+---
+title: Binary Search Trees
+section: '§12.1–12.3'
+summary: The structure that keeps its keys in order — search, minimum, successor, insertion and deletion, all at the cost of the tree's height, and the reason that height is the whole problem.
+algorithms: ['bst']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 11 ended on what a hash table gives up. It scatters keys deliberately, so it can answer
+"is `k` here" in constant time and nothing else: not the smallest key, not the next key after this
+one, not everything between 20 and 40, not the whole set in order.
+
+A **binary search tree** buys all of those back. The price is that no operation is Θ(1) any more —
+every one of them costs the **height** of the tree — and the whole of this chapter and the next is
+about what that height turns out to be.
+
+## §12.1 — What a search tree is
+
+A binary search tree is a binary tree whose nodes each carry a key, arranged so that one property
+holds **at every node** — not just at the root:
+
+> If `y` is in the left subtree of `x`, then `y.key ≤ x.key`.
+> If `y` is in the right subtree of `x`, then `y.key ≥ x.key`.
+
+That is the entire definition, and everything below is a consequence of it. Note what it does
+_not_ say: nothing about balance, nothing about shape. The same seven keys can form a tree of
+height 2 or a tree of height 6, and both are perfectly valid search trees.
+
+The property has an immediate consequence worth seeing before anything else. Walk the tree by
+visiting the left subtree, then the node, then the right subtree — an **inorder walk** — and the
+keys come out sorted:
+
+```
+INORDER-TREE-WALK(x)
+1  if x ≠ NIL
+2      INORDER-TREE-WALK(x.left)
+3      print x.key
+4      INORDER-TREE-WALK(x.right)
+```
+
+It visits every node once, so it is Θ(n), and it needs no comparisons at all — the order is already
+in the shape. In the player below you can check this without running anything: **read the nodes
+left to right across the picture** and they are in ascending order, on every frame. That is not a
+coincidence of the drawing; it is the inorder walk, laid out flat.
+
+## §12.2 — Querying a search tree
+
+`TREE-SEARCH` is the property used as an instruction. Compare `k` with the node you are at: if it
+is smaller, everything in the right subtree is too big to be worth looking at, so go left. If it is
+larger, go right. Each comparison discards a subtree, and the walk goes straight down.
+
+<AlgorithmPlayer id="bst" size={9} />
+
+Watch the hull that surrounds part of the tree: it is **the set of nodes that could still hold the
+key**, and every comparison shrinks it to one side. Nothing outside it is ever looked at again.
+That is the whole idea of a search tree, and it is why the cost is the number of levels rather than
+the number of nodes.
+
+The other queries are the same walk with the turns fixed in advance:
+
+- **`TREE-MINIMUM`** never turns right. The smallest key is the leftmost node, which is exactly
+  where the drawing puts it.
+- **`TREE-MAXIMUM`** never turns left.
+- **`TREE-SUCCESSOR(x)`** — the next key up from `x` — has two cases, and they are worth
+  understanding because deletion uses the first. If `x` has a right subtree, the successor is the
+  **minimum of that subtree**: the smallest thing bigger than `x`. If it does not, the successor is
+  the lowest ancestor whose _left_ child is also an ancestor of `x` — you walk up until you first
+  step up-and-right.
+
+All four are O(h) for a tree of height `h`, and none of them does anything cleverer than follow one
+path.
+
+## §12.3 — Insertion and deletion
+
+**Insertion is a search that missed.** `TREE-INSERT` walks down exactly as a search would, keeping
+one step behind in `y`, until it falls off the bottom of the tree; the node then hangs off `y`.
+Step through an insertion in the player and count the writes: there is exactly **one**. Nothing
+above the new node is touched, nothing is copied, nothing is rebalanced. The cost is the walk.
+
+**Deletion is where it gets interesting**, because a node that is removed leaves a hole that its
+children have to fill, and there are three cases:
+
+1. **No children.** Detach it. Nothing else changes.
+2. **One child.** The child moves up into its place, bringing its own subtree with it. Still one
+   pointer.
+3. **Two children.** Neither child can be promoted — each would displace the other. So the node
+   is not removed at all: its **successor** takes its place. The successor is the minimum of the
+   right subtree, which by definition has no left child, so lifting it out is itself case 1 or 2.
+
+`TRANSPLANT(T, u, v)` is the small helper that makes those cases short: it replaces the subtree
+rooted at `u` with the one rooted at `v`, and it only has to work out which side of `u.p` to write.
+It never touches `v`'s children, which is why case 3 can move a whole subtree with one call.
+
+The run above deletes a node with two children, because it is the case the other two are special
+cases of. Watch the successor get lifted out of the right subtree, adopt both of the deleted node's
+subtrees, and settle into its place — and then read the picture left to right again. Still sorted.
+
+<ComplexityCard id="bst">
+  **Every row here says O(h), and h is not under this chapter's control.** The tree's shape is
+  decided entirely by the order the keys arrive in, because nothing in `TREE-INSERT` ever moves an
+  existing node.
+
+**Insert the keys in random order** and the expected height is O(lg n) — that is §12.4, and it is a
+genuinely reassuring result, because it says a search tree is well-behaved on typical data.
+
+**Insert them sorted and the tree is a linked list of height n − 1.** Every insertion falls down
+the right-hand side, every search walks the whole thing, and the structure has cost you a pointer
+per node to be slower than the array you started with. Try it in the box above: type `10, 20, 30,
+40, 50` and watch what gets built.
+
+</ComplexityCard>
+
+## The problem this leaves
+
+So a binary search tree is either an excellent structure or a terrible one, depending on
+information it never sees — the order its keys happened to arrive in. Sorted input is not an
+adversarial edge case either; it is one of the most common shapes real data comes in.
+
+There are two ways out. **Randomize the input**, which chapter 12 discusses and which only works if
+you have all the keys up front. Or **change the tree as you build it**, so that no insertion order
+can make it tall. That is a balanced search tree, it costs a constant amount of extra work per
+insertion, and it is what chapter 13 is.

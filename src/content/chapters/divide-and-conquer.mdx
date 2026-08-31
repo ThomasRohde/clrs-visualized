@@ -1,0 +1,132 @@
+---
+title: Divide-and-Conquer
+section: '§4.1–4.7'
+summary: Multiplying matrices in fewer than n³ operations — and the three methods for solving the recurrences that divide-and-conquer keeps producing.
+algorithms: ['matrix-multiply', 'strassen']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 2 already used divide-and-conquer: merge sort splits, recurses, and combines. This chapter
+is about the **analysis** of that pattern — how to solve the recurrences it produces — with one
+algorithm as the running example, chosen because its answer is genuinely surprising.
+
+## §4.1 — Multiplying matrices the obvious way
+
+Every entry of a matrix product is one row of A dotted with one column of B. Three nested loops,
+`c_ij = Σ_k a_ik · b_kj`, and Θ(n³) multiplications.
+
+<AlgorithmPlayer id="matrix-multiply" size={3} />
+
+Watch the row travel along and the column travel down, meeting at the entry being built. What is
+notable is what the running time does **not** depend on: not the values, not the shape of the data,
+nothing at all. Every run on an n × n pair costs exactly n³ multiplications. It is one of very few
+algorithms in the book with no best case and no worst case — which makes it the right thing to be
+surprised by.
+
+There is an obvious divide-and-conquer version. Split each matrix into four quadrants; then
+
+```
+C₁₁ = A₁₁B₁₁ + A₁₂B₂₁,  and three more like it
+```
+
+which is **eight** multiplications of half-size matrices plus some additions, giving
+
+```
+T(n) = 8 T(n/2) + Θ(n²)
+```
+
+and that solves to Θ(n³) again. Divide-and-conquer on its own buys nothing here. The recursion has
+to actually do less work, not merely rearrange it.
+
+## §4.2 — Strassen's algorithm
+
+Seven multiplications instead of eight.
+
+<AlgorithmPlayer id="strassen" size={2} />
+
+The run above is the 2 × 2 base case, because that is where the trick is. Each of the seven products
+multiplies a **sum or difference** of entries rather than two entries, and then four combinations of
+those seven products are arranged so that everything unwanted cancels. Step through the last one —
+`C₂₂ = P₅ + P₁ − P₃ − P₇` expands to fourteen terms, twelve of which cancel in pairs.
+
+At the base case this is a bad trade: one multiplication saved for eighteen additions. The point is
+that when the entries are **blocks** the same seven formulas still hold, each multiplication is now
+a multiplication of n/2 × n/2 matrices, and the additions are only Θ(n²):
+
+```
+T(n) = 7 T(n/2) + Θ(n²)   →   Θ(n^lg 7) ≈ Θ(n^2.81)
+```
+
+One recursive call fewer, compounding through every level.
+
+It is worth being honest about where the formulas came from. Nobody derived them by insight; they
+are the result of a search. Strassen's actual contribution was showing that fewer than eight was
+possible **at all**, which had been widely assumed impossible — and that opened a line of work still
+running today, currently at an exponent around 2.37 with algorithms far too unwieldy to use. Seven
+is now known to be optimal for 2 × 2.
+
+In practice Strassen's algorithm starts winning somewhere in the low hundreds, and it is
+numerically less stable than the definition, so library implementations that use it switch back to
+§4.1 below a threshold.
+
+## §4.3–4.5 — Solving the recurrences
+
+Both algorithms above produced a recurrence, and so does every divide-and-conquer algorithm. The
+rest of the chapter is three ways to solve one. None of them is animated here, because each is a
+technique for reasoning on paper rather than an algorithm with a state to draw.
+
+**The substitution method (§4.3).** Guess the answer, then prove it by induction. It is the most
+powerful of the three — it is the only one that can handle a recurrence the others cannot express —
+and the most annoying, because it needs the guess up front. The characteristic trap: proving
+`T(n) ≤ cn` and finding the induction fails by an additive constant, which is fixed by strengthening
+the hypothesis to `T(n) ≤ cn − d` rather than by weakening the claim.
+
+**The recursion-tree method (§4.4).** Draw the recursion as a tree, work out the cost of each level,
+and sum. It is the method for _finding_ the guess the substitution method needs, and it makes the
+shape of the answer obvious: in `T(n) = 2T(n/2) + n` every level costs n and there are lg n levels,
+so it is n lg n, which is merge sort. In `T(n) = 3T(n/4) + n²` the costs shrink geometrically down
+the tree, so the root dominates and the answer is Θ(n²).
+
+**The master method (§4.5).** For the common shape `T(n) = aT(n/b) + f(n)`, compare `f(n)` with
+`n^{log_b a}` — the total cost of the leaves — and take whichever wins:
+
+- leaves dominate → `Θ(n^{log_b a})`;
+- they tie → `Θ(n^{log_b a} lg n)`;
+- the root dominates (and satisfies a regularity condition) → `Θ(f(n))`.
+
+Applied to this chapter: the naive block version has a = 8, b = 2, so `n^{log₂ 8} = n³` beats `n²`
+and the leaves dominate: Θ(n³). Strassen has a = 7, so `n^{log₂ 7} ≈ n^2.81`, still beating `n²`:
+Θ(n^lg 7). Merge sort has a = b = 2, `n^{log₂ 2} = n`, which ties with `f(n) = n`: Θ(n lg n).
+
+**The gap between the cases is real, not a technicality.** The master method says nothing about
+`T(n) = 2T(n/2) + n lg n`, because `n lg n` is larger than `n` but not _polynomially_ larger. That
+recurrence solves to Θ(n lg² n), and getting there needs a recursion tree.
+
+<ComplexityCard id="strassen">
+  **The recurrence is where a divide-and-conquer algorithm's running time lives**, and the number of
+  recursive calls is almost always the term that matters. Eight calls give Θ(n³); seven give
+  Θ(n^2.81). Nothing else in either algorithm changed.
+
+**Both matrix algorithms are Ω(n²) at best**, because the answer has n² entries and every one of
+them must be written. No amount of cleverness gets under that, which is why the open question is
+where between 2 and 2.37 the true exponent lies.
+
+**§4.6 proves the master theorem** in its continuous form, by the recursion-tree argument made
+rigorous, and **§4.7 gives the Akra-Bazzi method** — the general tool for recurrences whose
+subproblems are of different sizes, which the master method cannot express at all. Both are
+starred. Worth reading once; not worth memorising.
+
+</ComplexityCard>
+
+## Where the rest of this chapter went
+
+In the third edition, §4.1 was the **maximum-subarray problem** — the small divide-and-conquer
+exercise many readers remember. In the fourth it has been demoted to Problem 4-1, and matrix
+multiplication takes its place as the chapter's worked example. It is catalogued in this site's
+backlog rather than dropped.
+
+Chapter 28 returns to matrices with a completely different question — solving systems of equations
+rather than multiplying — and chapter 30 uses the same divide-and-conquer shape to multiply
+polynomials in Θ(n lg n).

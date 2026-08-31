@@ -1,0 +1,226 @@
+---
+title: Amortized Analysis
+section: '§16.1–16.4'
+summary: Three ways to prove that a sequence of operations is cheap even though one of them is expensive — aggregate, accounting and potential — and the doubling table they justify.
+algorithms: ['multipop', 'binary-counter', 'dynamic-table']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Every analysis so far has asked what one operation costs. This chapter asks what a **sequence** of
+them costs, and the answer is repeatedly much better than the sum of the worst cases.
+
+That gap is not a technicality. Multiply the worst case by n and you get a bound that is true,
+provable, and wrong by a factor of n — which would mean rejecting a structure that is in fact the
+right one. Amortized analysis is how you get the honest number.
+
+One thing to be clear about first, because the word invites the wrong reading. **Amortized analysis
+has no probability in it.** Chapter 5 averaged over random choices, and its results were expected
+values that a bad run could miss. Here there is no randomness and no distribution over inputs: the
+guarantee is that _every_ sequence of n operations costs what is claimed, in the worst case. What is
+averaged is the cost across the operations of the sequence, not across possible worlds.
+
+## §16.1 — Aggregate analysis
+
+The first method is also the bluntest: work out the worst-case cost `T(n)` of **the whole
+sequence**, then divide by n. Every operation gets the same amortized cost `T(n)/n`, even when the
+operations are of different kinds and obviously differ in price.
+
+### Stack operations
+
+Take a stack with a third operation, `MULTIPOP(S, k)`, which pops the top k objects — or empties
+the stack, if it holds fewer than k. Its cost is the number of pops it performs, so a single
+`MULTIPOP` on a deep stack costs Θ(n), and the naive bound for n operations is Θ(n²).
+
+That bound is never attained, and the reason is almost too simple to feel like a proof: **each
+object can be popped only once, and it must be pushed before it can be popped.** So over any
+sequence of n operations the number of pops cannot exceed the number of pushes, which cannot exceed
+n. Total cost at most 2n; amortized cost per operation at most 2, which is O(1).
+
+<AlgorithmPlayer id="multipop" size={12} />
+
+The sequence is a mix of pushes and multipops — a positive number pushes it, and `−k` calls
+`MULTIPOP(S, k)`. Step to any `MULTIPOP` and watch the bracket collapse: that operation is
+genuinely expensive, and the strip above the stack counts what it cost.
+
+Now watch what it takes to _make_ one expensive. The bracket can only collapse by as much as it has
+previously grown, one push at a time, and each of those pushes was an operation of its own. An
+expensive `MULTIPOP` is not an exception to the cheap operations — it is **paid for by them**, and
+it cannot happen without them. The running total on the right of that strip is the evidence: let
+the sequence finish and it will be at most twice the number of operations, whatever mix you give
+it.
+
+The other thing to notice is one chapter 10 already made: popping does not erase. The values stay
+in the array outside the bracket, and a later push overwrites one. `MULTIPOP` moves a boundary k
+times; that is all it ever does.
+
+### Incrementing a binary counter
+
+The second example is a k-bit counter, `A[0‥k−1]`, with `A[0]` the low-order bit. `INCREMENT` clears
+the run of 1s at the bottom and sets the first 0 above them, so its cost is the number of bits it
+flips: 1 for an even counter, and k in the worst case, when every bit is 1.
+
+<AlgorithmPlayer id="binary-counter" size={12} />
+
+The bits are drawn as we write numbers, low-order at the right, and the bracket over the right-hand
+end is the price of the increment shown _before_ it is paid: every bit under it will be flipped.
+Watch it as the run proceeds. Most increments are bracketed over one bit. Every second one is
+bracketed over at least two, every fourth over at least three, and the wide brackets are exactly as
+rare as they are expensive.
+
+That is the whole argument, and it is worth writing down as arithmetic. `A[0]` flips on every
+increment. `A[1]` flips on every second one. `A[i]` flips ⌊n/2^i⌋ times. So the total over n
+increments is
+
+> n + n/2 + n/4 + … < 2n
+
+whatever the sequence looks like — a geometric series that does not depend on k at all. The
+`writes` counter under the visualization is the running total of flips, and if you let the run
+finish you will find it below twice the number of increments, every time. It is not an observation:
+the module's own correctness check asserts it on every input the site generates.
+
+## §16.2 — The accounting method
+
+The second method makes the sharing explicit. Assign each _kind_ of operation an **amortized cost**
+that may differ from what it actually costs. When the amortized cost is more than the real one, the
+difference is stored as **credit** on a specific object in the structure; when it is less, the
+stored credit pays the difference.
+
+The one rule: **the total credit must never go negative**, for any sequence and at any point. If it
+never does, the amortized costs sum to an upper bound on the true cost, because you have only ever
+spent money you had already collected.
+
+For the stack:
+
+| Operation      | Actual cost | Charged |
+| -------------- | ----------- | ------- |
+| `PUSH`         | 1           | 2       |
+| `POP`          | 1           | 0       |
+| `MULTIPOP(k′)` | k′          | 0       |
+
+A push is charged two: one for doing the push, and one left sitting **on the object itself** as
+credit that will pay for its own eventual pop. Every object on the stack carries exactly one unit,
+so the credit in the structure is never negative, and any pop — however deep, however many at once
+— is already funded. The total charge for n operations is at most 2n.
+
+The same accounting works on the counter. Charge 2 to set a bit: one for the write, and one left on
+that bit to pay for clearing it later. Clearing is then free, and since a bit must be set before it
+can be cleared, the credit on the counter is the number of 1s in it, which is never negative. Each
+`INCREMENT` sets at most one bit, so it is charged at most 2.
+
+## §16.3 — The potential method
+
+The third method stores the same prepayment in the structure as a whole rather than on individual
+objects. A **potential function** Φ maps a state of the structure to a number, and the amortized
+cost of an operation is
+
+> ĉᵢ = cᵢ + Φ(Dᵢ) − Φ(Dᵢ₋₁)
+
+— what it really cost, plus the change in potential it caused. Sum that over the sequence and the
+middle terms telescope, leaving the total actual cost plus Φ(Dₙ) − Φ(D₀). So if Φ starts at zero and
+never goes below it, the amortized costs are an upper bound on the real ones.
+
+Go back to the `MULTIPOP` player and look at the strip above the stack, which is this equation
+being kept live. **Take Φ to be the number of objects on the stack — which is exactly the width of
+the bracket.** A push does one unit of work and raises Φ by one, so ĉ = 1 + 1 = 2. A `MULTIPOP` of
+k′ objects does k′ units of work and lowers Φ by k′, so ĉ = k′ − k′ = 0. Expensive operations are
+precisely the ones that release potential, and the strip shows ĉ landing on 2 or 0 no matter how
+much that particular step cost.
+
+For the counter, take Φ to be **the number of 1s**. An increment that clears t ones and sets one bit
+does t + 1 units of work and changes the potential by 1 − t, so
+
+> ĉ = (t + 1) + (1 − t) = 2
+
+for every increment, whatever t is. The t cancels — which is the thing to remember about the
+potential method, because that cancellation is what makes it feel like a trick the first few times.
+It is not: Φ was chosen so that a run of 1s is stored-up potential, and clearing that run spends it.
+
+The three methods are three ways of writing the same argument, and which one to reach for is a
+matter of what the structure makes easy. Aggregate is the shortest when you can bound the whole
+sequence directly; accounting is natural when the prepayment belongs to identifiable objects;
+potential is the most flexible, and it is the one the rest of the book uses.
+
+## §16.4 — Dynamic tables
+
+Chapter 10 left a real problem unsolved. Every array-based structure there had a capacity fixed
+when it was created, and a stack that outgrows its array has nowhere to put the next element.
+
+The fix is to allocate a bigger table and copy everything across. The only question is how much
+bigger, and it is the difference between a good structure and a useless one. **Grow by one slot**
+and each of the n insertions copies everything before it: 1 + 2 + … + (n−1), which is Θ(n²) — worse
+than useless, since you could have sorted the data in that time. **Double**, and the picture
+changes completely.
+
+<AlgorithmPlayer id="dynamic-table" size={10} />
+
+The bracket here is `T.size`, the table **as actually allocated**; the outlines beyond it are room
+the drawing keeps so nothing rescales mid-run, not slots the table owns. The first insertion allocates a single slot; after that, watch the
+bracket double at insertions 2, 3, 5 and 9 — and then not again until 17. Each expansion copies twice as much as
+the one before it and happens half as often, and those two factors cancel exactly.
+
+Most insertions do one write. The expensive ones are the insertions that land on a full table, and
+they cost Θ(T.num) because every item has to be copied into the new block. (The drawing keeps the
+items in place; in memory they have all moved to a fresh allocation, which is precisely what the
+copying step is.)
+
+Add it up. Over n insertions the copies come to 1 + 2 + 4 + … , a geometric series that stays under
+n, so the total work is under 2n and the amortized cost per insertion is a constant. Doing it with
+the potential method takes one line: let
+
+> Φ(T) = 2 · T.num − T.size
+
+which is 0 just after an expansion and rises to T.num by the time the table is full again — so the
+expansion always finds exactly the potential it needs. Then ĉ = 3 for **every** insertion, cheap or
+expensive.
+
+<ComplexityCard id="dynamic-table">
+  **The amortized cost is 3 and the worst case is still Θ(n)** — both are true, and neither replaces
+  the other. If you are writing a server that must answer within a deadline, the Θ(n) is the number
+  that matters, and this structure will occasionally miss. If you care about throughput over many
+  operations, the 3 is the number that matters, and it is exact.
+
+**The `2 · T.num − T.size` potential is worth reading as a sentence**: each item inserted since the
+last expansion carries two units, one for its own eventual copy and one for an item from the older
+half that has no credit of its own. That is the accounting method wearing the potential method's
+clothes.
+
+</ComplexityCard>
+
+### Deleting, and the mistake to avoid
+
+Insertion alone would let a table grow without ever shrinking, so the natural companion is: halve
+the table when it becomes half empty. **This is wrong**, and instructively so. Sit exactly at the
+boundary and alternate an insertion with a deletion: each insertion finds the table full and
+doubles it, each deletion drops it to half full and halves it, and every single operation copies
+the entire contents. Θ(n) amortized, on a structure that is supposed to be Θ(1).
+
+The fix is to leave a gap between the two triggers: **halve when the table falls to one quarter
+full**, not one half. After a contraction the table is half empty, so a great many operations must
+happen before either trigger fires again, and the amortized cost goes back to a constant. The
+lesson generalises beyond tables — a structure that resizes at the same point it grows and shrinks
+will thrash, and the cure is hysteresis.
+
+## Look at the two tapes
+
+Set the counter and the table to the same `n` and compare their tapes — the strip beside the
+transport, one tick per step, marked by what that step did. The two patterns are the same shape:
+long stretches of cheap operations, punctuated by bursts of writes, and each burst is twice as long
+and half as frequent as the one before it. On the counter the bursts are carries running up through
+the bits; on the table they are expansions copying everything across.
+
+That self-similarity is what amortized analysis is really about. Neither structure is cheap on
+every operation, and neither needs to be: what makes both of them O(1) is that the expensive
+operations are rationed by the cheap ones that came before them.
+
+## Where this gets used
+
+Chapter 11 needed this chapter and could not have it yet. A hash table's guarantees all assume the
+load factor α stays below some constant, which means the table has to grow — and now you know what
+that costs. It is the same doubling, with the added detail that every key has to be **rehashed**
+rather than copied, because `h` depends on `m`.
+
+Chapter 19 will lean on it much harder. The disjoint-set forests there have a running time nobody
+would guess from a single operation, and it is amortized over the sequence. The potential method is
+how you get there.

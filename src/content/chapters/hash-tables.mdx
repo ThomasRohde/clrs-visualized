@@ -1,0 +1,226 @@
+---
+title: Hash Tables
+section: '§11.1–11.5'
+summary: Direct addressing, chaining, hash functions and open addressing — the third answer to where an element lives, and what to do when two of them want the same place.
+algorithms: ['chained-hash', 'open-addressing']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 10 ended on a choice between two ways of saying where an element is. An array says it with
+a position; a linked list says it with a pointer. A hash table says it with **a calculation**, and
+that is a stranger idea than it first sounds: the table does not remember where a key lives. It
+works it out from the key, every time, and gets the same answer every time.
+
+What that buys is a **dictionary** — `INSERT`, `SEARCH` and `DELETE` — where all three cost Θ(1) on
+average, which nothing in the previous chapter can offer. What it costs is paid in exactly one
+place. Two different keys can produce the same answer, and everything below is about what to do
+when they do.
+
+## §11.1 — Direct-address tables
+
+Start with the case where there is no problem to solve. Suppose the keys are drawn from a small
+universe `U = {0, 1, …, m−1}`, and no two elements share a key. Then hashing is unnecessary: make an
+array `T[0‥m−1]` with **one slot per possible key**, and put the element with key `k` in `T[k]`.
+
+- `DIRECT-ADDRESS-SEARCH(T, k)` is `return T[k]`
+- `DIRECT-ADDRESS-INSERT(T, x)` is `T[x.key] = x`
+- `DIRECT-ADDRESS-DELETE(T, x)` is `T[x.key] = NIL`
+
+Every operation is Θ(1) in the **worst case**, with no average-case asterisk anywhere. It is a
+genuinely useful structure, and it is also the reason the rest of the chapter exists: the array is
+sized by the universe, not by the data. Keys that are nine-digit identifiers need a billion slots
+to store a class of thirty students, and 999,999,970 of them stay `NIL` forever.
+
+## §11.2 — Hash tables
+
+A hash table fixes the size. Choose `m` slots — proportional to the number of keys you expect to
+_store_, not to the number of keys that could exist — and a **hash function** `h` that maps any key
+in `U` to a slot in `0‥m−1`. The element with key `k` goes in `T[h(k)]`. Storage falls from Θ(|U|)
+to Θ(m), which is the whole point.
+
+And it creates one problem that cannot be designed away. If the universe is bigger than the table —
+which is exactly why we are here — then by the pigeonhole principle some pair of keys must map to
+the same slot. That is a **collision**, and no cleverness in `h` avoids it. There are two
+answers to it, and they are what shapes the rest of the chapter.
+
+### Chaining
+
+The first answer: let the slot hold **a linked list** of every element that hashed to it. Then all
+three operations are one line, because §10.2 already wrote them.
+
+| Operation                   | Definition                       |
+| --------------------------- | -------------------------------- |
+| `CHAINED-HASH-INSERT(T, x)` | `LIST-PREPEND(T[h(x.key)], x)`   |
+| `CHAINED-HASH-SEARCH(T, k)` | `return LIST-SEARCH(T[h(k)], k)` |
+| `CHAINED-HASH-DELETE(T, x)` | `LIST-DELETE(T[h(x.key)], x)`    |
+
+<AlgorithmPlayer id="chained-hash" size={7} />
+
+The table is five slots, one to a row, and the strip above it shows the key each operation names
+and the slot `h` sent it to. The bracket marks that slot — watch it jump from row to row as the
+keys come in, because that jumping _is_ the hash function. Each row is drawn head-first, so the
+object at the left of a chain is the one that arrived most recently.
+
+One thing about the drawing, so it does not mislead you: each row is laid out with room for every
+object that will ever hash to it, and the faint outlines are that **room on screen**, not slots the
+table owns. A bucket in a chained table has no capacity at all — it is a list, and lists do not
+fill up. Reserving the space is only what stops the whole picture rescaling every time a chain
+grows by one.
+
+**The insert never reads the chain.** It prepends, and a prepend does not care what is already
+there — no comparison, no walk, no matter how long the chain has grown. That is why insertion is
+Θ(1) in the _worst_ case and not merely on average. (It also assumes the key is not already in the
+table. If it might be, you have to search first, and then you are paying for a search.)
+
+**The search reads exactly one chain.** Step through it and count what gets compared: never a key
+in another bucket, only the objects that happen to share this one. Everything the table costs is
+concentrated in that walk.
+
+**The delete is a splice**, the same two pointer assignments chapter 10 showed, with the same
+precondition: it needs the object, not the key. Deleting by key means searching first.
+
+<ComplexityCard id="chained-hash">
+  **α = n/m is the load factor**, and it is simply the average chain length: `n` keys spread over
+  `m` slots. Under independent uniform hashing — every key equally likely to land in every slot,
+  independently of the others — a search costs Θ(1 + α) whether it finds the key or not.
+
+**The `1 +` is not decoration.** Even with an empty table you pay to compute `h` and reach the
+slot; α is what you pay on top, walking the chain. So when `m` is chosen proportional to `n`, α is
+a constant, and every dictionary operation is Θ(1) on average.
+
+**The worst case is Θ(n) and it is not exotic**: every key hashing to one slot turns the table into
+a single linked list with an arithmetic step in front of it. That is a fact about `h`, not about
+chaining, which is why choosing `h` gets a section of its own.
+
+</ComplexityCard>
+
+## §11.3 — Hash functions
+
+A good hash function scatters. The ideal is **independent uniform hashing**: each key is equally
+likely to hash to any of the `m` slots, independently of where every other key went. It is an
+ideal, not an implementation — you would have to know the distribution the keys are drawn from —
+but it is the assumption the Θ(1 + α) above is proved under, so it is worth knowing what you are
+assuming.
+
+Two classical constructions:
+
+- **The division method**, `h(k) = k mod m`. One instruction, and the one both players here use.
+  Its whole quality lives in the choice of `m`: take a power of 2 and `h(k)` is just the low bits of
+  `k`, so every regularity in the high bits is thrown away. The usual advice is a prime that is not
+  close to a power of 2.
+- **The multiplication method**, which multiplies the key by a constant, keeps the fractional part
+  and scales it up to `m`. It is far less sensitive to the choice of `m` — a power of 2 is fine, and
+  its practical form is a multiply and a shift.
+
+Then the problem neither of them solves. A hash function fixed in advance is a **fixed** map, so
+for any `h` there is some set of keys that all land in one slot. An adversary can choose it
+deliberately; a badly-behaved data source can wander into it by accident. Either way the guarantee
+evaporates, because the average was taken over inputs and the input is not ours to choose.
+
+**Random hashing** is the answer, and it is a genuinely clever inversion. Choose `h` at random, from
+a carefully designed family of functions, when the table is created. Now the randomness is in the
+table rather than in the data: for **every** input, the expected cost — averaged over the choice of
+`h` — is good. No key set is bad, because no key set knows which `h` it is going to meet. This is
+what makes the average-case bounds in this chapter promises rather than hopes.
+
+## §11.4 — Open addressing
+
+The second answer to a collision. **Every element lives in the table itself** — no lists, no
+objects, no pointers anywhere. A slot holds a key or `NIL`, and that is the entire structure. Two
+consequences follow immediately: the table holds at most `m` keys, so the load factor can never
+exceed 1; and all the memory that chaining spent on pointers is available for more slots instead.
+
+If a key cannot have the slot it wants, it has to be given somewhere else to go, and a search has
+to be able to work out where. So the hash function takes a second argument: `h(k, i)` is the `i`-th
+slot to try, and the **probe sequence** `h(k, 0), h(k, 1), …, h(k, m−1)` is a permutation of every
+slot in the table. Insertion probes until it meets a `NIL`. Search probes until it meets the key or
+a `NIL`.
+
+**Linear probing** is the simplest of these: `h(k, i) = (h′(k) + i) mod m`. Probe the slot you
+wanted, then the one after it, wrapping around at the end.
+
+<AlgorithmPlayer id="open-addressing" size={7} />
+
+Eleven slots in a single row, captioned with their indices, and an empty outline is a slot holding
+`NIL`. Two names hang above the table: `h(k)`, the slot the current key asked for, and `q`, the
+slot being probed right now. When a key gets what it asked for, the two sit on the same box. This
+is the whole structure — compare it with the five rows above, and notice that there is nowhere
+else for anything to be.
+
+**Watch a cluster form.** A key that collides is placed next door, which makes the run of occupied
+slots one longer, which makes it a bigger target for the next key — a run of length `t` catches new
+keys at `t+1` times the rate of an empty slot. That is **primary clustering**, and it is linear
+probing's characteristic weakness: the long runs are exactly the ones that keep growing.
+
+**A search retraces the insert.** It has to, and it is the same walk in the same order — which is
+why the whole scheme depends on `h(k, i)` being deterministic, and why nothing may ever move once
+it is placed.
+
+**Then the deletion.** This is the part of §11.4 worth slowing down for. The obvious implementation
+— find the key, write `NIL` over it — is **wrong**, and wrong in a way that quietly loses data.
+Search stops at the first `NIL`, so emptying a slot cuts every probe sequence that ran through it,
+and any key that had to probe past that slot becomes unfindable while still sitting in the table.
+
+So a deleted slot is marked `DELETED` instead. The player draws it square-cornered — the same mark
+chapter 10 used for an object spliced out of a list, and for the same reason: still in its slot,
+no longer part of the structure. A search treats `DELETED` as "keep going"; an insert treats it as
+"free". Step through the search that runs after the deletion, watch it cross the emptied slot
+without stopping, and then imagine a `NIL` there instead.
+
+The price is that search times stop depending on α alone, because tombstones accumulate and only
+rebuilding the table clears them. That is the reason the book says chaining is usually the better
+choice when keys have to be deleted.
+
+<ComplexityCard id="open-addressing">
+  **Both bounds blow up as α approaches 1**, and that is the number to remember. An unsuccessful
+  search takes at most `1/(1 − α)` probes on average: about 2 at half full, 10 at nine-tenths full,
+  100 at ninety-nine hundredths. A successful search is cheaper — at most `(1/α) ln(1/(1 − α))` —
+  but has the same shape.
+
+**This is why real tables grow before they fill.** Keeping α under a fixed threshold keeps every
+operation constant-time on average, and getting there means resizing, which is the dynamic table of
+chapter 16.
+
+**Two better probe sequences** are worth naming. Quadratic probing offsets by a quadratic in `i`,
+which breaks up the runs but leaves keys with the same first probe following identical paths.
+Double hashing uses `h(k, i) = (h₁(k) + i·h₂(k)) mod m`, so the step size itself depends on the key
+and two keys agree on the whole sequence only if they agree twice — the closest of the three to the
+ideal.
+
+</ComplexityCard>
+
+## Comparing them
+
+Set both players to the same `n` and compare their tapes — the strip beside the transport, one tick
+per step, marked by what that step did. The chained table beats regularly and never varies: two
+ticks per insertion, one to work out the slot and one to prepend, and it looks the same whether the
+table is empty or crowded. The open-addressed tape is ragged, and it gets more ragged from left to
+right — every probe is a read, so a key landing at the end of a cluster leaves a run of read ticks
+behind it that the first few keys never produced.
+
+That contrast is the trade in one picture. Chaining does no work to place a key and defers the cost
+to whoever searches; open addressing pays at insertion time to keep everything in one array, and
+the price rises with how full the array is. Chaining tolerates α above 1 and needs a pointer per
+element; open addressing needs no pointers at all and cannot survive a full table. Neither is
+better — but their failure modes are opposite, which is usually what decides.
+
+## §11.5 — What a hash table cannot do
+
+It is worth being just as clear about the thing hashing gives up, because it is the reason the book
+does not stop here. **A hash table has no order.** `h` scatters deliberately, so neighbouring slots
+hold unrelated keys, and there is no cheap way to ask any of these questions:
+
+- what is the smallest key in the table?
+- what is the next key after this one?
+- which keys lie between 20 and 40?
+- give me everything in sorted order
+
+Each of them costs Θ(n + m) — a scan of the whole table — or a sort on top. A dictionary is not an
+ordered set, and if the questions above are the ones you have, constant-time lookup is the wrong
+thing to have bought.
+
+Chapter 12 buys the other one. A binary search tree gives up the Θ(1) lookup and gets every
+question in that list back, at a cost proportional to the height of the tree — and then chapter 13
+does the work of keeping that height near lg n instead of near n.

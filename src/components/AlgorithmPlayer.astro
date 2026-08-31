@@ -1,0 +1,898 @@
+---
+import { requireAlgorithm } from '../algorithms/registry';
+import { legendFor, ROLE_VAR } from '../visualizers/roles';
+
+interface Props {
+  /** Algorithm id, e.g. "merge-sort". Must be registered in registry.ts. */
+  id: string;
+  /** Starting array size. */
+  size?: number;
+}
+
+const { id, size = 12 } = Astro.props;
+const algo = requireAlgorithm(id);
+const legend = legendFor(id);
+
+// Some algorithms hold data outside the array — merge sort's L and R buffers,
+// insertion sort's `key`, counting sort's C. Each module declares its own
+// rows, and they get a fixed-height strip above the chart so the reader can
+// see where a value went when it left the array.
+const auxRows = algo.aux ?? [];
+
+// Input bounds come from the module: counting sort is only legible with small
+// keys, radix sort wants three digits. Everything else keeps the old defaults.
+const inputMin = algo.input?.min ?? 5;
+const inputMax = algo.input?.max ?? 78;
+const placeholder = algo.input?.placeholder ?? '9, 2, 7, 4, 1';
+const inputNote = algo.input?.note;
+
+// The size slider and the wording around the box were array-shaped too: "Use
+// this array" and a range of 4‥24 are wrong for a module whose input is a
+// graph, and a module that declares `parse` is not taking numbers between two
+// bounds at all. Defaults keep every shipped algorithm exactly as it was.
+const minSize = algo.input?.minSize ?? 4;
+const maxSize = algo.input?.maxSize ?? 24;
+const noun = algo.input?.noun ?? 'array';
+const inputLabel =
+  algo.input?.label ??
+  `Your own ${noun}, numbers from ${inputMin} to ${inputMax}, separated by commas`;
+
+// The starting size has to be one the slider can actually show. A module with
+// a narrow range — a hash table with 11 slots — would otherwise open on a
+// size outside its own bounds whenever a chapter embeds it without saying one.
+const startSize = Math.min(maxSize, Math.max(minSize, size));
+---
+
+{
+  /*
+  One panel, four regions. The chart and the pseudocode sit side by side
+  because they have to be read together; the transport spans the full width
+  underneath both, because the tape is a picture of the whole run and wants
+  every pixel it can get.
+*/
+}
+<section class="viz" data-algorithm={algo.id} data-size={startSize}>
+  <div class="panel workspace">
+    <div class="stage">
+      <header class="stage-head">
+        <h3 class="stage-name">{algo.name}</h3>
+        <ul class="legend">
+          {
+            legend.map(([role, meaning]) => (
+              <li class="legend-item">
+                <span
+                  class:list={['swatch', `swatch-${role}`]}
+                  style={`--swatch:var(${ROLE_VAR[role]})`}
+                />
+                {meaning}
+              </li>
+            ))
+          }
+        </ul>
+      </header>
+
+      {
+        auxRows.length > 0 && (
+          <div class="aux" data-el="aux">
+            {auxRows.map((row) => (
+              <div class="aux-buffer">
+                <span class="aux-key mono">{row.label}</span>
+                <div class="aux-chips" data-aux-key={row.key}>
+                  <span class="aux-chip empty">—</span>
+                </div>
+                {row.hint && <span class="aux-hint">{row.hint}</span>}
+              </div>
+            ))}
+          </div>
+        )
+      }
+
+      <div class="stage-canvas-wrap">
+        <canvas data-el="canvas" role="img" aria-label={`${algo.name} visualization`}></canvas>
+      </div>
+
+      <div class="readout">
+        <p class="note" data-el="note" aria-live="polite">Loading…</p>
+        <dl class="stats">
+          <div class="stat">
+            <dt>compares</dt>
+            <dd class="mono" data-el="stat-compares">0</dd>
+          </div>
+          <div class="stat">
+            <dt>swaps</dt>
+            <dd class="mono" data-el="stat-swaps">0</dd>
+          </div>
+          <div class="stat">
+            <dt>writes</dt>
+            <dd class="mono" data-el="stat-writes">0</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="code-col">
+      <div class="code-panel" data-el="code-panel">
+        {
+          algo.procOrder.map((procName) => {
+            const proc = algo.procedures[procName];
+            return (
+              <div class="proc-block" data-proc={procName}>
+                <div class="proc-title mono">{proc.title}</div>
+                {proc.lines.map((text, i) => (
+                  <div class="code-line" data-line={i + 1}>
+                    <span class="ln">{i + 1}</span>
+                    <span class="code" style={`padding-left:${(proc.indent[i] ?? 0) * 1.25}em`}>
+                      {text}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            );
+          })
+        }
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="transport">
+        <div class="tbtns">
+          <button class="tbtn" data-el="reset" type="button" aria-label="Back to the start">
+            <svg viewBox="0 0 16 16" aria-hidden="true"
+              ><path
+                d="M4 3v10M13 3.5v9l-7-4.5z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"></path></svg
+            >
+          </button>
+          <button class="tbtn" data-el="back" type="button" aria-label="Previous step">
+            <svg viewBox="0 0 16 16" aria-hidden="true"
+              ><path
+                d="M11 3.5v9L5 8z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"></path></svg
+            >
+          </button>
+          <button class="tbtn play" data-el="play" type="button" aria-label="Play">
+            <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"
+              ><path d="M5 3l8 5-8 5z" fill="currentColor"></path></svg
+            >
+            <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"
+              ><path d="M5 3h2.2v10H5zM8.8 3H11v10H8.8z" fill="currentColor"></path></svg
+            >
+          </button>
+          <button class="tbtn" data-el="forward" type="button" aria-label="Next step">
+            <svg viewBox="0 0 16 16" aria-hidden="true"
+              ><path
+                d="M5 3.5v9L11 8z"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linejoin="round"></path></svg
+            >
+          </button>
+        </div>
+
+        {
+          /*
+          The tape is the scrubber. A real range input sits transparently on
+          top of it, which buys keyboard control, ARIA and drag behaviour for
+          free while the canvas underneath does the drawing.
+        */
+        }
+        <div class="tape-wrap">
+          <canvas class="tape" data-el="tape" aria-hidden="true"></canvas>
+          <input
+            type="range"
+            class="tape-scrub"
+            data-el="scrub"
+            min="0"
+            max="0"
+            value="0"
+            aria-label="Step through the trace"
+          />
+        </div>
+
+        <span class="step-count mono" data-el="step-count">0 / 0</span>
+
+        <label class="speed-field">
+          <span class="speed-label mono">speed</span>
+          <select class="speed" data-el="speed" aria-label="Playback speed">
+            <option value="0.5">0.5×</option>
+            <option value="1" selected>1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+            <option value="8">8×</option>
+          </select>
+        </label>
+      </div>
+
+      <p class="keys" data-el="keys">
+        <span class="keys-dot" aria-hidden="true"></span>
+        <span><kbd>space</kbd> play · <kbd>←</kbd> <kbd>→</kbd> step · <kbd>home</kbd> restart</span
+        >
+      </p>
+    </div>
+
+    <div class="setup">
+      <span class="label setup-label">Input</span>
+
+      <div class="field">
+        <label class="var-label mono" for={`size-${algo.id}`}>n</label>
+        <input
+          type="range"
+          class="size"
+          id={`size-${algo.id}`}
+          data-el="size"
+          min={minSize}
+          max={maxSize}
+          value={size}
+        />
+        <output class="n-readout mono" data-el="n-readout" for={`size-${algo.id}`}>{size}</output>
+      </div>
+
+      <button class="ghost-btn" data-el="shuffle" type="button">Randomize</button>
+
+      <div class="field grow">
+        <input
+          type="text"
+          class="custom-input"
+          data-el="custom-input"
+          placeholder={placeholder}
+          aria-label={inputLabel}
+        />
+        <button class="ghost-btn" data-el="apply" type="button">Use this {noun}</button>
+      </div>
+
+      {inputNote && <span class="input-note mono">{inputNote}</span>}
+
+      <p class="custom-err mono" data-el="custom-error" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+
+<style>
+  .viz {
+    container-type: inline-size;
+    margin: 0.25rem 0;
+  }
+
+  .workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+    grid-template-areas:
+      'stage code'
+      'controls controls'
+      'setup setup';
+    overflow: hidden;
+    /* The reserved rule turns the coded colour on when this player owns the
+       keyboard, which is the only way a reader can tell where space will go
+       when a page holds two of them. */
+    border-left: 2px solid transparent;
+  }
+
+  :global(.viz[data-active='true']) .workspace {
+    border-left-color: var(--c-scope);
+  }
+
+  .stage {
+    grid-area: stage;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  /* ---------- header + legend ---------- */
+  .stage-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem 1.25rem;
+    flex-wrap: wrap;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .stage-name {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 0.76rem;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.85rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  /* The swatch repeats the renderer's second channel: settled states are
+     square, everything still in play is rounded and outlined. */
+  .swatch {
+    width: 9px;
+    height: 11px;
+    background: var(--swatch);
+    border-radius: 2px 2px 0 0;
+    flex-shrink: 0;
+  }
+
+  .swatch-done {
+    border-radius: 0;
+  }
+
+  .swatch-move {
+    outline: 1.5px solid var(--ink);
+    outline-offset: -1.5px;
+  }
+
+  /* ---------- held values ---------- */
+  .aux {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.6rem 0.9rem 0;
+  }
+
+  .aux-buffer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .aux-key {
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+    min-width: 1.6rem;
+    flex-shrink: 0;
+  }
+
+  /* Fixed height, no scrollbar in the layout: an empty buffer measures
+     exactly the same as a full one, so a merge can never shove the chart
+     down mid-animation. */
+  .aux-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+    align-items: center;
+    overflow-x: auto;
+    height: 2.15rem;
+    scrollbar-width: none;
+  }
+
+  .aux-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .aux-hint {
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* The chart fills whatever height the row ends up with, so an algorithm
+     with more pseudocode beside it gets a taller chart rather than a band of
+     empty panel under the bars. */
+  .stage-canvas-wrap {
+    padding: 0.5rem 0.9rem 0;
+    flex: 1;
+    display: flex;
+    min-height: 250px;
+  }
+
+  canvas {
+    width: 100%;
+    flex: 1;
+    display: block;
+  }
+
+  /* ---------- narration + counters ---------- */
+  .readout {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: 0.7rem 0.9rem 0.8rem;
+    margin: 0 0.9rem;
+    border-top: 1px solid var(--line);
+  }
+
+  /* Three lines of height are reserved so a longer sentence never moves the
+     controls under it. Two was enough for the sorts of chapters 2–7, but the
+     chapters that explain *why* a step happened — counting sort's stability,
+     RANDOMIZE-IN-PLACE's draw range — narrate in whole sentences and wrapped
+     to a third line, which shifted the transport by 8px on every such step. */
+  .note {
+    margin: 0;
+    font-size: 0.97rem;
+    line-height: 1.45;
+    color: var(--ink);
+    min-height: calc(3 * 1.45 * 0.97rem);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .stats {
+    display: flex;
+    gap: 1.1rem;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .stat {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+  }
+
+  .stats dt {
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    letter-spacing: 0.04em;
+    color: var(--ink-3);
+    order: 2;
+  }
+
+  .stats dd {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---------- pseudocode ---------- */
+  .code-col {
+    grid-area: code;
+    border-left: 1px solid var(--line);
+    background: var(--surface-2);
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* Never scrolls in either direction: every procedure stays visible at once,
+     and a line too long for the column wraps instead. */
+  .code-panel {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .proc-block {
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--line);
+    transition: opacity 0.15s;
+  }
+
+  .proc-block:last-child {
+    border-bottom: none;
+  }
+
+  .proc-block.dim {
+    opacity: 0.4;
+  }
+
+  .proc-title {
+    font-size: 0.74rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 0.4rem;
+    padding-bottom: 0.3rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .code-line {
+    display: flex;
+    gap: 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    line-height: 1.7;
+    border-radius: 3px;
+    padding: 0 0.3rem;
+    border-left: 2px solid transparent;
+  }
+
+  .ln {
+    color: var(--ink-3);
+    width: 1.2rem;
+    text-align: right;
+    flex-shrink: 0;
+    user-select: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .code {
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    color: var(--ink-2);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .code-line.active {
+    background: var(--surface);
+    border-left-color: var(--c-scope);
+  }
+
+  .code-line.active .ln {
+    color: var(--c-scope);
+    font-weight: 600;
+  }
+
+  .code-line.active .code {
+    color: var(--ink);
+  }
+
+  /* ---------- transport ---------- */
+  .controls {
+    grid-area: controls;
+    border-top: 1px solid var(--line);
+  }
+
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    padding: 0.65rem 0.9rem 0.5rem;
+  }
+
+  .tbtns {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+
+  .tbtn {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--ink-2);
+    padding: 0;
+  }
+
+  .tbtn svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .tbtn:hover:not(:disabled) {
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+
+  .tbtn.play {
+    background: var(--ink);
+    color: var(--surface);
+    border-color: var(--ink);
+    width: 2.4rem;
+  }
+
+  .tbtn.play:hover:not(:disabled) {
+    color: var(--surface);
+    opacity: 0.86;
+  }
+
+  .tbtn .i-pause,
+  .tbtn.is-playing .i-play {
+    display: none;
+  }
+
+  .tbtn.is-playing .i-pause {
+    display: block;
+  }
+
+  .tbtn:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .tape-wrap {
+    position: relative;
+    flex: 1;
+    min-width: 120px;
+    height: 36px;
+  }
+
+  .tape {
+    width: 100%;
+    height: 36px;
+    display: block;
+  }
+
+  /* Transparent, full-bleed, and on top: the canvas is the picture, the input
+     is the control. */
+  .tape-scrub {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: ew-resize;
+    appearance: none;
+    background: transparent;
+  }
+
+  .tape-scrub::-webkit-slider-thumb {
+    appearance: none;
+    width: 2px;
+    height: 36px;
+  }
+
+  .tape-scrub::-moz-range-thumb {
+    width: 2px;
+    height: 36px;
+    border: none;
+  }
+
+  .tape-scrub:focus-visible {
+    opacity: 1;
+    outline: 2px solid var(--focus);
+    outline-offset: 1px;
+  }
+
+  .step-count {
+    font-size: var(--t-micro);
+    color: var(--ink-2);
+    white-space: nowrap;
+    min-width: 5.2rem;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .speed-field {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    margin-left: 0.5rem;
+  }
+
+  .speed-label {
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+  }
+
+  .speed {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.28rem 0.35rem;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    cursor: pointer;
+  }
+
+  /* ---------- keyboard hint ---------- */
+  .keys {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    padding: 0 0.9rem 0.7rem;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+  }
+
+  .keys-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--line-strong);
+    flex-shrink: 0;
+  }
+
+  :global(.viz[data-active='true']) .keys-dot {
+    background: var(--c-scope);
+  }
+
+  :global(.viz[data-active='true']) .keys {
+    color: var(--ink-2);
+  }
+
+  kbd {
+    font-family: inherit;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0.05em 0.3em;
+  }
+
+  /* ---------- setup ---------- */
+  .setup {
+    grid-area: setup;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 0.9rem;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+
+  .setup-label {
+    color: var(--ink-3);
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .field.grow {
+    min-width: 210px;
+  }
+
+  /* `n` is a variable name from the book, so it keeps its own case rather
+     than being shouted like the other control captions. */
+  .var-label {
+    font-size: var(--t-small);
+    color: var(--ink-2);
+  }
+
+  .size {
+    width: 84px;
+    accent-color: var(--c-scope);
+  }
+
+  .n-readout {
+    font-size: var(--t-micro);
+    min-width: 1.3rem;
+    color: var(--ink);
+  }
+
+  .ghost-btn {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.35rem 0.6rem;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    cursor: pointer;
+    color: var(--ink-2);
+    white-space: nowrap;
+  }
+
+  .ghost-btn:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+
+  .custom-input {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 0.35rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    width: 8.5rem;
+    min-width: 0;
+  }
+
+  /* The module's assumption about its keys, stated where the reader is about
+     to type one — "keys 0–9" belongs next to the box, not in the prose. */
+  .input-note {
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+    white-space: nowrap;
+  }
+
+  .custom-err {
+    font-size: var(--t-micro);
+    color: var(--c-move);
+    margin: 0;
+    flex-basis: 100%;
+  }
+
+  .custom-err:empty {
+    display: none;
+  }
+
+  /* ---------- responsive ---------- */
+  @container (min-width: 1180px) {
+    .stage-canvas-wrap {
+      min-height: 300px;
+    }
+  }
+
+  /* Below this the stage would be narrower than the code beside it, so the
+     visualization goes full width with the pseudocode beneath it. */
+  @container (max-width: 900px) {
+    .workspace {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas:
+        'stage'
+        'code'
+        'controls'
+        'setup';
+    }
+
+    .code-col {
+      border-left: none;
+      border-top: 1px solid var(--line);
+    }
+  }
+
+  @container (max-width: 620px) {
+    .stage-canvas-wrap {
+      min-height: 190px;
+    }
+
+    .readout {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+    }
+
+    .stats {
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .stat {
+      align-items: flex-start;
+    }
+
+    .transport {
+      flex-wrap: wrap;
+    }
+
+    .tape-wrap {
+      order: 3;
+      flex-basis: 100%;
+    }
+
+    .step-count {
+      text-align: left;
+      min-width: 0;
+    }
+
+    /* Too little room for a caption; the select reads as a speed on its own
+       and keeps its accessible name. */
+    .speed-label {
+      display: none;
+    }
+
+    .step-count {
+      margin-left: auto;
+    }
+
+    .speed-field {
+      margin-left: 0;
+    }
+  }
+</style>
+
+<script>
+  import { mountAll } from '../visualizers/player';
+  mountAll();
+</script>

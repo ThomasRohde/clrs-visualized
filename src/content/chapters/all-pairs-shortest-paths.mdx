@@ -1,0 +1,181 @@
+---
+title: All-Pairs Shortest Paths
+section: '§23.1–23.3'
+summary: Shortest paths between every pair — a matrix product in disguise, a three-line recurrence, and a trick that makes negative weights safe for Dijkstra.
+algorithms: ['apsp-matrix-multiply', 'floyd-warshall', 'transitive-closure', 'johnson']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 22 answered "how far is everything from **this** vertex". This chapter answers it for every
+starting point at once, and the answer is a matrix rather than a list.
+
+The obvious approach is to run a single-source algorithm V times, and it is not a bad one — §23.3
+is exactly that, made to work. But the problem has structure of its own that a repeated
+single-source algorithm cannot see, and the first two sections are about exploiting it.
+
+This is also where Part VI meets chapter 14. Both algorithms below are dynamic programs over a
+table, and the tables are the same shape as §14.2's. Only the recurrence differs.
+
+## §23.1 — Shortest paths are a matrix product
+
+Write `l^(m)_ij` for the weight of the shortest path from i to j using **at most m edges**. Then
+
+```
+l^(m)_ij = min over k of ( l^(m−1)_ik + w_kj )
+```
+
+Now put that beside the definition of a matrix product:
+
+```
+c_ij     = sum over k of ( a_ik · b_kj )
+```
+
+They are the same expression with `min` in place of `sum` and `+` in place of `×`. Extending
+shortest paths by one edge **is** a matrix multiplication, in an arithmetic where "adding" means
+taking the smaller and "multiplying" means adding.
+
+<AlgorithmPlayer id="apsp-matrix-multiply" size={4} />
+
+A shortest path has at most n − 1 edges, so the answer is W multiplied by itself n − 1 times, which
+is Θ(V⁴) and worse than useless. **The value of the observation is that this product is
+associative** — so it can be computed by repeated squaring. L², L⁴, L⁸, and you reach L^(n−1) in
+⌈lg(n−1)⌉ multiplications rather than n − 1.
+
+Θ(V³ lg V), from noticing an analogy. Watch the top block become the bottom block and the number of
+edges paths may use **double** rather than increase by one.
+
+Compare this player with chapter 4's matrix multiplication side by side. The inner loop is the same
+row-against-column sweep; only the two operations changed. That substitution — swapping one pair of
+operations for another in a fixed algorithm — is a pattern this chapter uses twice more.
+
+## §23.2 — Floyd-Warshall
+
+A different decomposition, and a better one. Instead of asking how many edges a path may use, ask
+**which vertices it may pass through**, and add them one at a time.
+
+Let `d^(k)_ij` be the shortest path from i to j whose intermediate vertices all come from
+`{1, …, k}`. Adding vertex k to the allowed set leaves exactly two possibilities: either the best
+path still avoids k, or it uses k, in which case it splits into i→k and k→j and both halves are
+already known.
+
+```
+d^(k)_ij = min( d^(k−1)_ij , d^(k−1)_ik + d^(k−1)_kj )
+```
+
+<AlgorithmPlayer id="floyd-warshall" size={4} />
+
+Three lines, Θ(V³), and no auxiliary structure at all.
+
+**Watch the pivot row and column**, which the run marks on every step. An entry can only improve by
+combining one cell from row k with one from column k, so everything that happens in a round happens
+through the cross those two make. Entries _in_ row k and column k do not change during round k —
+that small lemma is what makes updating the table in place legal, and it is why the algorithm needs
+no second matrix despite the recurrence naming `D^(k−1)` on the right-hand side.
+
+**The outer loop is over k**, and it must be. The loop variable is not a position in the matrix; it
+is how much freedom paths have been granted. Permute the loops and the algorithm is simply wrong —
+which is the most common way to get Floyd-Warshall wrong from memory.
+
+Negative edges are fine. A negative _cycle_ shows up as a negative number on the diagonal: a path
+from a vertex back to itself costing less than nothing. That is the cheapest negative-cycle test in
+the book.
+
+## §23.2 — Transitive closure
+
+Now the substitution again. Replace `min` with **or** and `+` with **and**:
+
+```
+t^(k)_ij = t^(k−1)_ij  or  ( t^(k−1)_ik  and  t^(k−1)_kj )
+```
+
+<AlgorithmPlayer id="transitive-closure" size={5} />
+
+Same loops, same order, same Θ(V³) — and it answers "can i reach j at all", with no weights
+involved.
+
+The picture is different to watch. Distances shrink gradually and it is never obvious when an entry
+has settled; reachability only ever **turns on**, so the table fills in one direction and never goes
+back.
+
+The practical difference is that booleans pack. A row of `t` fits in machine words, so the inner
+loop becomes a bitwise OR over Θ(V/w) words rather than Θ(V) separate operations — the same
+asymptotic bound and a large constant factor that no version of the distance table can have.
+
+Both pairs of operations, `(min, +)` and `(or, and)`, form what algebraists call a **semiring**, and
+Floyd-Warshall works over any of them. Swap in `(max, min)` and you get widest paths; swap in
+regular-expression union and concatenation and you get Kleene's algorithm for converting an
+automaton to a regular expression. One triple loop, many problems.
+
+## §23.3 — Johnson's algorithm
+
+Floyd-Warshall is Θ(V³) whether the graph has a million edges or ten. On a **sparse** graph that is
+wasteful: V runs of Dijkstra would cost O(V² lg V + V E), which is much better.
+
+The obstacle is that Dijkstra requires non-negative weights, and this chapter exists because of
+graphs that have negative ones.
+
+**So change the weights.** Give every vertex a number `h(v)` and reweight every edge:
+
+```
+ŵ(u, v) = w(u, v) + h(u) − h(v)
+```
+
+<AlgorithmPlayer id="johnson" size={5} />
+
+Two properties make this exactly right, and both are visible in the run.
+
+**It preserves shortest paths.** Along any path the h terms telescope — every intermediate vertex
+contributes `+h` once and `−h` once — so all that survives is `h(start) − h(end)`. Every path
+between the same two vertices changes by the **same** amount, so the shortest one stays shortest.
+That is why the correction at the end is a single subtraction rather than a recomputation.
+
+**It can be made non-negative.** Take `h(v)` to be the shortest distance from a new vertex joined to
+everything with weight 0. Then `h(v) ≤ h(u) + w(u,v)` for every edge — which is just the triangle
+inequality, exactly what §22.5 proves — and that rearranges to `ŵ(u,v) ≥ 0`.
+
+Watch the edge labels change. Every negative weight goes to zero or above, and nothing about which
+path is shortest moves. The added vertex stays on screen after the reweighting, doing nothing: its
+only job was to be a source that reaches everything.
+
+The V runs of Dijkstra afterwards are chapter 22's player, so they are summarised one source at a
+time here rather than stepped through again.
+
+<ComplexityCard id="floyd-warshall">
+  **Density decides.** Floyd-Warshall is Θ(V³) regardless; Johnson is O(V² lg V + V E). With
+  E ≈ V² they are the same, and every edge you remove favours Johnson. With E ≈ V, Johnson is a
+  factor of V/lg V faster.
+
+**Floyd-Warshall wins on everything else.** Three lines, no priority queue, no auxiliary graph, and
+a constant factor so small that on anything under a few hundred vertices it is the right choice
+whatever the density.
+
+**All four here handle negative weights**, and all four detect a negative cycle — Floyd-Warshall by
+a negative diagonal entry, Johnson by the Bellman-Ford pass failing before anything else runs.
+
+</ComplexityCard>
+
+## Comparing them
+
+Open the **trace tape** — the strip under the transport — on Floyd-Warshall and then on the matrix
+squaring player.
+
+Floyd-Warshall's is uniform: V³ steps, all the same shape, with improvements scattered through and
+thinning out as the rounds go on. The squaring player's is blockier — each entry of the square is
+one step regardless of the graph — and there are far fewer of them, because ⌈lg(n−1)⌉ rounds is two
+where Floyd-Warshall does four. That gap goes the other way as V grows: lg V rounds of V³ work
+against V rounds of V² work.
+
+The tape is drawing the difference between Θ(V³ lg V) and Θ(V³) — and showing that on a small graph
+the better bound is the slower algorithm.
+
+## What this chapter is really about
+
+Three of the four algorithms here are the **same triple loop** with something swapped: min-plus,
+or-and, and Floyd-Warshall's own combination of them. The fourth makes a hostile input into a
+friendly one so that an algorithm you already have can be used unchanged.
+
+Both moves are more general than the chapter. Recognising that your problem is an existing one over
+a different arithmetic, or that a transformation makes it into an existing one, is most of what
+algorithm design turns out to be — and it is the thing chapter 34's reductions make formal.

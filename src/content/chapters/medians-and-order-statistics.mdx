@@ -1,0 +1,159 @@
+---
+title: Medians and Order Statistics
+section: '§9.1–9.3'
+summary: Finding the i-th smallest element without sorting — in expected linear time, and then in linear time guaranteed.
+algorithms: ['minimum-maximum', 'randomized-select', 'select']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+The i-th **order statistic** of a set is its i-th smallest element. The minimum is the first, the
+maximum is the n-th, and the median sits in the middle. Sorting answers all of these at once, in
+Θ(n log n) — but if you only want one of them, that is far more work than the question deserves.
+
+This chapter answers a single query in Θ(n), which is optimal: you cannot name the i-th smallest
+without at least looking at every element, since any one you skipped might have been it.
+
+## §9.1 — Minimum and maximum
+
+The minimum takes n−1 comparisons: hold a champion, compare it with each remaining element, and
+keep the winner. Every comparison eliminates exactly one candidate, and n−1 candidates must be
+eliminated, so n−1 is not merely sufficient but necessary — think of it as a knockout tournament in
+which every player but one must lose a match.
+
+So the minimum alone is settled. What about the minimum **and** the maximum together?
+
+The obvious answer is two independent scans, at 2n−2 comparisons. The better answer costs only
+3⌊n/2⌋, and the trick is to process elements in pairs. Compare the pair against _each other_ first;
+then only the smaller of the two can possibly beat the running minimum, and only the larger can
+beat the running maximum. Three comparisons for two elements, instead of four.
+
+<AlgorithmPlayer id="minimum-maximum" />
+
+The player runs both methods, one after the other, over the same array — first the plain
+`MINIMUM` scan, then the paired one. The bars never move, because neither method writes anything:
+the entire result of this section is in the comparison counter. Note where it stands when
+`MINIMUM` returns, and where it stands at the end.
+
+The trace tape is the clearer view. Both passes are pure comparison work, but the second is
+visibly shorter for the same array — and it answers twice as many questions.
+
+<ComplexityCard id="minimum-maximum">
+  **Where the saving comes from.** In the naive version, each element is compared against both the
+  running minimum and the running maximum: two comparisons apiece. Pairing them costs one extra
+  comparison per *pair* but then spends only one comparison on each of the two running answers, so
+  three comparisons cover two elements rather than four.
+
+**The odd/even setup matters.** With an odd number of elements, the first element initialises both
+running answers for free. With an even number, the first pair is compared once to initialise them.
+Either way the remaining elements are processed two at a time, and the total lands at 3⌊n/2⌋.
+
+**This bound is tight** — Exercise 9.1-2 asks you to prove that 3⌊n/2⌋ comparisons are also
+necessary.
+
+</ComplexityCard>
+
+## §9.2 — Selection in expected linear time
+
+For a general i, the idea comes straight from quicksort — with one change that makes all the
+difference.
+
+`RANDOMIZED-SELECT` partitions the array around a randomly chosen pivot, exactly as
+`RANDOMIZED-QUICKSORT` does. Partitioning tells it the pivot's rank `k` in the subarray. If `i`
+equals `k`, the pivot is the answer. Otherwise the answer lies strictly on one side, and — here is
+the change — the other side is **thrown away unsorted**. Quicksort recurses on both halves; select
+recurses on one.
+
+<AlgorithmPlayer id="randomized-select" />
+
+The player asks for the lower median, ⌈n/2⌉. The bracket marks the part of the array that might
+still hold the answer: everything outside it has been discarded, and will never be examined again,
+let alone sorted. Watch the bracket contract by roughly half each time — that shrinkage is the
+whole algorithm.
+
+**Compare the tapes** with quicksort's on the same array. Quicksort's tape is one full-width
+figure repeated at every level of the recursion, because every element is touched at every level.
+Select's is a staircase that halves: n work, then n/2, then n/4. That geometric series sums to less
+than 2n, which is why the total is Θ(n) rather than Θ(n log n) — recursing on one side instead of
+two changes the answer, not merely the constant.
+
+<ComplexityCard id="randomized-select">
+  **T(n) = T(n/2) + Θ(n) solves to Θ(n).** Compare quicksort's T(n) = 2T(n/2) + Θ(n), which solves
+  to Θ(n log n). The single difference is the coefficient on the recursive term, and it is the
+  difference between a geometric series that converges and one that has log n equal levels.
+
+**Expected, not guaranteed.** A run of unlucky pivots still gives Θ(n²) — partitioning around the
+minimum every time peels off one element at a time. As with randomized quicksort, the expectation
+is over the algorithm's own coin flips and therefore holds for every input, but it is an
+expectation nonetheless.
+
+**In practice this is the one you use.** §9.3 removes the "expected" at a constant-factor cost that
+is rarely worth paying.
+
+</ComplexityCard>
+
+## §9.3 — Selection in worst-case linear time
+
+`RANDOMIZED-SELECT` is fast because a random pivot is usually good. `SELECT` is fast because it
+refuses to accept a bad one — it spends real work choosing a pivot that is _guaranteed_ to be
+roughly central.
+
+The construction is the famous median of medians:
+
+1. Divide the elements into groups of five and sort each group.
+2. Take the median of each group.
+3. Recursively call `SELECT` to find the median of those medians. Call it `x`.
+4. Partition the whole subarray around `x`, and recurse on whichever side holds the answer.
+
+Step 3 is the part that looks circular — `SELECT` calling itself to choose its own pivot — and it
+is not, because the recursive call is on n/5 elements rather than n.
+
+The payoff is the guarantee. At least half the group medians are ≤ x, and each of those groups
+contributes three elements (its median and the two below it) that are also ≤ x. That is
+3·(n/10) ≈ 3n/10 of the array on each side, so no matter what the input is, partitioning around x
+discards at least 3/10 of it. The recursion is T(n) ≤ T(n/5) + T(7n/10) + Θ(n), and because
+1/5 + 7/10 < 1 that solves to Θ(n) — in the worst case, with no probability involved anywhere.
+
+<AlgorithmPlayer id="select" />
+
+This is the 4th edition's in-place presentation, and the groups of five are **strided**, not
+contiguous: group j is `A[j]`, `A[j+g]`, `A[j+2g]`, `A[j+3g]`, `A[j+4g]`. That looks like an
+eccentric way to divide the array until you see what it buys — once every group is sorted, each
+group's median sits in the middle fifth of the subarray, all of them together, ready to be selected
+from with no copying and no extra array. The step that says so is worth pausing on: it is the frame
+where all g medians are marked at once, and they are contiguous.
+
+The leading `while` loop is bookkeeping rather than insight. It trims the subarray from the left,
+one minimum at a time, until its length is a multiple of five — at most four trips, so Θ(n) total.
+
+<ComplexityCard id="select">
+  **The constant factor is the catch.** Sorting every group of five, then recursing to find their
+  median, then partitioning, is a great deal of work per level. `SELECT` is linear and
+  `RANDOMIZED-SELECT` is only expected-linear, yet in practice the randomized one wins on almost
+  every real input. Real implementations use introselect: run the randomized version, and fall back
+  to this one only if it is taking too long.
+
+**Why five?** Groups of three do not work: the recurrence becomes T(n/3) + T(2n/3) + Θ(n), whose
+fractions sum to 1, and the solution is Θ(n log n). Groups of seven work fine but sort more
+elements per group for no extra benefit. Five is the smallest size that makes the fractions sum to
+less than 1.
+
+**This is where a guaranteed pivot comes from.** Problem 9-3 uses it to give quicksort a Θ(n log n)
+worst case — pick the pivot with `SELECT` instead of at random. Nobody ships that either, for the
+same reason.
+
+</ComplexityCard>
+
+## The three together
+
+| Question            | Cost               | Guarantee                  |
+| ------------------- | ------------------ | -------------------------- |
+| Minimum, or maximum | n − 1 comparisons  | Exact, and optimal         |
+| Both at once        | 3⌊n/2⌋ comparisons | Exact, and optimal         |
+| The i-th smallest   | Θ(n) expected      | Over the algorithm's coins |
+| The i-th smallest   | Θ(n) worst case    | Unconditional              |
+
+The pattern to carry forward is the one in §9.2: quicksort and randomized select differ by a single
+recursive call, and that one call is the difference between Θ(n log n) and Θ(n). When an algorithm
+recurses on every piece it produces, look hard at whether it needs to.

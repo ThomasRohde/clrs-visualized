@@ -1,0 +1,38 @@
+---
+# Copy this file to <chapter-slug>.mdx to start a new chapter.
+# The slug must match an entry in src/lib/book.ts.
+# Files starting with "_" are ignored by the content loader, so this
+# template never becomes a page.
+title: Chapter Title
+section: 'Chapter N'
+summary: One sentence describing what this chapter covers, shown under the title and on the home page.
+algorithms: []
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Opening paragraph. Ordinary Markdown works here — headings, lists, `code`, **bold**, links,
+blockquotes and fenced code blocks are all styled.
+
+## A section
+
+Drop a visualizer anywhere in the prose. The `id` must be registered in
+`src/algorithms/registry.ts`, and listed in this file's `algorithms:` frontmatter — the build
+fails with a clear message if it isn't.
+
+{/* <AlgorithmPlayer id="merge-sort" /> */}
+
+The player takes an optional starting size:
+
+{/* <AlgorithmPlayer id="merge-sort" size={16} /> */}
+
+## Complexity
+
+`ComplexityCard` reads the table straight from the algorithm module, so it can never drift out of
+sync with the implementation. Whatever you put inside the tags becomes the commentary beside it.
+
+{/\* <ComplexityCard id="merge-sort">
+**Recurrence:** T(n) = 2T(n/2) + Θ(n), which solves to Θ(n log n).
+
+</ComplexityCard> */}

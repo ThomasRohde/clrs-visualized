@@ -1,0 +1,148 @@
+---
+title: Maximum Flow
+section: '§24.1–24.3'
+summary: How much can a network carry — and the one idea, undoing flow you already sent, that turns a broken greedy method into an optimal one.
+algorithms: ['ford-fulkerson', 'edmonds-karp']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+A network of pipes, each with a capacity. One **source** producing material, one **sink** consuming
+it, and every other junction obliged to pass on exactly what it receives. How much can get through?
+
+The question is older than computing and turns up wherever something is routed through a shared
+network with limits — traffic, bandwidth, water, electricity, freight — and, less obviously, in a
+long list of problems that are not about flow at all. Chapter 25 is one of them.
+
+## §24.1 — Flows and cuts
+
+A **flow** assigns each edge a number between zero and its capacity, such that every vertex except
+the source and the sink sends out exactly what comes in. The **value** of the flow is the net amount
+leaving the source. Maximising it is the problem.
+
+The other half of the chapter is the thing that bounds it. A **cut** splits the vertices into two
+groups with the source on one side and the sink on the other; its **capacity** is the total capacity
+of the edges crossing from the source's side to the sink's. Every unit of flow has to cross every
+cut somewhere, so:
+
+**No flow can exceed the capacity of any cut.**
+
+That is the easy direction and it is immediate. The hard direction — that some flow actually
+achieves some cut's capacity — is the **max-flow min-cut theorem**, and it falls out of the
+algorithm below rather than needing a separate proof.
+
+## §24.2 — The Ford-Fulkerson method
+
+It is called a _method_ rather than an algorithm, and the book means it: it says what to do and not
+how. The how is the second half of this same section.
+
+Push flow along any path from source to sink that still has room. Repeat until there is no such
+path.
+
+Try that naively and it is simply wrong. A first path can commit flow to an edge in a way that
+blocks two better paths later, and with no way to take it back the answer comes out too small. What
+fixes it is one idea.
+
+**The residual network.** After some flow has been pushed, the useful question is not "which edges
+have spare capacity" but "which changes are still available" — and there are two kinds. An edge
+carrying 3 of 5 can take 2 more. An edge carrying 3 can also give **3 back**: sending flow the other
+way along it cancels what is there, which is a perfectly legal change and often the necessary one.
+
+<AlgorithmPlayer id="ford-fulkerson" size={8} />
+
+Each edge is labelled with its flow over its capacity. The **dashed arrows are residual edges** —
+they are not pipes, they are permissions to undo — and they appear and disappear as flow moves,
+because a residual edge only exists while there is flow to cancel. Watch for a path that uses one:
+the narration says so, and it is the algorithm reversing an earlier decision without any backtracking
+machinery at all.
+
+**When it stops, it is optimal, and the reason is on the screen.** When no augmenting path is left,
+the vertices still reachable from the source in the residual network form one side of a cut. Every
+edge leaving that set must be full — or the search could have crossed it — and every edge entering
+it must be empty. So the flow equals that cut's capacity exactly. Since no flow can exceed any cut,
+both are optimal, and the ring at the end of the run is the minimum cut.
+
+That is the max-flow min-cut theorem, and it arrives as a side effect of the stopping condition.
+
+## §24.2, continued — Edmonds-Karp
+
+The method's cost depends entirely on how the path is chosen, which is the thing it declines to
+specify. Choose badly and each augmentation can add a single unit of flow, so the running time
+depends on the **capacities** — the numbers written on the edges — rather than on the size of the
+graph. With capacities in the millions, that is a million iterations on a graph with four vertices.
+With irrational capacities the method can fail to terminate at all.
+
+Fix it by pinning down one detail: **always take a shortest augmenting path**, counting edges and
+ignoring capacities entirely. Find it with a breadth-first search.
+
+<AlgorithmPlayer id="edmonds-karp" size={8} />
+
+The search is visible here in a way it was not above: the ring grows outward one distance at a time,
+exactly as in §20.2, and the path it returns is the shortest one available in the residual network.
+The narration names its length each round.
+
+**Watch that number.** It never decreases, and that is the lemma the whole bound rests on. Augmenting
+along a shortest path can only remove edges from the current level structure or add ones pointing
+backwards, and neither can bring a vertex closer to the source. Each augmentation also **saturates**
+at least one edge on its path, and a saturated edge cannot reappear on an augmenting path until the
+distance to one of its ends has strictly increased. Distances only go up, and only as far as |V| —
+so each edge can be the bottleneck at most |V|/2 times, giving at most V·E/2 augmentations in total.
+
+Both claims are checked on every generated input: that path lengths never decrease, and that the
+augmentation count stays inside V·E/2. Neither is true of an arbitrary path choice, which is what
+makes them the test that this is Edmonds-Karp and not the generic method.
+
+## §24.3 — Maximum bipartite matching
+
+The chapter's last section is the first payoff, and it is not about networks at all.
+
+Given a bipartite graph, add a source joined to every left vertex, a sink joined from every right
+vertex, and give **every edge capacity 1**. A maximum flow in that network is a maximum matching:
+the unit capacities let each vertex carry at most one unit, so the edges with flow on them share no
+endpoints, and the value of the flow is the number of pairs.
+
+The detail that makes the reduction exact rather than approximate is the **integrality theorem**:
+with integer capacities every augmentation adds an integer amount, so no edge ends up carrying half
+a unit — which would be half a pair and meaningless.
+
+Chapter 25 takes the reduction apart again and runs the matching directly, without the source, the
+sink or the capacities — so the player for it lives there rather than here.
+
+## Comparing them
+
+Run both on the same network with the **trace tape** open — the strip under the transport.
+
+Ford-Fulkerson's tape shows longer, more irregular augmentations: the depth-first search dives, so
+it often returns a winding path, and the flow it can push is limited by whatever narrow edge that
+path happened to include. Edmonds-Karp's is regular — a visible breadth-first sweep, then a short
+path, then a sweep again — and the paths get longer in steps as the near routes fill up.
+
+They agree on the answer, always, because both stop only when the residual network cannot reach the
+sink and that condition is what proves optimality. What they disagree about is how many rounds it
+takes, and the step counter under each player is the honest measure of that.
+
+<ComplexityCard id="edmonds-karp">
+  **The two players are the same algorithm with one line specified differently**, and the difference
+  in the bound is the difference between a running time that depends on the numbers in the input and
+  one that depends only on its size.
+
+**O(V E²) is not the last word.** Dinic's algorithm augments along all shortest paths of a given
+length at once and reaches O(V² E); the push-relabel family, in §26.4 of the third edition and in
+this chapter's problems, does better still. All of them are refinements of the same residual-network
+idea.
+
+**Integer capacities give an integer maximum flow.** Every augmentation adds an integer amount, so
+the flow never becomes fractional — which is what makes chapter 25's reduction work at all.
+
+</ComplexityCard>
+
+## Why this chapter is worth more than it looks
+
+Maximum flow is the reduction target for a surprising number of problems that are not about
+networks. Bipartite matching is the next chapter and is exactly this with every capacity set to one.
+Scheduling with resource constraints, image segmentation, project selection, and the assignment of
+people to tasks all become flow problems with the right graph in front of them.
+
+The pattern is worth naming, because it recurs: rather than inventing an algorithm for your problem,
+find the shape it already has.

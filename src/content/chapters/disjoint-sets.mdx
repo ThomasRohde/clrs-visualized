@@ -1,0 +1,114 @@
+---
+title: Data Structures for Disjoint Sets
+section: '§19.1–19.4'
+summary: Keep a collection of sets and answer "are these two in the same one" — with two small heuristics that make it effectively constant time.
+algorithms: ['disjoint-sets']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Some problems only need to know **what is grouped with what**. Is this pixel part of the same region
+as that one? Have these two accounts already been merged? Would adding this edge to the growing tree
+create a cycle?
+
+A **disjoint-set** structure answers exactly that, with three operations and nothing else:
+
+- `MAKE-SET(x)` — a new set containing only `x`.
+- `UNION(x, y)` — merge the two sets containing `x` and `y`.
+- `FIND-SET(x)` — return a representative of `x`'s set, so that two elements are in the same set
+  exactly when their representatives are equal.
+
+It is a deliberately small interface, and the payoff for that smallness is the running time: with
+two heuristics that fit in five lines of code, a sequence of m operations costs **O(m α(n))**, where
+α is a function that is under 5 for any n you could physically store.
+
+## §19.1 — What it is for
+
+The book's motivating example is connected components, and it is worth writing out because it is
+also the run below:
+
+```
+CONNECTED-COMPONENTS(G)
+1  for each vertex v ∈ G.V
+2      MAKE-SET(v)
+3  for each edge (u, v) ∈ G.E
+4      if FIND-SET(u) ≠ FIND-SET(v)
+5          UNION(u, v)
+```
+
+Every vertex starts alone. Each edge is a claim that its two ends belong together: if they are
+already in the same set the edge tells us nothing, and if they are not, the two sets become one.
+When the edges run out, the sets **are** the connected components.
+
+The same five lines turn up again in chapter 21, where Kruskal's algorithm builds a minimum spanning
+tree by taking edges in weight order and keeping the ones that join two different components — the
+`FIND-SET` test is exactly the cycle check.
+
+## §19.2 and §19.3 — Two representations
+
+**A linked list per set** is the obvious implementation, and it is instructive because of how it
+fails. `FIND-SET` is fast if every element points at the head, but `UNION` then has to rewrite every
+pointer in one of the two lists. Do that carelessly — always appending the longer list to the
+shorter — and n unions cost Θ(n²). The **weighted-union heuristic**, appending the shorter list to
+the longer, brings a sequence of m operations down to O(m + n lg n): each element's pointer is
+rewritten only when it lands in a set at least twice the size, which can happen at most lg n times.
+
+**A forest** is the representation that wins, and it is the one on screen. Each set is a tree, each
+element points at its parent, and a root points at itself. `FIND-SET` walks up to the root; `UNION`
+makes one root the child of the other. Done naively this is no better than a linked list — a chain
+of unions can build a path of length n — so it comes with two heuristics.
+
+<AlgorithmPlayer id="disjoint-sets" size={8} />
+
+**Union by rank.** Each node keeps a `rank`, drawn here as the badge on the node: an upper bound on
+its height. When two trees are joined, the one whose root has the smaller rank goes underneath — so
+the taller tree does not get taller. A rank only increases when two trees of **equal** rank are
+joined, and since that halves the number of trees of that rank, ranks grow roughly logarithmically.
+
+**Path compression.** This is the one to watch. When `FIND-SET` walks from a node up to its root, it
+makes a second pass and points every node it touched **directly at the root**. Whole branches
+flatten in one step, and the cost of doing it is a second walk over nodes that had to be visited
+anyway. Step through a `FIND-SET` on a deep node in the run above and then look at what the next
+`FIND-SET` on the same set has to do: nothing.
+
+Note what the ranks do _not_ do after a compression: they are not updated. A rank stops being the
+height and stays an upper bound on it, which is all the analysis ever needed.
+
+<ComplexityCard id="disjoint-sets">
+  **Either heuristic alone gives O(lg n) per operation; together they give O(α(n))** — this is not
+  the two speedups adding up, it is a genuinely different bound, and §19.4 spends a chapter's worth
+  of potential-method argument getting it.
+
+**α(n) is the inverse of a function that grows unimaginably fast.** It is at most 4 for any n up to
+roughly 2 raised to the power of a tower of 2s — for every input that will ever exist, α(n) ≤ 4. The
+structure is constant-time in practice while not being constant-time in theory, which is a rare and
+slightly delightful position.
+
+**The worst case for a single operation is still Θ(lg n)** — one `FIND-SET` on a deep tree that has
+never been compressed. It is the _sequence_ that is fast, which is chapter 16's distinction exactly.
+
+</ComplexityCard>
+
+## §19.4 — Why it is that fast
+
+The analysis is the hardest in this part of the book, and the shape of it is worth knowing even if
+the details are not.
+
+It is a potential-method argument, like chapter 16's, but the potential is defined in terms of how
+far each node's rank is from its parent's, measured on a scale built from the very fast-growing
+function whose inverse α is. Nodes are charged for the pointer changes that compression does to
+them, and the accounting shows that a node can only be charged so many times before it is pointing
+straight at a root and stops costing anything.
+
+The result — O(m α(n)) for m operations — is tight: there is a matching lower bound for this class
+of algorithm.
+
+## Where this leaves Part V
+
+Three chapters, all of them the same move: take a structure that is already good and add exactly
+enough information to make it answer something new. Chapter 17 added a field to a balanced tree.
+Chapter 18 changed how many keys a node holds. This chapter added a rank and a pointer rewrite.
+
+None of them changed the fundamental idea of a tree, and all of them changed what a tree can do —
+which is the argument for understanding the plain versions first.

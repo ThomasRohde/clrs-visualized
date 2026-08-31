@@ -1,0 +1,184 @@
+---
+title: Elementary Graph Algorithms
+section: '§20.1–20.5'
+summary: Two ways to explore a graph, and the surprising amount that falls out of the second one — cycles, orderings, and strongly connected components.
+algorithms: ['bfs', 'dfs', 'topological-sort', 'strongly-connected-components']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Everything so far has had a shape the algorithm could rely on. An array has a first element and a
+next one. A tree has a root and two sides. A graph has neither: it is a set of things and a set of
+connections, and there is no obvious place to start or obvious order to proceed in.
+
+So the first question of Part VI is not "how do I solve this" but **"how do I look at all of it,
+once each"** — and there are exactly two good answers. The rest of the chapter is what those two
+answers turn out to be worth.
+
+## §20.1 — Two ways to write it down
+
+A graph `G = (V, E)` can be stored two ways, and the choice is not cosmetic.
+
+An **adjacency list** keeps, for each vertex, a list of its neighbours. It takes Θ(V + E) space,
+which for a sparse graph — one where E is much closer to V than to V² — is as small as it could be.
+Asking "is there an edge from u to v" means walking u's list.
+
+An **adjacency matrix** is a V × V grid with a 1 wherever an edge is. It takes Θ(V²) space whether
+or not the edges are there, and answers "is there an edge from u to v" in one look.
+
+Every algorithm in this chapter uses adjacency lists, because every one of them is of the form "for
+each vertex, look at each of its edges" — which costs Θ(V + E) with lists and Θ(V²) with a matrix.
+Chapter 23 will use a matrix instead, and will look completely different for exactly that reason.
+
+**Vertices here are numbered 1 to n**, and the pictures below label them that way, so a vertex can
+be named in a queue and on the graph without a second scheme to keep straight.
+
+## §20.2 — Breadth-first search
+
+Keep a set of vertices you have **reached but not yet looked at**. Take them in the order you
+reached them. When you meet a vertex for the first time, record how far away it is and which vertex
+you came from, and put it at the back of the queue.
+
+<AlgorithmPlayer id="bfs" size={9} />
+
+Two things are worth watching, and neither is the traversal itself.
+
+**The ringed vertices are the queue, and they are always at one of two distances.** Never three. The
+search finishes everything at distance 2 before it touches anything at distance 4, which is the
+invariant the whole correctness argument rests on — and it is why the number written on each vertex
+is not just "some distance" but **the shortest** one.
+
+**Each vertex is written to once.** The distance and the parent are set the first time the vertex is
+met, and no later edge can improve them, because any later edge comes from a vertex at least as far
+away. That is what makes the whole search Θ(V + E) rather than something that revisits.
+
+What comes out is a **breadth-first tree**: follow the parent links back from any vertex and you
+have a shortest path to it, in edges. For an unweighted graph, this is the shortest-path algorithm,
+and chapter 22 is what happens when the edges start to have lengths.
+
+> **A note on the book's WHITE, GRAY and BLACK.** The pseudocode above tracks each vertex's state
+> with a `color` field, and the narration uses those three words because the code does. They are the
+> book's names for _undiscovered_, _reached but not finished_, and _finished_ — states, not
+> instructions to a renderer. Nothing on this site draws a vertex white, grey or black; the key
+> beside each player says what is actually painted, and the three states show up there as untouched,
+> ringed in the queue, and settled.
+
+<ComplexityCard id="bfs">
+  **Θ(V + E) is linear in the input**, since the input is V vertices and E edges. Each vertex is
+  enqueued and dequeued once; each edge is scanned once from each end it has.
+
+**What the distance means is the strong claim.** Not "a distance the search happened to find" — the
+true minimum number of edges. That holds because the queue hands vertices out in non-decreasing
+order of distance, so nothing is ever reached by a longer route first.
+
+**A vertex left at ∞ is not reachable at all**, which makes this the connectivity test as well.
+
+</ComplexityCard>
+
+## §20.3 — Depth-first search
+
+Change one word. Take the frontier from the **back** instead of the front.
+
+<AlgorithmPlayer id="dfs" size={8} />
+
+The search now dives instead of spreading, and everything about what it produces changes with it.
+There are no useful distances any more — the path it takes to a vertex can be wildly longer than the
+shortest one. In their place come two timestamps per vertex: when it was first reached, and when
+every edge out of it had been explored.
+
+Those two numbers are the whole chapter. They obey the **parenthesis theorem**: for any two
+vertices, their intervals either nest completely or do not overlap at all. Partial overlap is
+impossible, because the search is a stack and a stack cannot half-leave something. So "is `v` a
+descendant of `u` in the search tree" is answered by comparing two numbers.
+
+The other thing to watch is the classification the narration gives each edge, which is read off the
+colour at its far end and nothing else:
+
+- the far end is **undiscovered** — a **tree** edge, and the search goes down it;
+- the far end is **on the stack** — a **back** edge, pointing at an ancestor. This is the one that
+  matters: a back edge is a cycle, and finding one is how you know a graph has a cycle at all;
+- the far end is **finished** — a **forward** edge if it is a descendant, a **cross** edge if it is
+  somewhere else entirely.
+
+Undirected graphs only ever produce tree and back edges, which is a small theorem worth trying to
+see: a cross edge would need the search to have finished a vertex without following an edge out of
+it.
+
+**Compare the two searches on the same graph using the trace tape** — the strip under the transport.
+Breadth-first produces long even runs of the same kind of step as a whole ring is processed;
+depth-first produces a jagged alternation as the search dives and unwinds. The tape is showing the
+difference between a queue and a stack without either algorithm being described.
+
+## §20.4 — Topological sort
+
+Here is the first thing the timestamps buy. Run a depth-first search on a directed acyclic graph,
+and every time a vertex **finishes**, push it onto the front of a list.
+
+<AlgorithmPlayer id="topological-sort" size={8} />
+
+The list is a topological order: every edge points forward in it. The argument is one sentence. When
+a vertex finishes, everything reachable from it has already finished — that is what finishing means
+— so everything it points at is already on the list, and putting it at the front puts it before all
+of them.
+
+The graph is drawn in layers with every edge running left to right, so a correct answer is one you
+can check by eye. The layers are **not** the answer, though. Watch for the edge that skips one, and
+for the fact that two vertices in the same column still come out in some definite order — a
+topological order is a line, not a set of levels.
+
+The precondition is the whole story. A cycle has no topological order, and a cycle is exactly a back
+edge, so §20.3's classification is the test.
+
+## §20.5 — Strongly connected components
+
+And here is the second thing, which is harder to believe.
+
+Two vertices are **strongly connected** when each can reach the other. Splitting a directed graph
+into its strongly connected components looks like it should need a search from every vertex — a
+reachability computation for each, and Θ(V(V + E)) work.
+
+It needs **two searches in total**.
+
+<AlgorithmPlayer id="strongly-connected-components" size={8} />
+
+Run a depth-first search and record the order the vertices finish in. Reverse every edge in the
+graph. Run a second depth-first search, taking vertices in **decreasing** finish order. Each tree
+the second search grows is one component.
+
+The single frame in the middle of that run — every arrow turning round at once — is the algorithm.
+Reversing the edges leaves reachability _inside_ a component completely unchanged, since a cycle
+reversed is still a cycle; but it flips every connection _between_ components. The vertex that
+finished last sits in a component that, once the edges are reversed, nothing outside it points into.
+So the second search starting there cannot escape, and it collects exactly that component. Remove it
+and the same argument applies to what is left.
+
+Contract each component to a single vertex and what remains is always a DAG — the **component
+graph** — which means §20.4 applies to it. That is the standard way to attack a problem on a
+directed graph with cycles: find the components, contract them, and solve the acyclic problem that
+remains.
+
+<ComplexityCard id="dfs">
+  **Both searches cost Θ(V + E), and so do both of their applications.** Every vertex is handled
+  once and every edge is looked at once from each end it has; nothing in this chapter does better,
+  and nothing needs to.
+
+**Θ(V + E) is linear in the input**, since the input is V vertices and E edges. It is the reason
+adjacency lists were the right choice in §20.1 — the same algorithms on a matrix would cost Θ(V²)
+regardless of how few edges there are.
+
+**The two applications add Θ(1) per vertex each.** Topological sort adds a list insertion;
+strongly connected components adds a second search and a transposed copy of the graph.
+
+</ComplexityCard>
+
+## What the rest of Part VI is
+
+Every chapter that follows is one of these two searches with something added.
+
+Chapter 21 is breadth-first search where the frontier comes off cheapest-first instead of
+oldest-first. Chapter 22 is the same substitution with a different definition of cheap. Chapter 24
+is depth-first search over a graph that changes as you search it. Chapter 25 is chapter 24 with the
+capacities all set to one.
+
+The searching is never the hard part again. What the search is run on is.

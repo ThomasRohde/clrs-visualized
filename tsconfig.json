@@ -1,0 +1,13 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "include": [".astro/types.d.ts", "**/*"],
+  "exclude": ["dist"],
+  "compilerOptions": {
+    "allowJs": true,
+    "strictNullChecks": true,
+    // Internal imports carry explicit .ts extensions so the same source runs
+    // unmodified under Vite (the site) and Node's type stripping (the tests).
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}

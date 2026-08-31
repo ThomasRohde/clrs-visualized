@@ -1,0 +1,141 @@
+---
+import { requireAlgorithm } from '../algorithms/registry';
+
+interface Props {
+  id: string;
+}
+
+const { id } = Astro.props;
+const algo = requireAlgorithm(id);
+const c = algo.complexity;
+
+// "Stable" and "In place" are sorting questions. They are meaningless for
+// RANDOMIZED-SELECT or a priority queue, so a module that leaves them out
+// loses the rows rather than being made to invent an answer. `extra` is where
+// the fact that actually matters for this algorithm goes.
+const ROWS: Array<[string, string]> = [
+  ['Best case', c.best],
+  ['Average case', c.average],
+  ['Worst case', c.worst],
+  ['Auxiliary space', c.space],
+  ...(c.stable ? ([['Stable', c.stable]] as Array<[string, string]>) : []),
+  ...(c.inPlace ? ([['In place', c.inPlace]] as Array<[string, string]>) : []),
+  ...(c.extra ?? []),
+];
+---
+
+<section class="panel complexity-card">
+  <header class="card-head">
+    <span class="label">Complexity &amp; correctness</span>
+    <h3>{algo.name}</h3>
+  </header>
+  <div class="complexity-grid">
+    <dl class="facts">
+      {
+        ROWS.map(([term, value]) => (
+          <div class="fact">
+            <dt>{term}</dt>
+            <dd class="mono">{value}</dd>
+          </div>
+        ))
+      }
+    </dl>
+    <div class="commentary">
+      <slot />
+    </div>
+  </div>
+</section>
+
+<style>
+  .complexity-card {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    gap: 0.7rem;
+    padding: 0.7rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-2);
+  }
+
+  h3 {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  /* Table and commentary sit side by side rather than the table stretching
+     the full width of a desktop window with a void down the middle. */
+  .complexity-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+    gap: 1.75rem;
+    align-items: start;
+    padding: 1rem 1.1rem 1.2rem;
+  }
+
+  .facts {
+    margin: 0;
+  }
+
+  .fact {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .fact:last-child {
+    border-bottom: none;
+  }
+
+  .facts dt {
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+  }
+
+  .facts dd {
+    margin: 0;
+    font-size: var(--t-small);
+    color: var(--ink);
+    text-align: right;
+  }
+
+  .commentary {
+    font-size: var(--t-small);
+    color: var(--ink-2);
+    line-height: 1.65;
+    max-width: var(--measure);
+  }
+
+  .commentary :global(p) {
+    margin: 0 0 0.7rem;
+  }
+
+  .commentary :global(p:last-child) {
+    margin-bottom: 0;
+  }
+
+  .commentary :global(strong) {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .commentary :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.9em;
+  }
+
+  @media (max-width: 760px) {
+    .complexity-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+  }
+</style>

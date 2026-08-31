@@ -1,0 +1,150 @@
+---
+title: Red-Black Trees
+section: '§13.1–13.4'
+summary: One bit per node, five properties, and three cases — enough to keep a search tree's height logarithmic no matter what order the keys arrive in.
+algorithms: ['red-black-tree']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 12 built a structure whose every operation costs the height of the tree, and then left the
+height to chance. Insert keys in random order and it is O(lg n); insert them in sorted order — one
+of the most common shapes real data comes in — and the tree is a linked list.
+
+A **red-black tree** removes the luck. It stores one extra bit per node, maintains five properties
+as it goes, and in exchange guarantees a height of at most 2 lg(n + 1) for **every** insertion
+order. The operations of chapter 12 all still work unchanged, because a red-black tree is still a
+binary search tree; the whole of this chapter is about keeping it short.
+
+## §13.1 — The five properties
+
+Every node carries a colour, red or black, and these hold at all times:
+
+1. Every node is either red or black.
+2. **The root is black.**
+3. Every leaf — every `NIL` — is black.
+4. **If a node is red, both its children are black.** (No two reds in a row.)
+5. **For each node, every path from it down to a leaf contains the same number of black nodes.**
+
+Properties 4 and 5 are the ones doing the work, and together they are a bound on how lopsided the
+tree can be. Property 5 says every root-to-leaf path has the same number of blacks — call that the
+**black-height**. Property 4 says the reds on a path can never be adjacent, so at worst they
+alternate, and no path can be more than twice as long as the shortest one. A tree whose longest
+path is at most twice its shortest cannot be a linked list.
+
+That is the theorem: **a red-black tree with n internal nodes has height at most 2 lg(n + 1)**. The
+run below checks it — the module's correctness check verifies all five properties and the height
+bound on the tree every run leaves behind, so a repair that fixed the picture but not the invariant
+would fail the build rather than ship.
+
+In the player the colour is drawn as a **badge on the node's shoulder** — filled for black, hollow
+for red — and not as the node's fill. That is deliberate: the fill says what the algorithm is doing
+to a node this step, and a node can perfectly well be red _and_ the one being rotated. It also
+means the thing the repair is hunting for, two reds in a row, is a pattern you can see in the shape
+of the badges rather than in their colour.
+
+## §13.2 — Rotations
+
+Insertion and deletion break the properties, and putting them back needs an operation that changes
+a tree's **shape** without changing its **order**. That is a rotation, and there is only one idea
+in it:
+
+```
+LEFT-ROTATE(T, x)          x                y
+1  y = x.right            / \              / \
+2  x.right = y.left      α   y     ⟹      x   γ
+   …                        / \          / \
+11 y.left = x              β   γ        α   β
+```
+
+`y` comes up, `x` goes down to the left, and the subtree `β` — the one between them in key order —
+changes parents. It can, because it is bigger than `x` and smaller than `y`, so it is at home under
+either. Everything else keeps its keys and its order. A rotation is Θ(1): a handful of pointer
+assignments, no walk.
+
+Step through one in the player and watch the inorder reading of the tree — left to right across
+the picture — before and after. It does not change. That is what makes rotations safe.
+
+## §13.3 — Insertion
+
+`RB-INSERT` starts exactly as `TREE-INSERT` does: walk down, hang the node off a leaf. Then it
+colours the new node **red** and calls `RB-INSERT-FIXUP`.
+
+Red is the right choice because of what it cannot break. A red node adds no blacks to any path, so
+property 5 is safe by construction. It cannot break property 3, and it can only break property 2 if
+the tree was empty. The single thing that can go wrong is **property 4** — the new node's parent
+might also be red — and the fixup has to deal with exactly that one violation.
+
+<AlgorithmPlayer id="red-black-tree" size={8} />
+
+The hull marks the four nodes the repair is reasoning about: `z`, its parent, its grandparent, and
+**the uncle** — the parent's sibling. Which of three cases applies is decided by the uncle alone,
+and it is worth watching for that specifically:
+
+**Case 1 — the uncle is red.** Recolour the parent and the uncle black, and the grandparent red.
+Every path through this part of the tree still crosses the same number of blacks, so property 5
+survives, and the two-reds problem is now between the grandparent and _its_ parent. Nothing rotates;
+the violation just moved two levels up. This is the case that can repeat, which is why the fixup is
+a loop, and it is also why insertion can cost O(lg n) recolourings.
+
+**Case 2 — the uncle is black, and `z` is on the inside.** One rotation straightens the zig-zag into
+a straight line, which is case 3.
+
+**Case 3 — the uncle is black, and `z` is on the outside.** Recolour the parent black and the
+grandparent red, then rotate the grandparent. The black parent comes up over the red grandparent,
+the two reds are no longer adjacent, and — this is the important part — **the loop ends here.**
+Cases 2 and 3 happen at most once each per insertion, so an insertion does at most **two**
+rotations however tall the tree is.
+
+Finally, line 17 blackens the root unconditionally. It is safe at any time: adding a black at the
+root adds one to every path at once, so property 5 cannot notice.
+
+**Try sorted input.** Type `10, 20, 30, 40, 50, 60, 70` into the box and watch what happens — the
+same input that turns chapter 12's tree into a linked list. Each insertion goes down the right-hand
+side, hits case 3 or case 1, and the tree rotates itself back into shape. It never gets taller than
+the bound allows.
+
+<ComplexityCard id="red-black-tree">
+  **Every bound here is worst-case, not expected** — that is the entire difference from chapter 12.
+  There is no input order and no adversary that makes a red-black tree tall.
+
+**The two costs are different in kind.** Rotations are at most 2 per insertion, full stop.
+Recolourings can be O(lg n), because case 1 walks the violation up the tree — but they are O(1)
+_amortised_ over a sequence of insertions, which is the potential method of chapter 16 applied to
+the number of red nodes.
+
+**One bit per node** is the whole storage overhead, and in practice it is usually free: it fits in
+a spare bit of a pointer that was going to be word-aligned anyway.
+
+</ComplexityCard>
+
+## §13.4 — Deletion
+
+Deletion is the same shape of argument and considerably more work. `RB-DELETE` follows chapter 12's
+`TREE-DELETE`, splicing out a node or its successor, and then has to repair the damage: removing a
+**black** node takes a black off every path through it, which breaks property 5 everywhere below.
+
+The repair, `RB-DELETE-FIXUP`, carries the missing black as an "extra black" on a node and pushes it
+up the tree until it can be discarded — into a red node that can absorb it, or out at the root where
+it costs nothing. It has **four** cases rather than three, distinguished by the sibling's colour and
+its children's, and like insertion it does at most three rotations and O(lg n) recolourings.
+
+**This chapter animates insertion and not deletion**, which is a deliberate limit rather than an
+oversight. The fixup above is where the idea lives — a local violation, a small case analysis, and a
+proof that the loop terminates — and the deletion fixup is the same idea again with more cases and a
+sentinel that has to be reasoned about carefully. Read §13.4 with the insertion player's picture in
+mind and the cases fall out the same way.
+
+## What this makes possible
+
+A balanced search tree with guaranteed O(lg n) operations is the foundation the next few chapters
+build on, and they build in two different directions.
+
+**Chapter 17 augments it.** Store one extra field per node — a subtree size, a maximum endpoint —
+and the same tree answers questions it was never designed for, in the same O(lg n), as long as
+rotations can maintain the new field.
+
+**Chapter 18 changes the shape of the deal.** A B-tree keeps the same logarithmic guarantee but
+makes each node hold many keys, because when "following a pointer" means reading a disk block, the
+number of levels is the only cost that matters.

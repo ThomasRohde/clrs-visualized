@@ -1,0 +1,198 @@
+---
+title: Elementary Data Structures
+section: '§10.1–10.3'
+summary: Stacks, queues, linked lists and rooted trees — the structures everything later is built out of, and the pointers that hold them together.
+algorithms: ['stack', 'linked-list']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Every structure so far has been an array, and the array has been doing two jobs at once: holding
+the values, and saying what order they are in. This chapter separates those jobs.
+
+A **dynamic set** grows and shrinks as a program runs. The operations it supports are what
+distinguish one structure from another, and the choice of structure is almost always a choice
+about which operations you want to be cheap. A stack and a queue hold exactly the same elements
+and differ only in which one they give back. A linked list gives up random access and buys the
+ability to splice an element out in constant time.
+
+None of this is about speed in the asymptotic sense — nearly every operation below is Θ(1). It is
+about what a structure makes _possible_, and the rest of Part III is built on these four.
+
+## §10.1 — Stacks and queues
+
+Both are dynamic sets where the deletion is not your choice: the structure decides which element
+leaves next.
+
+A **stack** implements _last-in, first-out_. The insert operation is called `PUSH` and the delete
+is called `POP`, and `POP` returns the element pushed most recently — the pile-of-plates image the
+book uses is the right one, because you can only reach the top.
+
+The implementation is an array `S[1‥n]` plus one integer, `S.top`, holding the index of the most
+recently pushed element. Everything follows from that single number.
+
+<AlgorithmPlayer id="stack" />
+
+Push all the values, then pop them all back off, and watch `S.top`.
+
+The thing worth catching is what `POP` does **not** do. Follow the bracket over the cells: it marks
+what is currently in the stack, and it retreats by one on every pop. But the value in the slot it
+just left does not disappear. It is still sitting there in the array, unchanged, outside the
+structure — and it stays there until some later `PUSH` overwrites it. `POP` never erases anything;
+it moves a boundary. Step to the very last frame and the array is still full of every value you
+pushed, while the stack itself is empty.
+
+That is why `POP` is Θ(1) rather than Θ(n): there is nothing to clean up. It is also why a stack
+that has been popped is not the same thing as a stack that was never pushed, which matters the
+moment you care about what is still reachable in memory.
+
+`STACK-EMPTY` is the guard. `POP` calls it first, because popping an empty stack is an
+**underflow** — an error, not a value. The mirror error is **overflow**: `PUSH` checks
+`S.top == S.size` first, because the array has a fixed size and a stack that outgrows it has
+nowhere to put the next element. Neither branch is taken in the run above, which is exactly the
+point of checking them.
+
+<ComplexityCard id="stack">
+  **Every operation is Θ(1)**, and none of them is amortised or expected — they are Θ(1) on every
+  single call, because each one touches one array slot and one integer. There is no loop in any of
+  the three procedures.
+
+**The Θ(n) space is the array**, fixed at the moment the stack is created, and that fixed size is
+the whole cost of this implementation. A stack that might need to grow wants either a linked list
+or a table that doubles — and the doubling version is where amortised analysis earns its keep, in
+chapter 16.
+
+</ComplexityCard>
+
+### Queues
+
+A **queue** is the same idea with the other discipline: _first-in, first-out_. The insert is
+`ENQUEUE`, the delete is `DEQUEUE`, and the element returned is the one that has been waiting
+longest.
+
+One integer is no longer enough. A queue needs two — `Q.head`, pointing at the element next to
+leave, and `Q.tail`, pointing at the next free slot. `ENQUEUE` advances the tail; `DEQUEUE`
+advances the head. Both ends move in the same direction, which means that after enough operations
+they walk off the end of the array with plenty of free space behind them.
+
+The fix is to treat the array as a ring: position `n` is followed by position 1. Both procedures
+advance their index with a wrap — `if Q.tail == Q.size then Q.tail = 1 else Q.tail = Q.tail + 1` —
+and the queue's elements are whatever lies between head and tail, possibly in two pieces. The
+awkward consequence is that `Q.head == Q.tail` is ambiguous: it describes both an empty queue and a
+completely full one. Implementations either keep a count or refuse to fill the last slot.
+
+### Why the array version has a ceiling
+
+Both structures above are fixed-size. That is not a flaw in the idea of a stack — it is a
+consequence of storing elements at computed positions in a block of memory. If you want a
+structure that grows without bound, you have to stop computing positions and start storing them.
+
+## §10.2 — Linked lists
+
+A **linked list** stores the order explicitly. Each element is an object with a `key` and two
+pointers, `next` and `prev`, and the order is whatever those pointers say. There is no index
+arithmetic anywhere, and no fixed capacity.
+
+The trade is exact and worth stating plainly:
+
+| Operation             | Array           | Doubly linked list         |
+| --------------------- | --------------- | -------------------------- |
+| Access the i-th       | Θ(1)            | Θ(n) — you must walk       |
+| Search for a key      | Θ(n)            | Θ(n)                       |
+| Insert at the front   | Θ(n) — shift up | Θ(1)                       |
+| Delete a given object | Θ(n) — shift    | Θ(1) — you already hold it |
+
+`LIST-SEARCH(L, k)` walks from `L.head` following `next` until it finds `k` or runs off the end, so
+it is Θ(n) in the worst case. `LIST-PREPEND(L, x)` splices `x` in at the front: point `x.next` at
+the old head, point the old head's `prev` back at `x`, and move `L.head`. Four pointer assignments,
+no loop, Θ(1).
+
+`LIST-DELETE(L, x)` is the one that shows what the second pointer buys. Given the object `x`
+itself, deletion is `x.prev.next = x.next` and `x.next.prev = x.prev` — the list simply routes
+around it, in constant time. In a singly linked list you cannot do that, because from `x` you have
+no way to reach its predecessor; you would have to search from the head first, at Θ(n). The `prev`
+pointer costs a word per element and turns a linear operation into a constant one.
+
+<AlgorithmPlayer id="linked-list" size={8} />
+
+Read this picture the other way round from every array so far. **The boxes sit where the objects
+were allocated, and they never move.** The arrows underneath are the only thing that says what
+order the list is in: the lane marked `next` runs forward, the lane marked `prev` runs back, and a
+pointer that has been set to NIL is drawn as a stub with the word written under it. `L.head` hangs
+above whichever box is currently at the front.
+
+Three moments are worth stepping through slowly.
+
+**The walk.** `LIST-SEARCH` starts at `L.head` and follows exactly one arrow per step. Nothing
+about the row helps it — it cannot jump to the middle, cannot bisect, cannot do anything but
+follow the chain. That is the Θ(n), and it is what the list pays for everything else.
+
+**The splice.** When `LIST-DELETE` runs, keep your eye on the object being deleted. It does not
+move, and nothing after it moves either. Two arrows are redirected, one in each lane, and the
+object is simply no longer on the path from `L.head`. It keeps its slot and its key, drawn
+square-cornered from then on to say it is out of the list — exactly as a popped value keeps its
+slot in §10.1.
+
+**The prepend.** The new object takes the one free slot, at the far right of the row, and a single
+arrow reaching back across everything makes it the front of the list. Nothing shifted and nothing
+was copied. Compare that with what an array would have had to do to put a new element at index 1.
+
+The second `LIST-SEARCH` then looks for the key that was deleted, walks the list to the end, and
+returns NIL. That is the proof that two pointer assignments really did remove it.
+
+Note the precondition, because it is the usual source of confusion: `LIST-DELETE` takes the
+_object_, not the key. Deleting by key means `LIST-SEARCH` first, and that is Θ(n) again — the
+Θ(1) belongs to the splice alone. In the run above the search happens first for exactly that
+reason: the walk is not part of the deletion, it is what you must do before you are allowed to
+start it.
+
+<ComplexityCard id="linked-list">
+  **The first four rows are about `LIST-SEARCH`**, because it is the only one of the three with a
+  loop in it. Best case is the key sitting at the head; average and worst are both Θ(n), and there
+  is no input order that improves on that — an ordered list still cannot be bisected, because
+  getting to the middle means walking to it.
+
+**The other two are Θ(1) on every call, not amortised and not expected.** `LIST-PREPEND` makes
+four pointer assignments and `LIST-DELETE` makes two, and neither number depends on how long the
+list is. The Θ(n) space is one object per element, and the `prev` field is a word of it — the
+whole price of turning deletion from a walk into two assignments.
+
+</ComplexityCard>
+
+### Sentinels
+
+Every one of those procedures is cluttered by boundary checks: is `x` the head, is `x` the tail, is
+the list empty. A **sentinel** removes all of them. Add one dummy object `L.nil` that sits between
+the head and the tail, turning the list into a circular, doubly linked ring with `L.nil` as the
+join. Now no pointer is ever `NIL`, no special case survives, and `LIST-DELETE` shrinks to exactly
+the two assignments above with no guards at all.
+
+The cost is one object's worth of memory, and the warning that comes with it: a sentinel that
+guards a large number of very short lists is mostly waste. Use them where they buy real
+simplification of the code, not reflexively.
+
+## §10.3 — Representing rooted trees
+
+Lists generalise. If one `next` pointer gives a chain, more pointers give a tree.
+
+A **binary tree** stores three pointers per node — `p`, `left`, `right` — and the root is reached
+through `T.root`, whose parent is `NIL`. That is enough to navigate in every direction, and it is
+the representation chapter 12 builds on.
+
+For trees with **unbounded branching**, the obvious extension fails: you cannot store `child1`,
+`child2`, … in a node when you do not know how many children there will be. The fix is the
+**left-child, right-sibling** representation, and it is worth understanding because it is a
+genuinely surprising piece of economy. Each node keeps just two pointers:
+
+- `x.left-child` — its first child
+- `x.right-sibling` — the next node that shares its parent
+
+A node with twenty children stores one pointer, to the first of them; the other nineteen are
+reached by walking the sibling chain. **Any** rooted tree, whatever its branching, fits in O(n)
+space with exactly two pointers per node.
+
+The pattern to notice across the whole chapter: an array puts the structure in the _positions_,
+and a pointer-based structure puts it in the _pointers_. Everything else — what is cheap, what is
+expensive, what has a fixed capacity — follows from that one choice. Chapter 11 makes it a third
+time, by putting the structure in a computed function of the key.

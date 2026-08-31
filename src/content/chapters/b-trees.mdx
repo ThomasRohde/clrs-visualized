@@ -1,0 +1,111 @@
+---
+title: B-Trees
+section: '§18.1–18.3'
+summary: A balanced search tree for data that lives on a disk — many keys per node, every leaf at the same depth, and a tree that grows from the root.
+algorithms: ['b-tree']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Every structure so far has assumed that following a pointer is free. Change that one assumption and
+the answers change with it.
+
+On a disk, a read is measured in milliseconds and a comparison in nanoseconds — a difference of
+five or six orders of magnitude. Under those conditions the running time of a search is not the
+number of comparisons it does; it is **the number of nodes it has to read**, and everything else
+rounds to zero. A red-black tree over a billion keys is about 60 levels deep. At 10 ms a level,
+that is six tenths of a second to look up one key.
+
+A **B-tree** attacks the height directly, by making each node hold many keys instead of one. If a
+node holds a thousand keys — and a node is sized to fill one disk block, so this is realistic —
+then a tree of a billion keys is **three** levels deep, and a lookup is three reads.
+
+## §18.1 — What a B-tree is
+
+A B-tree has a **minimum degree** `t ≥ 2`, and the rules are about how full a node has to be:
+
+- Every node holds between `t − 1` and `2t − 1` keys. The root is exempt from the lower bound —
+  it may hold as few as one.
+- A node with `k` keys has exactly `k + 1` children, and its keys separate the ranges its children
+  cover, exactly as a binary search tree's single key separates its two.
+- **Every leaf is at the same depth.** There is no such thing as a lopsided B-tree.
+
+That last rule is the balance condition, and it is enforced structurally rather than repaired
+afterwards — there are no rotations anywhere in this chapter. The height of a B-tree with `n` keys
+is at most log_t((n + 1)/2), because every node except the root has at least `t` children, so the
+number of nodes grows at least as fast as `t` per level.
+
+The player below runs the smallest useful case, `t = 2`: every node holds one, two or three keys,
+which is the tree usually called a **2-3-4 tree**. Everything you see generalises directly — with
+`t = 1000` the pictures are the same and the numbers are bigger.
+
+## §18.2 — Searching, splitting, inserting
+
+**`B-TREE-SEARCH`** is the binary-tree search with a wider fan-out. Scan the keys of the node you
+have read to find the gap `k` falls into, then read that one child. The scan is `O(t)` comparisons
+in memory; the read is the expensive part, and there is exactly one per level.
+
+**Insertion is where a B-tree earns its shape**, and the operation that does it is the **split**. A
+full node — one with the maximum `2t − 1` keys — cannot take another. So it is split in two around
+its median key, and **the median moves up into the parent**: two nodes of `t − 1` keys where there
+was one full node, and one more key in the level above.
+
+<AlgorithmPlayer id="b-tree" size={10} />
+
+Watch what insertion does on the way down. It splits **every full node it passes**, whether or not
+this particular key would have needed it. That looks wasteful and is the opposite: it guarantees
+that when a median needs to move up into a parent, the parent has room for it — because the parent
+was itself split on the way past if it was full. So insertion is **one pass down**, with no walking
+back up and no recursion afterwards.
+
+And watch what happens when the **root** is full. A new empty root is made above it, and the old
+root is split beneath it. That is the only way a B-tree ever gets taller, and it is why every leaf
+stays at the same depth: the tree grows at the top, not at the bottom.
+
+The split's pseudocode above is shortened. The book's version is seventeen lines, thirteen of which
+are the index arithmetic that shifts keys along inside an array — the same shifting insertion sort
+does in chapter 2. The four lines here are the four things that change on screen.
+
+<ComplexityCard id="b-tree">
+  **Read the first four rows in disk reads, not comparisons.** Every operation touches O(log_t n)
+  nodes, and that is the number a database engineer cares about. The CPU cost is a factor of `t`
+  higher, because each node has to be scanned, and it is irrelevant when a node read costs a
+  million times a comparison.
+
+**Why the fan-out is what it is:** a node is made exactly one disk block, so `t` is a consequence of
+the hardware rather than a tuning parameter. Bigger blocks mean shallower trees.
+
+**Insertion never walks back up.** Splitting full nodes pre-emptively on the way down is what buys
+that, and it costs at most one extra split per level.
+
+</ComplexityCard>
+
+## §18.3 — Deletion
+
+Deletion is the mirror image and, as with red-black trees, the fiddlier half. The problem is the
+lower bound: a node that drops below `t − 1` keys breaks the shape rules, so a key cannot simply be
+removed from a minimal node.
+
+The fix is the same trick as insertion, run backwards. On the way **down**, make sure the child you
+are about to descend into has at least `t` keys — if it has only `t − 1`, either **borrow** a key
+from a sibling that can spare one (rotating it through the parent), or **merge** it with a sibling
+and pull the separating key down from the parent. Then, by the time the key to delete is reached,
+there is always enough slack to remove it without another pass.
+
+Merging is what makes a B-tree shrink, and it shrinks the way it grew: if the root is left with no
+keys at all, it is discarded and its single child becomes the new root, one level shorter.
+
+**The player animates insertion and search, not deletion** — the same deliberate limit as chapter 13. Splitting is where the idea is, and deletion is that idea inverted with more cases to
+enumerate.
+
+## Where B-trees actually are
+
+This is not a museum piece. B-trees and their variants are the index structure of essentially every
+relational database and file system in use: they are what makes a primary-key lookup in a table of
+a hundred million rows take a handful of reads.
+
+The variant most often deployed is the **B⁺-tree**, which keeps all the keys in the leaves and uses
+the internal nodes purely as a routing directory, with the leaves linked together in order. That
+buys a range scan — "every row between these two dates" — as a walk along one linked list, which is
+chapter 10's structure doing the last mile of chapter 18's.

@@ -1,0 +1,153 @@
+---
+title: Number-Theoretic Algorithms
+section: '§31.1–31.8'
+summary: The oldest algorithm in the book, the one that makes big exponents possible, and the cryptosystem the two of them add up to.
+algorithms: ['extended-euclid', 'modular-exponentiation', 'rsa']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Every other chapter measures its input by how many **items** it has. This one measures it by how many
+**bits** — because the interesting inputs here are single numbers of several hundred digits, and an
+algorithm that is linear in the value of its input is exponential in its length.
+
+That distinction is the whole chapter. Multiplying two 600-digit numbers is fast. Factoring their
+product is not known to be. All of modern public-key cryptography lives in that gap.
+
+## §31.1 — Divisibility, and what "efficient" means here
+
+An input of `β` bits represents a number up to `2^β`. So an algorithm that loops `n` times on input
+`n` is doing `2^β` work — **exponential**, not linear, however linear it looks. Trial division up to
+`√n` is the classic example: it is often described as fast, and it is `2^(β/2)`.
+
+Everything below is polynomial in β, which means polynomial in the _number of digits_.
+
+## §31.2 — Euclid's algorithm
+
+The oldest algorithm still in daily use, written down around 300 BC, and completely unimproved since.
+
+It rests on one identity: **gcd(a, b) = gcd(b, a mod b)**. Any common divisor of a and b divides
+`a − qb` for any q, so the pair `(b, a mod b)` has exactly the same common divisors — and it is a
+much smaller pair.
+
+<AlgorithmPlayer id="extended-euclid" size={10} />
+
+The **descent** down the columns is plain Euclid. It is fast for a reason worth having: `a mod b` is
+under `a/2` whenever `b ≤ a/2`, and otherwise `a mod b = a − b` is also under `a/2` — so the numbers
+halve every _two_ steps, and there are O(lg b) divisions. **Lamé's theorem** sharpens that: the worst
+case is consecutive Fibonacci numbers, and even they cost only about one division per 4.8 digits of
+input. Set the slider high and the generated pair is built backwards from exactly that recurrence.
+
+The **ascent** is the extended part, and it is where the value is. Coming back up, each level builds
+a pair `(x, y)` with
+
+```
+a·x + b·y = gcd(a, b)
+```
+
+which is **Bézout's identity**. Every level's coefficients come from the level below in one
+subtraction — watch the arrows reverse direction at the bottom of the run.
+
+Those coefficients are what the rest of the chapter is made of. When `gcd(a, n) = 1`, the identity
+reads `a·x ≡ 1 (mod n)` — so **x is the modular inverse of a**, and computing inverses is what §31.4
+solves equations with, what §31.5 reassembles remainders with, and what turns an RSA public key into
+a private one.
+
+## §31.4–31.5 — Two consequences
+
+**Solving `ax ≡ b (mod n)`.** Let `d = gcd(a, n)`. The equation has a solution exactly when `d`
+divides `b`, and then it has exactly `d` of them, spaced `n/d` apart. Extended Euclid supplies both
+the test and the first solution; the rest are addition. The structure is worth remembering: modular
+equations do not have one root or none, they have `d` or none.
+
+**The Chinese remainder theorem.** Knowing `x mod n₁` and `x mod n₂` for coprime moduli determines
+`x mod n₁n₂` uniquely — so a number modulo a large composite can be carried around as a tuple of
+remainders modulo its factors, and added and multiplied componentwise. That is a genuinely useful
+representation, and it is also the reason RSA implementations decrypt about four times faster than
+the formula suggests: they work modulo p and q separately and reassemble.
+
+## §31.6 — Modular exponentiation
+
+`a^b mod n` where b has hundreds of digits. Two separate impossibilities, and one algorithm fixes
+both.
+
+<AlgorithmPlayer id="modular-exponentiation" size={7} />
+
+**You cannot multiply b times.** Repeated squaring reduces it to one squaring per _bit_ of the
+exponent — read b in binary, square the running value at every bit, and multiply by `a` as well at
+every bit that is 1.
+
+**You cannot compute a^b and then reduce.** The number would need more digits than there are atoms
+to write them on. So the modulus is applied after every multiplication, which is legal because
+modular arithmetic commutes with multiplication, and keeps every intermediate under n².
+
+The `c` row is the book's bookkeeping and computes nothing: it is the prefix of the exponent read so
+far, and it exists so the invariant `d = a^c mod n` is visible at every step. Watch it double, and
+gain a one exactly when the bit is 1.
+
+## §31.7 — RSA
+
+Everything above was preparation.
+
+The problem RSA solves is not encryption — symmetric ciphers were fine. It is that two parties who
+have never met, over a wire someone is reading, need a shared secret. Until 1976 the consensus was
+that this was impossible.
+
+<AlgorithmPlayer id="rsa" size={3} />
+
+Pick primes p and q, let `n = pq` and `φ = (p−1)(q−1)`. Pick `e` coprime to φ, and let
+`d = e⁻¹ mod φ` — which is the ascent in the first player. Publish `(e, n)`; keep `d`.
+
+Encryption is `M^e mod n`. Decryption is `C^d mod n`. Both are the second player. **Nothing else
+happens.**
+
+Why the two undo each other is three lines. Because `ed ≡ 1 (mod φ)`, we have `ed = 1 + kφ`, so
+`M^{ed} = M·(M^φ)^k`; and Euler's theorem gives `M^φ ≡ 1 (mod n)`. Everything collapses back to M.
+The exponents are inverses because they were built to be.
+
+**Why it is secure, as far as anyone knows.** Getting `d` from the public `(e, n)` needs φ; computing
+φ needs p and q; getting those out of n means factoring it. Nobody knows how. That is not a proof,
+and RSA would fall to one — this is security by nobody having managed yet, which is the honest
+description of essentially all deployed cryptography.
+
+## §31.8 — Primality testing
+
+Key generation needs large primes, which means being able to recognise one. Starred in this edition,
+so no player here, but the shape is worth knowing.
+
+Fermat's little theorem says `a^(p−1) ≡ 1 (mod p)` for prime p, which gives a **test that can only
+prove compositeness**: if the congruence fails, n is certainly composite; if it holds, n is probably
+prime. Carmichael numbers pass it for every base, so **Miller-Rabin** strengthens it by also looking
+for a nontrivial square root of 1 during the exponentiation — which a prime cannot have. Each round
+catches a composite with probability at least ¾, so fifty rounds leave a false positive less likely
+than a hardware failure.
+
+The primes in real keys are found exactly this way: pick a random odd number of the right size and
+test it. The prime number theorem says about one in `ln n` numbers near n is prime, so a few hundred
+tries suffice for a 300-digit prime.
+
+<ComplexityCard id="modular-exponentiation">
+  **Everything here is measured in bit operations**, not in operations on numbers, because the
+  numbers do not fit in a word. Multiplying two β-bit numbers is Θ(β²) by the schoolbook method —
+  which is why chapter 30's FFT turns up in the implementation of every large-integer library.
+
+**Euclid is O(β) divisions**, so O(β³) bit operations, and modular exponentiation is O(β) squarings,
+so O(β³) too. RSA is therefore cubic in the key length: doubling the key size costs eight times as
+much per operation.
+
+**The asymmetry is the product.** Every operation above is polynomial in β. Factoring the best-known
+way is sub-exponential but super-polynomial, and that gap — not a proof, a gap — is what the padlock
+in the address bar rests on.
+
+</ComplexityCard>
+
+## What is not here
+
+**Miller-Rabin** has no player: §31.8 is starred, so it sits at this site's Tier 2. It would be a
+good one to add — the search for a nontrivial square root of 1 happens _inside_ the squaring loop
+the second player already draws.
+
+**Integer factorization** is gone from this edition altogether. The third edition ended with
+Pollard's rho; the fourth drops it, which is a defensible call given that no method in the chapter
+came close to threatening RSA anyway.

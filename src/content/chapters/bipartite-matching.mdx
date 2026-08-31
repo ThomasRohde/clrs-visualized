@@ -1,0 +1,170 @@
+---
+title: Matchings in Bipartite Graphs
+section: '§25.1–25.3'
+summary: Pair things up so nothing is used twice — the most pairs, then the most stable, then the cheapest.
+algorithms: ['bipartite-matching', 'gale-shapley', 'hungarian']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Workers and jobs, each worker qualified for some of the jobs. Students and projects. Doctors and
+hospitals. Ports and plugs. In every case the graph is **bipartite** — two groups, with edges only
+between them, never inside — and the question is how many pairs can be made at once, with nobody
+used twice.
+
+A set of edges no two of which share a vertex is a **matching**. This chapter is about finding a
+maximum one.
+
+## §25.1 — Why greedy is not enough
+
+Take any available edge, mark both ends used, repeat. It is the obvious algorithm and it does not
+work — not because it is unlucky, but because it can genuinely paint itself into a corner. Match a
+worker to the only job two other workers can do, and two matches are lost to gain one.
+
+The natural repair would be to back out and try again, and the natural fear is that this means
+searching all the possibilities. It does not, and the reason is the same one that rescued the last
+chapter.
+
+**An augmenting path** starts at an unmatched vertex, alternates unmatched and matched edges, and
+ends at a _different_ unmatched vertex. Flip every edge along it — matched becomes unmatched,
+unmatched becomes matched — and since such a path has one more unmatched edge than matched ones, the
+matching grows by exactly one. Everything that was matched along the way stays matched; some of it
+just changes partner.
+
+**Berge's theorem** is what makes this an algorithm rather than a heuristic:
+
+> A matching is maximum **exactly when** no augmenting path exists.
+
+So there is nothing to search and nothing to reconsider. Look for an augmenting path from each
+unmatched vertex on the left, take it if you find one, and when none is left anywhere you are
+provably done. The stopping condition **is** the proof of optimality.
+
+<AlgorithmPlayer id="bipartite-matching" size={9} />
+
+The recursion in the player is the alternation. Trying to match `u` to `v`, and finding `v` already
+taken, the only way forward is to ask `v`'s current partner to go somewhere else — which is the same
+question one level down. When that chain of requests reaches somebody with a free option, the whole
+chain shifts by one and the matching is one bigger. When it does not, the search unwinds and `u` is
+left unmatched.
+
+Watch what happens to a vertex that fails. It is never retried. Once no augmenting path exists from
+a vertex, none ever will — later augmentations cannot create one — so a failed search is a permanent
+answer, which is what keeps the running time to O(VE) instead of something that restarts.
+
+## The reduction to maximum flow
+
+This is chapter 24 wearing a disguise, and the disguise is thin.
+
+Add a source joined to every vertex on the left, a sink joined from every vertex on the right, and
+give **every edge capacity 1**. Now a maximum flow is a maximum matching: the unit capacities mean
+each left vertex can send at most one unit and each right vertex can receive at most one, so the
+edges carrying flow form a matching, and its size is the value of the flow.
+
+Two details make the reduction exact rather than approximate. **Integer capacities give an integer
+maximum flow**, so no edge ends up carrying half a unit — which would be a matching of half a pair
+and meaningless. And the augmenting paths of §24.2 become precisely the augmenting paths above, with
+the residual edges — the permissions to undo — turning into the matched edges you traverse backwards.
+
+The algorithm on this page is that reduction with the source, the sink and the capacities removed,
+because none of them ever did anything. It is worth doing once in each direction: understanding the
+matching version makes the flow version's residual edges concrete, and understanding the flow
+version explains why the matching one is guaranteed to terminate at the right answer.
+
+<ComplexityCard id="bipartite-matching">
+  **O(VE) is one search per unmatched left vertex**, each costing a walk over the edges. Since the
+  matching grows by at most one per search and can never shrink, there are at most |V| searches.
+
+**König's theorem** is the companion result: in a bipartite graph the size of a maximum matching
+equals the size of a minimum vertex cover. That is max-flow min-cut again, translated — the cut in
+the flow network is the cover.
+
+**Hopcroft-Karp** (still §25.1) improves this to O(E √V) by finding a **maximal set of shortest augmenting paths**
+in each phase rather than one path at a time, in the same way Dinic's algorithm improves
+Edmonds-Karp. It is the standard algorithm in practice.
+
+</ComplexityCard>
+
+## §25.2 — The stable-marriage problem
+
+A different question about the same kind of graph, and the answer is not "the most pairs" but "no
+pair that would both rather defect".
+
+Each of n people on one side ranks all n on the other, and vice versa. A matching is **unstable** if
+some pair not matched to each other would both prefer each other to their current partners — they
+would leave, and the matching would not hold. A **stable** matching admits no such pair.
+
+**Gale-Shapley** finds one, and always.
+
+<AlgorithmPlayer id="gale-shapley" size={8} />
+
+Unmatched proposers propose down their own preference list; a receiver holds the best offer so far
+and rejects the rest; anyone rejected proposes to their next choice. Only proposals actually made
+are drawn, so the picture is the history of the round as well as its state — a dashed edge is an
+offer that was made and is no longer held.
+
+Three claims, each with a one-line argument:
+
+- **It terminates**, because nobody ever proposes twice to the same person: at most n² proposals.
+- **Everyone ends up matched.** A receiver who has ever held an offer never becomes free again. So a
+  leftover proposer would have been rejected by all n receivers, all of whom would then be matched —
+  which needs n + 1 proposers.
+- **It is stable.** If `p` prefers `r` to their own partner, then `p` proposed to `r` earlier and was
+  turned down or later dropped, and that only happens in favour of somebody `r` prefers. So `r` does
+  not want `p`, and the pair does not defect.
+
+The badge on each vertex is how far down their own list their current partner sits — watch the
+proposers' numbers get worse as they work down, and the receivers' get better as offers arrive.
+
+It is also lopsided in a way worth knowing: the algorithm is **optimal for whichever side
+proposes** and pessimal for the other. Every proposer gets the best partner they could have in any
+stable matching; every receiver gets the worst. That asymmetry is not a bug in the algorithm, it is
+a property of the problem, and it is the reason real deployments — medical residency matching, for
+one — argue about which side proposes.
+
+## §25.3 — The Hungarian algorithm
+
+The weighted version, also called the **assignment problem**: every pair has a value, and the goal
+is the best total rather than the most pairs.
+
+Augmenting paths alone are not enough here: a matching can be maximum and expensive. Trying every
+assignment is n!, so what makes a polynomial algorithm possible is **linear-programming duality**,
+in the concrete form of a price on every row and every column.
+
+<AlgorithmPlayer id="hungarian" size={4} />
+
+Give each worker a potential `u[i]` and each job a potential `v[j]`, kept **feasible** — meaning
+`u[i] + v[j] ≤ c[i][j]` for every pair. A pair where that holds with **equality** is _tight_, and
+those are the only pairs the algorithm ever matches. The note in each cell is its **slack**,
+`c[i][j] − u[i] − v[j]`; a zero is a tight pair.
+
+Why restricting to tight pairs is enough is the duality argument, and it is short. For _any_
+feasible potentials and _any_ complete assignment, the assignment's cost is at least Σu + Σv. So if
+a complete assignment can be built out of tight pairs alone, its cost is **exactly** Σu + Σv — and
+nothing can be cheaper. The certificate arrives with the answer, which is why the last step of the
+run reports both numbers and they agree.
+
+The algorithm alternates two moves. Grow an alternating path inside the tight pairs, exactly as
+§25.1 does. When it gets stuck, raise the potentials by the smallest slack on the frontier: watch a
+whole row's slacks change at once, feasibility hold everywhere, and at least one new pair go tight —
+which is what lets the search continue. One worker is placed per round.
+
+## What is not here
+
+**Hopcroft-Karp**, the refinement of §25.1 described above. It is the same theorem with a better
+schedule for applying it — a maximal set of shortest augmenting paths per phase rather than one path
+at a time — and its phases need a second layer of machinery on top of what the first player shows.
+It is the one thing in this chapter without a player, and it is catalogued in the backlog rather
+than dropped.
+
+## Where Part VI ends
+
+Six chapters, and the shape of them is one idea getting steadily more capable.
+
+Chapter 20 explored a graph. Chapter 21 explored it cheapest-edge-first and got a spanning tree.
+Chapter 22 explored it cheapest-path-first and got distances. Chapter 24 explored a graph that
+changed as it was explored, and got a maximum flow. This chapter used that on a graph that was not
+about flow at all.
+
+Every one of them is a search over a frontier. What changes is what "cheapest" means, and what the
+frontier is allowed to reach.

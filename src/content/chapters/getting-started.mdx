@@ -1,0 +1,69 @@
+---
+title: Getting Started
+section: '§2.1 · §2.3'
+summary: Insertion sort and merge sort — the two algorithms the book uses to introduce loop invariants, running-time analysis, and divide-and-conquer.
+algorithms: ['insertion-sort', 'merge-sort']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Chapter 2 introduces two sorting algorithms, and the contrast between them carries most of the
+book's early ideas. Insertion sort is simple and quadratic; merge sort is recursive and
+Θ(n log n). Watching both run on the same input makes the difference concrete before any
+analysis begins.
+
+## Insertion sort
+
+The card-player analogy in the book is exact: you hold a sorted hand, pick up the next card, and
+slide it left until it sits in the right place. The key above the chart is the card in your hand —
+it leaves the array entirely while the elements larger than it shift right, which is why the bar it
+came from gets overwritten before it lands. The legend names every colour.
+
+<AlgorithmPlayer id="insertion-sort" />
+
+<ComplexityCard id="insertion-sort">
+  **Loop invariant:** at the start of each iteration of the outer loop, `A[1‥j-1]` holds the same
+  elements it started with, now in sorted order.
+
+That is how the book proves correctness, in three parts. **Initialization:** the invariant holds
+before the first iteration, when the sorted prefix is the single element `A[1]`. **Maintenance:**
+each iteration shifts larger elements right and drops `key` into the gap, so the prefix is one
+longer and still sorted. **Termination:** the loop ends with `j = n+1`, and the invariant then
+reads "`A[1‥n]` is sorted" — which is exactly what we wanted.
+
+Try a reverse-sorted array (paste `9,8,7,6,5,4,3,2,1`) and watch the comparison count: every new
+element has to travel the whole length of the sorted prefix, which is the Θ(n²) worst case.
+
+</ComplexityCard>
+
+## Merge sort
+
+Merge sort splits, recurses, and then does its real work on the way back up. The bracket over the
+chart marks the subarray the current call owns, and the `L` and `R` rows above it are the buffers
+from the `MERGE` procedure — including the `∞` sentinels that let the merge loop run without
+checking whether either half has run dry.
+
+<AlgorithmPlayer id="merge-sort" />
+
+<ComplexityCard id="merge-sort">
+  **Recurrence:** T(n) = 2T(n/2) + Θ(n) — two subproblems of half the size, plus Θ(n) work to merge
+  them. A recursion tree makes the solution visible: there are lg n levels, each doing Θ(n) total
+  work, giving Θ(n log n).
+
+Unlike insertion sort, that bound holds for _every_ input. Feed merge sort a sorted array, a
+reversed one, or random noise, and the step counter barely moves. The price is the `Θ(n)`
+auxiliary space for the buffers, which you can watch filling and draining above.
+
+</ComplexityCard>
+
+## Comparing them
+
+Set both visualizers to the same `n` and compare their tapes — the strip beside the transport
+controls, where each recorded step is one tick coloured by what it did. Insertion sort's tape is
+mostly writes, bunched into runs that grow longer as the sorted prefix does. Merge sort's is the
+same short figure repeated at four scales, which is the recursion tree seen edge-on.
+
+Then step through them. Insertion sort does a great many cheap operations concentrated near the
+front of the array; merge sort does far fewer, spread evenly. For small `n` insertion sort actually
+wins — which is why real-world sorts switch to it below a threshold of a few dozen elements.

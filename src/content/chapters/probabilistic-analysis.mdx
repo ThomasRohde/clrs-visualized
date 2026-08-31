@@ -1,0 +1,131 @@
+---
+title: Probabilistic Analysis and Randomized Algorithms
+section: '§5.1–5.3'
+summary: When you cannot assume anything about the input, stop assuming and start rolling dice — moving the randomness out of the data and into the algorithm.
+algorithms: ['hire-assistant', 'permute-by-sorting', 'randomize-in-place']
+---
+
+import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
+import ComplexityCard from '../../components/ComplexityCard.astro';
+
+Worst-case analysis is honest but pessimistic. Average-case analysis is optimistic but requires you
+to know something you usually do not: the distribution of your inputs. Chapter 5 introduces a third
+option that needs neither assumption — build the randomness into the algorithm itself, so its
+behaviour depends on coin flips rather than on data you do not control.
+
+The distinction is worth getting straight early, because it recurs throughout the book:
+
+- **Probabilistic analysis** assumes a distribution over inputs and computes an expected cost. If
+  your inputs are not drawn from that distribution, the analysis tells you nothing.
+- **A randomized algorithm** makes random choices as it runs. Its expected cost holds for _every_
+  input, because the expectation is taken over the algorithm's own choices. There is no bad input,
+  only an unlucky run — and an unlucky run can simply be repeated.
+
+## §5.1 — The hiring problem
+
+An employment agency sends you one candidate a day. You interview each one, at small cost, and if
+they are better than your current assistant you fire the incumbent and hire the new one, at large
+cost. You always end up with the best candidate; what varies is how much firing and hiring it took
+to get there.
+
+<AlgorithmPlayer id="hire-assistant" />
+
+The bars never move, because `HIRE-ASSISTANT` never writes to the array — the entire story is in
+which candidate is currently marked and in the counters. Every input costs exactly n interviews.
+What is being counted is line 6.
+
+Two extremes bracket the answer. Candidates arriving in increasing order of quality mean you hire
+every single one: n hires, the worst case. Candidates arriving with the best one first mean you
+hire exactly once. Try both in the box above — enter `1,2,3,4,5,6,7,8` and then `8,7,6,5,4,3,2,1`
+— and watch the writes counter.
+
+**So what happens on a random order?** Candidate i is hired exactly when they are the best of the
+first i they arrive among, which for a uniformly random order has probability 1/i, independent of
+everything else. The expected number of hires is therefore
+
+> 1/1 + 1/2 + 1/3 + ⋯ + 1/n = Hₙ ≈ ln n + 0.577
+
+Only about ln n hires. For a hundred candidates that is around five, not fifty — a striking result
+that comes out of two lines of indicator-random-variable algebra rather than any hard analysis.
+
+<ComplexityCard id="hire-assistant">
+  **Indicator random variables are the technique the chapter is really teaching.** Define Xᵢ to be
+  1 if candidate i is hired and 0 otherwise. Then the total number of hires is X = ΣXᵢ, and by
+  linearity of expectation E[X] = ΣE[Xᵢ] = Σ Pr(candidate i is hired) = Σ 1/i. Linearity holds
+  whether or not the Xᵢ are independent, which is what makes this so much easier than reasoning
+  about the joint distribution.
+
+**The catch is the premise.** "Random order" was an assumption about the agency, not about the
+algorithm — and the agency might well send candidates in the order they registered, which could be
+anything. That gap is what §5.3 closes.
+
+</ComplexityCard>
+
+## §5.3 — Randomizing the algorithm instead
+
+If the input order cannot be assumed random, make it random. Permute the candidate list yourself
+before interviewing anyone, and the ln n bound stops being an assumption about the world and
+becomes a property of the procedure. This is exactly the move `RANDOMIZED-QUICKSORT` makes in
+chapter 7 and `RANDOMIZED-SELECT` makes in chapter 9.
+
+What is required is a **uniform random permutation**: each of the n! orderings equally likely.
+Getting that right is less obvious than it looks, and the chapter gives two ways.
+
+### Permute by sorting
+
+Give every element a random priority and sort by it. If the priorities are distinct, every ordering
+of them is equally likely, so every permutation of the array is equally likely too. The book draws
+priorities from 1‥n³, which makes a collision unlikely enough to ignore.
+
+<AlgorithmPlayer id="permute-by-sorting" />
+
+The priorities ride above the chart as chips, one per element — they are the sort keys, and they
+exist nowhere in the array itself. Watch a value and its priority move together during the sort;
+if they ever came apart the result would be nonsense.
+
+It works, and it costs Θ(n log n) because it sorts. That is more than the problem needs.
+
+### Randomize in place
+
+<AlgorithmPlayer id="randomize-in-place" />
+
+Two lines, Θ(n), and no extra storage at all. Walk `i` from 1 to n and exchange `A[i]` with a
+random element chosen from `A[i‥n]`.
+
+The loop invariant is drawn as the player runs: before iteration i, `A[1‥i−1]` holds one particular
+(i−1)-permutation, each equally likely, and those slots are finished — they square off and are
+never touched again. The bracket marks what is still in play, which is exactly the range the next
+draw is made from.
+
+Everything turns on that range. The draw is from `i‥n`, **including i itself**: a slot must be
+allowed to keep the element it already has, and forbidding that would make some permutations more
+likely than others. The tempting variant — draw from `1‥n` every time — is wrong, and wrong in a
+way that is invisible unless you count. It produces nⁿ equally likely outcomes, and nⁿ is not
+divisible by n! for n > 2, so the permutations cannot possibly come out uniform. Exercise 5.3-1
+makes this concrete; the smallest case, n = 3, gives 27 outcomes spread over 6 permutations.
+
+<ComplexityCard id="randomize-in-place">
+  **Θ(n), in place, uniform.** It is hard to improve on: n random draws, n exchanges, no allocation.
+  This is the algorithm every standard library's `shuffle` implements.
+
+**The proof is the loop invariant.** Before the i-th iteration, `A[1‥i−1]` contains a specific
+(i−1)-permutation with probability (n−i+1)!/n!. The exchange extends that to i elements while
+keeping every extension equally likely, and at termination i = n+1 gives probability 1/n! for each
+full permutation. The whole correctness argument is one invariant carried through one loop —
+the same shape as insertion sort's in chapter 2.
+
+**Common bug, worth recognising in the wild.** Drawing from `1‥n` rather than `i‥n` gives a shuffle
+that looks fine, passes casual inspection, and is measurably biased. It has shipped in production
+code more than once.
+
+</ComplexityCard>
+
+## What to take from this chapter
+
+Randomization does not make an algorithm faster in the worst case — `RANDOMIZED-QUICKSORT` can
+still hit Θ(n²), and a shuffle can still deal you the sorted order. What it does is sever the link
+between the input and the running time, so that no adversary, and no unlucky quirk of how your data
+happened to be stored, can reliably provoke the bad case.
+
+That is why nearly every "randomized" algorithm later in the book is an ordinary algorithm with one
+line changed. Chapters 7 and 9 both make exactly the move this chapter sets up.

@@ -1,0 +1,68 @@
+# Publish to GitHub Pages.
+#
+# Nothing here needs editing to work, and nothing here runs until two things
+# are true, neither of which can be done from the repository:
+#
+#   1. the repo has a remote on GitHub and `main` has been pushed;
+#   2. Settings → Pages → Source is set to "GitHub Actions".
+#
+# The destination is not hardcoded. `actions/configure-pages` reports where
+# this repository will actually be served — origin and subpath — and those are
+# handed to the build as SITE_URL and BASE_PATH, which is all
+# `astro.config.mjs` reads. A project site lands under `/<repo>` and a user
+# site at the root, and neither case needs a different config.
+#
+# Every internal link goes through `href()` in src/lib/paths.ts, and the
+# `base-path` job in ci.yml asserts that on every push, so the subpath case is
+# checked rather than hoped for.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time, and let a queued one finish rather than cancelling
+# it — a half-published site is worse than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+
+      - name: Work out where this will be served from
+        id: pages
+        uses: actions/configure-pages@v5
+
+      - run: npm run build
+        env:
+          SITE_URL: ${{ steps.pages.outputs.origin }}
+          BASE_PATH: ${{ steps.pages.outputs.base_path }}
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
