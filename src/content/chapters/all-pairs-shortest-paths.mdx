@@ -151,8 +151,13 @@ time here rather than stepped through again.
 a constant factor so small that on anything under a few hundred vertices it is the right choice
 whatever the density.
 
-**All four here handle negative weights**, and all four detect a negative cycle — Floyd-Warshall by
-a negative diagonal entry, Johnson by the Bellman-Ford pass failing before anything else runs.
+**Negative weights are four different questions.** Transitive closure has no weights, so it does not
+arise. Repeated squaring takes negative edges happily and never tests for a negative cycle: it stops
+after ⌈lg(n − 1)⌉ rounds whatever the graph is, and on a graph that has one it returns a matrix that
+is not a matrix of distances. Floyd-Warshall's negative diagonal **is** the test, and it is read
+before the run claims anything — the pairs whose paths run through the cycle end as `−∞` and the
+last step reports it. Johnson's test is the Bellman-Ford pass, which fails before there is anything
+to reweight, so the run stops there rather than handing Dijkstra edges it is not allowed.
 
 </ComplexityCard>
 
