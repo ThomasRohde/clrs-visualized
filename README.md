@@ -225,6 +225,11 @@ A few decisions worth knowing before editing, each of which fixed a real bug:
 
 ## Licence and attribution
 
-This is an unofficial study companion. Pseudocode is transcribed from _Introduction to Algorithms_,
-4th edition for teaching purposes; the book's text and pseudocode are © MIT Press. The site code is
-yours to do with as you like.
+The site's own code and prose — everything under `src/`, `scripts/` and `tests/` — is **MIT
+licensed**; see [LICENSE](LICENSE) for the terms and the full scope. Take it, fork it, ship it.
+
+That licence covers this repository's work and nothing else. Pseudocode transcribed from
+_Introduction to Algorithms_, 4th edition, along with the book's algorithm names, section numbering
+and chapter structure, remains © MIT Press and is reproduced here for study and commentary. This is
+an unofficial companion, not endorsed by the authors or by MIT Press. Reusing the code is a matter
+of the MIT licence; reusing the book's pseudocode is a matter between you and MIT Press.
