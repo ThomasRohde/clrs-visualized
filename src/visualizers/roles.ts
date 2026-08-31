@@ -54,6 +54,13 @@ export const DEFAULT_LEGEND: Legend = [
 ];
 
 export const LEGENDS: Record<string, Legend> = {
+  'count-inversions': [
+    ['scope', 'the bracket over the subarray this call owns'],
+    ['look', 'copied out to L or R, and the front of each'],
+    ['move', 'written back into A'],
+    ['done', 'merged, sorted, and counted'],
+    ['rest', 'outside this call'],
+  ],
   'binary-search': [
     ['scope', 'the bracket over the interval still being searched'],
     ['look', 'A[q], the one element this iteration reads'],

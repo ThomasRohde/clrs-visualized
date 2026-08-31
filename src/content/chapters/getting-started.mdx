@@ -1,8 +1,8 @@
 ---
 title: Getting Started
 section: '§2.1 · §2.3 · problems'
-summary: Insertion sort and merge sort — the two algorithms the book uses to introduce loop invariants, running-time analysis, and divide-and-conquer — and the binary search hiding in the exercises.
-algorithms: ['insertion-sort', 'merge-sort', 'binary-search']
+summary: Insertion sort and merge sort — the two algorithms the book uses to introduce loop invariants, running-time analysis, and divide-and-conquer — and the binary search and inversion count hiding in the exercises.
+algorithms: ['insertion-sort', 'merge-sort', 'binary-search', 'count-inversions']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -128,3 +128,51 @@ this search on a structure that also supports insertion; <a href={chapterHref('p
 parallel merge binary-searches for the split point that lets two sorted runs be merged
 independently; and <a href={chapterHref('string-matching')}>chapter 32</a>'s suffix array ends with
 two of them, which is the whole reason for building the array in the first place.
+
+### Problem 2-4 — Counting inversions
+
+An **inversion** is a pair of positions `i < j` where `A[i] > A[j]` — two elements that are in the
+wrong order relative to each other. A sorted array has none; a reversed one has all n(n−1)/2 of
+them; and everything else is somewhere in between. That "somewhere in between" is the point: the
+number of inversions is a measurement of how unsorted an array actually is, on a scale from 0 to
+n(n−1)/2.
+
+Part (c) of the problem is the one that pays off immediately. Insertion sort's inner loop shifts one
+element right for every element larger than `key` that sits before it — and every one of those
+shifts **is** an inversion being removed. So insertion sort runs in Θ(n + I) where I is the number
+of inversions, which is a sharper statement than "Θ(n²) in the worst case": it says insertion sort
+is fast on nearly-sorted data not by luck but by construction, and it explains why the player at the
+top of this page finishes so quickly on an array that is already in order.
+
+Part (d) asks for the count in Θ(n lg n), and the answer is merge sort with one line added. Compare
+the two pseudocode panels: `MERGE-INVERSIONS` is `MERGE`, line for line, plus `inversions = 0`
+before the loop and one line inside the `else`.
+
+<AlgorithmPlayer id="count-inversions" size={8} />
+
+<ComplexityCard id="count-inversions">
+  **Everything happens on line 18.** The merge takes from `R` only when `R[j]` is smaller than
+  `L[i]` — and `L` is sorted, so `R[j]` is smaller than **every** remaining element of `L`, not just
+  the front one. Each of those elements began in the left half, so each sits to `R[j]`'s left in the
+  original array, and each is therefore an inversion with it. The chips still to be consumed are
+  captioned in the `L` row on the step where they are counted; there are `n1 - i + 1` of them, and
+  they are counted **all at once**.
+
+That is the whole trick, and it is worth being precise about why it is legal. The count is not
+approximate and nothing is missed: every inversion has its two elements separated for the first time
+by exactly one merge — the one whose split falls between them — and that merge is where the pair is
+counted. Inversions inside a half are counted by the recursive call that owns it. Every pair is
+counted once, by exactly one call.
+
+**The bars do not mark the counted run, and that is deliberate.** Those elements live in the buffer
+by then: `A` is being overwritten from `p` upwards, so `L[i]` is still at `A[p + i - 1]` only until
+the first element is taken from `R`. A marker on those positions would be pointing confidently at
+the wrong bars for most of the merge.
+
+**Compare the tapes.** Set this player and merge sort above it to the same `n`. The two strips are
+the same shape, because they are the same algorithm doing the same work in the same order — the
+count rides along for free. Then set insertion sort to the same `n` and look at its tape instead:
+the runs of writes that grow as the sorted prefix does are the inversions being removed one at a
+time, which is the Θ(n + I) of part (c) drawn as a picture.
+
+</ComplexityCard>

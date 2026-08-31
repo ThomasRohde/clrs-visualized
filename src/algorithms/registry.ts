@@ -2,6 +2,7 @@ import type { AlgorithmModule } from './types.ts';
 
 import { insertionSort } from './sorting/insertion-sort.ts';
 import { binarySearch } from './searching/binary-search.ts';
+import { countInversions } from './sorting/count-inversions.ts';
 import { mergeSort } from './sorting/merge-sort.ts';
 import { heapsort } from './sorting/heapsort.ts';
 import { maxPriorityQueue } from './sorting/max-priority-queue.ts';
@@ -101,6 +102,7 @@ export const ALGORITHMS: AlgorithmModule[] = [
   insertionSort,
   mergeSort,
   binarySearch,
+  countInversions,
   heapsort,
   maxPriorityQueue,
   quicksort,

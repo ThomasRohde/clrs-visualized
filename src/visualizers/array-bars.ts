@@ -35,6 +35,8 @@ function markersFor(step: Step): Array<{ idx: number; label: string }> {
       }
       push(hi.q, 'q');
       break;
+    case 'COUNT-INVERSIONS':
+    case 'MERGE-INVERSIONS':
     case 'MERGE-SORT':
     case 'MERGE':
       if (Array.isArray(hi.range)) {
