@@ -25,8 +25,8 @@ jobs:
     name: types, lint, format, tests, build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           # 23.6+ strips TypeScript types natively, which is what lets
           # `node --test "tests/**/*.test.ts"` run the recorders unbuilt.
@@ -49,8 +49,8 @@ jobs:
     name: step every player in a browser
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -70,8 +70,8 @@ jobs:
     name: build under a subpath
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm

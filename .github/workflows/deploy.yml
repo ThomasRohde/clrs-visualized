@@ -3,7 +3,7 @@
 # Nothing here needs editing to work, and nothing here runs until two things
 # are true, neither of which can be done from the repository:
 #
-#   1. the repo has a remote on GitHub and `main` has been pushed;
+#   1. the repo has a remote on GitHub and the default branch has been pushed;
 #   2. Settings → Pages → Source is set to "GitHub Actions".
 #
 # The destination is not hardcoded. `actions/configure-pages` reports where
@@ -19,7 +19,7 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    branches: [master, main]
   workflow_dispatch:
 
 permissions:
@@ -37,8 +37,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm

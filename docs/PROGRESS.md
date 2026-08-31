@@ -942,7 +942,9 @@ the work it tracks isn't checkpointed.
 - [x] **Commit the working tree.** ~~18 modified files and 3 untracked sit on top of a single
       commit.~~ Done — `d75571f`, 22 files, on top of `57b44d8`.
 - [x] **Resolve the branch.** ~~Work is on `master`; the repo's stated main branch is `main`.~~
-      Done — `master` renamed to `main`. Still no remote; add one when the deploy item lands.
+      Renamed to `main` during the build, then back to `master` when the history was squashed and
+      pushed to <https://github.com/ThomasRohde/clrs-visualized>. `deploy.yml` triggers on both
+      names so the rename cannot silently stop the deploy.
 - [x] **CI.** `.github/workflows/ci.yml`, three jobs. **gates** runs `format:check`, `lint`, `check`,
       the README freshness check, `test` and `build`, cheapest first so a formatting slip fails in
       seconds. **players** runs `verify:players` in a real browser — Playwright is now a pinned

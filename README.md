@@ -194,7 +194,7 @@ Nothing is hardcoded. `astro.config.mjs` reads two environment variables:
 | `BASE_PATH` | The subpath, when not served at the root |
 
 `.github/workflows/deploy.yml` derives both from `actions/configure-pages`, so a GitHub Pages
-project site works with no configuration at all — push to `main` and set Settings → Pages → Source
+project site works with no configuration at all — push, and set Settings → Pages → Source
 to "GitHub Actions".
 
 Every internal link goes through `href()` / `chapterHref()` in `src/lib/paths.ts`, and CI builds
