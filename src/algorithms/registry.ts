@@ -36,12 +36,14 @@ import { bTree } from './trees/b-tree.ts';
 import { disjointSets } from './trees/disjoint-sets.ts';
 import { bfs } from './graphs/bfs.ts';
 import { dfs } from './graphs/dfs.ts';
+import { articulationPoints } from './graphs/articulation-points.ts';
 import { topologicalSort } from './graphs/topological-sort.ts';
 import { stronglyConnectedComponents } from './graphs/strongly-connected-components.ts';
 import { mstKruskal } from './graphs/mst-kruskal.ts';
 import { mstPrim } from './graphs/mst-prim.ts';
 import { bellmanFord } from './graphs/bellman-ford.ts';
 import { dagShortestPaths } from './graphs/dag-shortest-paths.ts';
+import { differenceConstraints } from './graphs/difference-constraints.ts';
 import { dijkstra } from './graphs/dijkstra.ts';
 import { fordFulkerson } from './graphs/ford-fulkerson.ts';
 import { edmondsKarp } from './graphs/edmonds-karp.ts';
@@ -136,11 +138,13 @@ export const ALGORITHMS: AlgorithmModule[] = [
   dfs,
   topologicalSort,
   stronglyConnectedComponents,
+  articulationPoints,
   mstKruskal,
   mstPrim,
   bellmanFord,
   dagShortestPaths,
   dijkstra,
+  differenceConstraints,
   fordFulkerson,
   edmondsKarp,
   bipartiteMatching,

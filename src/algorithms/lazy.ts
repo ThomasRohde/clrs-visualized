@@ -54,6 +54,8 @@ export const ALGORITHM_LOADERS: Record<string, () => Promise<AlgorithmModule>> =
   'disjoint-sets': () => import('./trees/disjoint-sets.js').then((m) => m.disjointSets),
   bfs: () => import('./graphs/bfs.js').then((m) => m.bfs),
   dfs: () => import('./graphs/dfs.js').then((m) => m.dfs),
+  'articulation-points': () =>
+    import('./graphs/articulation-points.js').then((m) => m.articulationPoints),
   'topological-sort': () => import('./graphs/topological-sort.js').then((m) => m.topologicalSort),
   'strongly-connected-components': () =>
     import('./graphs/strongly-connected-components.js').then((m) => m.stronglyConnectedComponents),
@@ -63,6 +65,8 @@ export const ALGORITHM_LOADERS: Record<string, () => Promise<AlgorithmModule>> =
   'dag-shortest-paths': () =>
     import('./graphs/dag-shortest-paths.js').then((m) => m.dagShortestPaths),
   dijkstra: () => import('./graphs/dijkstra.js').then((m) => m.dijkstra),
+  'difference-constraints': () =>
+    import('./graphs/difference-constraints.js').then((m) => m.differenceConstraints),
   'ford-fulkerson': () => import('./graphs/ford-fulkerson.js').then((m) => m.fordFulkerson),
   'edmonds-karp': () => import('./graphs/edmonds-karp.js').then((m) => m.edmondsKarp),
   'bipartite-matching': () =>

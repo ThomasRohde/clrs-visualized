@@ -35,7 +35,7 @@ npm run dev      # http://localhost:4321
 
 <!-- generated:contents -->
 
-**All 35 chapters and 4 appendices**, covering **83 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
+**All 35 chapters and 4 appendices**, covering **85 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
 
 ### Part I — Foundations
 
@@ -73,9 +73,9 @@ npm run dev      # http://localhost:4321
 
 ### Part VI — Graph Algorithms
 
-- **20. Elementary Graph Algorithms** — Breadth-First Search, Depth-First Search, Topological Sort, Strongly Connected Components
+- **20. Elementary Graph Algorithms** — Breadth-First Search, Depth-First Search, Topological Sort, Strongly Connected Components, Articulation Points
 - **21. Minimum Spanning Trees** — Kruskal's Algorithm, Prim's Algorithm
-- **22. Single-Source Shortest Paths** — Bellman-Ford, DAG Shortest Paths, Dijkstra's Algorithm
+- **22. Single-Source Shortest Paths** — Bellman-Ford, DAG Shortest Paths, Dijkstra's Algorithm, Difference Constraints
 - **23. All-Pairs Shortest Paths** — All-Pairs by Matrix Squaring, Floyd-Warshall, Transitive Closure, Johnson's Algorithm
 - **24. Maximum Flow** — Ford-Fulkerson, Edmonds-Karp
 - **25. Matchings in Bipartite Graphs** — Maximum Bipartite Matching, Gale-Shapley, The Hungarian Algorithm
@@ -105,7 +105,7 @@ npm run dev      # http://localhost:4321
 - `array-bars` — bar charts, for anything array-shaped (19)
 - `cells` — rows of boxes with pointer arcs — lists, stacks, hash chains, string matching (13)
 - `tree` — rooted trees and forests, with nodes sized to their keys (8)
-- `graph` — graphs, with recorder-owned layouts fixed for the whole trace (16)
+- `graph` — graphs, with recorder-owned layouts fixed for the whole trace (18)
 - `grid` — tables and matrices, with cell-to-cell dependency arrows (23)
 - `plot` — continuous data — scatters, curves and series (4)
 

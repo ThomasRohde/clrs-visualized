@@ -54,6 +54,21 @@ export const DEFAULT_LEGEND: Legend = [
 ];
 
 export const LEGENDS: Record<string, Legend> = {
+  'difference-constraints': [
+    ['look', 'the constraint being tested, and the variable it reads'],
+    ['move', 'the edge just added, or the estimate it just lowered'],
+    ['mark', 'v₀, the variable being read off, or the constraints that conflict'],
+    ['done', 'a shortest-path tree edge, and the solution once it is final'],
+    ['rest', "not yet drawn, or not this step's business"],
+  ],
+  'articulation-points': [
+    ['scope', 'the ring round the vertices the search is currently inside'],
+    ['look', 'the edge being classified, and the vertex at its far end'],
+    ['move', 'the vertex just discovered'],
+    ['mark', 'a cut vertex, or a bridge — the answers, as they are found'],
+    ['done', 'a tree edge of the search, and a vertex whose low is final'],
+    ['rest', 'not yet reached'],
+  ],
   'maximum-subarray': [
     ['scope', 'the bracket over the subarray this call owns'],
     ['look', 'the element being added to the running sum'],

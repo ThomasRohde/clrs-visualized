@@ -2,7 +2,7 @@
 title: Single-Source Shortest Paths
 section: '§22.1–22.5'
 summary: One operation — relax an edge — and three algorithms that differ only in what order they apply it, at costs from linear to quadratic.
-algorithms: ['bellman-ford', 'dag-shortest-paths', 'dijkstra']
+algorithms: ['bellman-ford', 'dag-shortest-paths', 'dijkstra', 'difference-constraints']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -135,14 +135,58 @@ priority queue degenerates into chapter 20's plain queue.
 
 </ComplexityCard>
 
+## §22.4 — Difference constraints
+
+This section is a **reduction**, not an algorithm, which is why it took a second pass to get onto
+this page at all: there is no new procedure to animate. What there is instead is the most surprising
+two pages in Part VI, and the player below is the translation rather than the search.
+
+Start with a system of inequalities, each of the form `xⱼ − xᵢ ≤ b`. Nothing about it looks like a
+graph. But look at what `RELAX` enforces — after relaxing the edge (u, v), the estimates satisfy
+`d[v] ≤ d[u] + w(u, v)` — and the resemblance is exact. So:
+
+- make a vertex for each variable;
+- for each constraint `xⱼ − xᵢ ≤ b`, add an edge `vᵢ → vⱼ` of weight `b`;
+- add a source `v₀` with a 0-weight edge to every variable, so nothing is unreachable;
+- run Bellman-Ford, and read `xᵢ = δ(v₀, vᵢ)`.
+
+Type a system into the box below and watch it become a graph one constraint at a time.
+
+<AlgorithmPlayer id="difference-constraints" size={4} />
+
+<ComplexityCard id="difference-constraints">
+  **Why the shortest paths are a solution.** When Bellman-Ford terminates, every edge satisfies
+  `d[v] ≤ d[u] + w(u, v)` — that is exactly what "no edge can be relaxed further" means. Rewrite it
+  with the substitutions above and it reads `xⱼ − xᵢ ≤ b`, which is the constraint. Every edge, so
+  every constraint. The proof is a change of notation.
+
+**Why infeasibility is a negative cycle.** Follow a cycle of constraints — `x₂ − x₁ ≤ b₁`,
+`x₃ − x₂ ≤ b₂`, … back round to `x₁` — and add them all up. Every variable appears once positively
+and once negatively, so the left-hand side is 0 and what remains is `0 ≤ b₁ + b₂ + ⋯`. If those
+bounds sum to something negative, the system says `0 ≤ −3`, and no assignment can fix that. That is
+precisely a negative-weight cycle, which is precisely what Bellman-Ford's last pass detects.
+
+Notice what this tells you about a system that has no solution: **no single constraint is at fault**.
+The conflict is a property of a closed chain of them, and any one of them could be relaxed to
+resolve it. Press Randomize a few times to find an infeasible system and step to the end.
+
+**The solution is not unique, and the one you get is not arbitrary.** Adding a constant to every
+`xᵢ` leaves every difference unchanged, so if there is one solution there are infinitely many. The
+one this produces has the largest variable at 0, because every path from `v₀` starts with a
+0-weight edge and nothing can be positive. If you want them all non-negative, add the largest
+magnitude to all of them; the differences will not notice.
+
+**Where this is actually used.** Any problem phrased as "event B happens at least 3 units after event
+A" is a difference constraint, which makes this the shortest-path algorithm behind scheduling: job
+scheduling with precedence, VLSI timing analysis, and the clock skew problems the section's own
+exercises are drawn from. It is also the first sight of something Part VII returns to — a system of
+inequalities is a **linear program**, and this is the special case where every constraint has exactly
+two variables with coefficients +1 and −1. Chapter 29 picks that up.
+
+</ComplexityCard>
+
 ## What is not here
 
-Two things the chapter covers in prose that this page does not animate.
-
-**§22.4's difference constraints.** A system of inequalities of the form `xⱼ − xᵢ ≤ b` is a shortest-
-path problem in disguise: make a vertex per variable, an edge per constraint, and Bellman-Ford either
-solves the system or reports that it is infeasible — which is the same thing as finding a negative
-cycle. It is a reduction rather than an algorithm, and it is the most surprising two pages in Part VI.
-
 **All-pairs shortest paths**, which is chapter 23 and a different shape entirely: a matrix rather
-than a graph, dynamic programming rather than a queue.
+than a graph, dynamic programming rather than a queue. Every numbered section of this chapter now
+has a player, §22.4 included.

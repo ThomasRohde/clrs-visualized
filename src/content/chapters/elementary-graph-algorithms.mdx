@@ -1,8 +1,9 @@
 ---
 title: Elementary Graph Algorithms
-section: '§20.1–20.5'
-summary: Two ways to explore a graph, and the surprising amount that falls out of the second one — cycles, orderings, and strongly connected components.
-algorithms: ['bfs', 'dfs', 'topological-sort', 'strongly-connected-components']
+section: '§20.1–20.5 · problems'
+summary: Two ways to explore a graph, and the surprising amount that falls out of the second one — cycles, orderings, strongly connected components, and the vertices holding the whole thing together.
+algorithms:
+  ['bfs', 'dfs', 'topological-sort', 'strongly-connected-components', 'articulation-points']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -169,6 +170,58 @@ regardless of how few edges there are.
 
 **The two applications add Θ(1) per vertex each.** Topological sort adds a list insertion;
 strongly connected components adds a second search and a transposed copy of the graph.
+
+</ComplexityCard>
+
+## Beyond the numbered sections
+
+Everything above is §20.1 to §20.5. What follows is from the chapter's problems, and is marked as
+such rather than blended in with the book's own numbered sections.
+
+### Problem 20-2 — Articulation points and bridges
+
+Which vertex is the one you cannot afford to lose? A **cut vertex** is one whose removal disconnects
+the graph, and a **bridge** is an edge with the same property. In a network they are the single
+points of failure; in a road map they are the towns and roads that, if closed, cut the country in
+two.
+
+The obvious way to find them is to remove each one and re-traverse, which costs a whole search per
+vertex or per edge. This problem's answer is that **one** depth-first search finds all of them, and
+that it needs exactly one extra number per vertex.
+
+Alongside `d` — the discovery time §20.3 already computes — keep `low`: the earliest discovery time
+reachable from anywhere in `v`'s subtree, going down tree edges and then taking **at most one** back
+edge. It is a measure of how far back a subtree can reach without using the edge it came in on. The
+badge on each vertex shows both, as `d/low`.
+
+<AlgorithmPlayer id="articulation-points" size={9} />
+
+<ComplexityCard id="articulation-points">
+  **Everything happens on the way back up.** `low` is finished only when a subtree is, so the two
+  tests are made at the moment a recursive call returns — which is why the narration has so much to
+  say on line 8. Watch a vertex's second badge fall as its children report in.
+
+**A tree edge (u, v) is a bridge exactly when `v.low > u.d`.** Read it as: nothing under `v` can
+reach `u`, or anything discovered before `u`, except by coming back through this edge. Take the
+edge away and that whole subtree is stranded.
+
+**A non-root `u` is a cut vertex exactly when some child `v` has `v.low ≥ u.d`.** The difference
+between `>` and `≥` is the entire difference between the two tests, and it is worth stopping on.
+Reaching `u` itself is enough to save the _edge_ — the subtree has another way back to `u`, so
+(u, v) is on a cycle. It is not enough to save the _vertex_: every one of those routes still arrives
+at `u`, so removing `u` strands the subtree anyway.
+
+**The root is a special case, and for a different reason.** It has no ancestor to reach past, so the
+test above says nothing about it. Instead it is a cut vertex exactly when it has **two or more
+children** in the search tree — because a depth-first search only starts a second child at the root
+after the first has finished, which means there was no edge joining them. The root is the only thing
+holding those subtrees together.
+
+**Both answers, in Θ(V + E).** The same search, the same timestamps chapter 20 already computes, one
+more number per vertex, and two comparisons per tree edge. That the reader can watch it and check it
+against removing vertices by hand is the point of the picture; that it is checked automatically on
+every generated input, by removing each vertex and each edge and counting the pieces, is why this
+page can claim it.
 
 </ComplexityCard>
 
