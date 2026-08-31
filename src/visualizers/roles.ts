@@ -534,7 +534,10 @@ export const LEGENDS: Record<string, Array<[Role, string]>> = {
     ['rest', 'an entry this step does not touch'],
   ],
   'lup-solve': [
-    ['look', 'the coefficients and the already-known unknowns this step subtracts'],
+    [
+      'look',
+      'the coefficients and known unknowns a step subtracts, or the zero pivot that stops it',
+    ],
     ['move', 'the unknown just solved for'],
     ['scope', 'the part of the row this pass is allowed to read'],
     ['done', 'both vectors, once every unknown is known'],

@@ -183,3 +183,52 @@ test('Floyd-Warshall narrates success when there is no negative cycle', () => {
   assert.match(last.note, /true shortest distance/);
   assertVerifies(fw, fine);
 });
+
+// ---------------------------------------------------------------------------
+// Singular systems
+// ---------------------------------------------------------------------------
+
+/** A = [[1,2],[2,4]] — the second row is twice the first, so |A| = 0. */
+const SINGULAR = [1, 2, 2, 4];
+
+test('LUP solve refuses a singular system rather than assigning zero at the zero pivot', () => {
+  const solve = moduleFor('lup-solve');
+  // Inconsistent: row 2 of A is twice row 1, but 7 is not twice 3.
+  const inconsistent = [...SINGULAR, 3, 7];
+  // Consistent, and so with infinitely many solutions rather than none. It is
+  // still not a system substitution can answer, and the same state is right.
+  const consistent = [...SINGULAR, 3, 6];
+
+  for (const input of [inconsistent, consistent]) {
+    const { steps } = solve.record([...input]);
+    const last = steps.at(-1)!;
+    assert.equal(
+      (last.hi as { singular?: boolean }).singular,
+      true,
+      `${JSON.stringify(input)}: the run did not report a singular system`,
+    );
+    assert.equal(
+      (last.hi as { solution?: unknown }).solution,
+      undefined,
+      `${JSON.stringify(input)}: a solution vector was returned anyway`,
+    );
+    assert.match(last.note, /no unique solution/);
+    // The zero component is the specific bug: nothing may claim x = [3.5, 0].
+    assert.ok(
+      !steps.some((s) => /^x\d/.test(s.note)),
+      `${JSON.stringify(input)}: back substitution ran past the zero pivot`,
+    );
+    assertVerifies(solve, input);
+  }
+});
+
+test('LUP solve still solves a system that has a unique solution', () => {
+  const solve = moduleFor('lup-solve');
+  const input = [1, 2, 3, 4, 5, 6];
+  const last = solve.record([...input]).steps.at(-1)!;
+  const x = (last.hi as { solution?: number[] }).solution!;
+  assert.ok(x, 'no solution was returned');
+  // A = [[1,2],[3,4]], b = [5,6]  ⇒  x = [−4, 4.5]
+  assert.ok(Math.abs(x[0]! - -4) < 1e-9 && Math.abs(x[1]! - 4.5) < 1e-9, JSON.stringify(x));
+  assertVerifies(solve, input);
+});
