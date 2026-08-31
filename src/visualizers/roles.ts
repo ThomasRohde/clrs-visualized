@@ -54,6 +54,13 @@ export const DEFAULT_LEGEND: Legend = [
 ];
 
 export const LEGENDS: Record<string, Legend> = {
+  'binary-search': [
+    ['scope', 'the bracket over the interval still being searched'],
+    ['look', 'A[q], the one element this iteration reads'],
+    ['mark', 'v, found'],
+    ['done', 'ruled out — v cannot be here'],
+    ['rest', 'still in the interval, still unread'],
+  ],
   'insertion-sort': [
     ['mark', 'the key'],
     ['look', 'compared with the key'],

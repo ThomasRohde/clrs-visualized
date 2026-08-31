@@ -18,6 +18,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ALGORITHMS } from '../src/algorithms/registry.ts';
+import { inputSize } from '../src/visualizers/player.ts';
 import {
   resultOf,
   type AlgorithmInput,
@@ -147,12 +148,13 @@ for (const algo of ALGORITHMS) {
     // Measured from the input the module actually accepted, not from the size
     // asked for: a custom generator is free to round n to something its
     // structure can use.
+    //
+    // Through `inputSize`, which is the module's own answer and the same one
+    // the player puts in the n readout. A list of numbers is its own length
+    // only until a module packs a parameter in front of the values — binary
+    // search is handed `[v, A[1], ‥, A[n]]` and draws n bars, not n + 1.
     const input = inputFor(algo, 12);
-    const n = Array.isArray(input)
-      ? input.length
-      : input.kind === 'graph'
-        ? input.n
-        : input.text.length;
+    const n = inputSize(input, algo.input);
     const { steps } = algo.record(input);
     assert.ok(steps.length > 0, `${algo.id} recorded no steps`);
 

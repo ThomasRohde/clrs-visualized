@@ -28,6 +28,13 @@ function markersFor(step: Step): Array<{ idx: number; label: string }> {
       push(hi.i, 'i');
       push(hi.j, 'j');
       break;
+    case 'BINARY-SEARCH':
+      if (Array.isArray(hi.range)) {
+        push(hi.range[0], 'p');
+        push(hi.range[1], 'r');
+      }
+      push(hi.q, 'q');
+      break;
     case 'MERGE-SORT':
     case 'MERGE':
       if (Array.isArray(hi.range)) {

@@ -1,12 +1,13 @@
 ---
 title: Getting Started
-section: '§2.1 · §2.3'
-summary: Insertion sort and merge sort — the two algorithms the book uses to introduce loop invariants, running-time analysis, and divide-and-conquer.
-algorithms: ['insertion-sort', 'merge-sort']
+section: '§2.1 · §2.3 · problems'
+summary: Insertion sort and merge sort — the two algorithms the book uses to introduce loop invariants, running-time analysis, and divide-and-conquer — and the binary search hiding in the exercises.
+algorithms: ['insertion-sort', 'merge-sort', 'binary-search']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
 import ComplexityCard from '../../components/ComplexityCard.astro';
+import { chapterHref } from '../../lib/paths.ts';
 
 Chapter 2 introduces two sorting algorithms, and the contrast between them carries most of the
 book's early ideas. Insertion sort is simple and quadratic; merge sort is recursive and
@@ -67,3 +68,63 @@ same short figure repeated at four scales, which is the recursion tree seen edge
 Then step through them. Insertion sort does a great many cheap operations concentrated near the
 front of the array; merge sort does far fewer, spread evenly. For small `n` insertion sort actually
 wins — which is why real-world sorts switch to it below a threshold of a few dozen elements.
+
+## Beyond the numbered sections
+
+Everything above is §2.1 and §2.3 — what the chapter teaches directly. What follows is from its
+exercises and problems, which is where CLRS puts the ideas it would rather you found than were
+told. This site marks that difference on the page instead of quietly blending the two, because a
+reader deserves to know when they have left the book's own spine.
+
+### Exercise 2.3-6 — Binary search
+
+The exercise asks a question about the algorithm at the top of this page: insertion sort's inner
+loop scans the sorted prefix one element at a time to find where `key` belongs, and the prefix is
+_sorted_ — so why scan it? Search it.
+
+That is binary search, and the player below is the whole of it. Watch the bracket rather than the
+bars: it is the interval that could still contain `v`, and every comparison halves it. The elements
+outside the bracket are not sorted, or finished, or moved — they are **ruled out**, which is a
+stronger statement than it looks. One comparison against one element settles the fate of half the
+array, and it can do that only because the array is ordered.
+
+The bounds are called `p` and `r` and the midpoint `q`, which is deliberate: line 4 below is
+`q = ⌊(p + r) / 2⌋`, and so is merge sort's line 2, character for character. The two algorithms cut
+the array in exactly the same place. Everything that differs between Θ(n log n) and Θ(lg n) is what
+they do next.
+
+<AlgorithmPlayer id="binary-search" size={15} />
+
+<ComplexityCard id="binary-search">
+  **The recurrence is the interesting part.** Merge sort recurses into both halves and pays to put
+  them back together: T(n) = 2T(n/2) + Θ(n), which is Θ(n log n). Binary search recurses into **one**
+  half and combines nothing:
+
+```
+T(n) = T(n/2) + Θ(1)   →   T(n) = Θ(lg n)
+```
+
+Two of the three terms changed, and the answer went from "a bit worse than linear" to "essentially
+free". Divide-and-conquer is not one running time; it is a shape you fill in.
+
+**The bound is worth watching rather than trusting.** Set n to 31 and the search never takes more
+than five comparisons — ⌊lg 31⌋ + 1 — and it takes five on the worst case rather than the average,
+which is why the best and worst columns above are so far apart. Paste an absent target (type
+something like `50 : 4,9,15,23,31`) to see the other ending: the interval closes to nothing, and
+five comparisons have proved something about all thirty-one elements.
+
+**Answering 2.3-6's actual question: no, this does not make insertion sort faster.** Binary search
+finds the right position in Θ(lg n) instead of Θ(n), but insertion sort's inner loop was never only
+searching — it was **shifting** every element it passed, one slot right, to open the gap. Those
+shifts are Θ(n) whatever tells you where to stop, so the sort stays Θ(n²). The lesson is the one
+worth taking out of chapter 2: find the operation that actually dominates before optimising the one
+that is easiest to see.
+
+</ComplexityCard>
+
+Binary search is on this page because three later chapters lean on it and none of them stops to
+draw it. <a href={chapterHref('binary-search-trees')}>Chapter 12</a> is what happens when you want
+this search on a structure that also supports insertion; <a href={chapterHref('parallel-algorithms')}>chapter 26</a>'s
+parallel merge binary-searches for the split point that lets two sorted runs be merged
+independently; and <a href={chapterHref('string-matching')}>chapter 32</a>'s suffix array ends with
+two of them, which is the whole reason for building the array in the first place.

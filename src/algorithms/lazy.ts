@@ -18,6 +18,7 @@ export const ALGORITHM_LOADERS: Record<string, () => Promise<AlgorithmModule>> =
     import('./randomized/randomize-in-place.js').then((m) => m.randomizeInPlace),
   'insertion-sort': () => import('./sorting/insertion-sort.js').then((m) => m.insertionSort),
   'merge-sort': () => import('./sorting/merge-sort.js').then((m) => m.mergeSort),
+  'binary-search': () => import('./searching/binary-search.js').then((m) => m.binarySearch),
   heapsort: () => import('./sorting/heapsort.js').then((m) => m.heapsort),
   'max-priority-queue': () =>
     import('./sorting/max-priority-queue.js').then((m) => m.maxPriorityQueue),
