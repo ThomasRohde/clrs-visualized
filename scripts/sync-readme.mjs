@@ -56,12 +56,19 @@ const RENDERER_NOTE = {
 };
 
 const lines = [];
+// "Headline algorithms" is the scope decision recorded in docs/PROGRESS.md as
+// Tier 1: the book's named procedures, not the exercises and variants around
+// them. Saying so here is what stops the count reading as a claim to have
+// animated everything in the book.
+const SCOPE = 'the book’s headline algorithms rather than every exercise and variant';
+
 lines.push(
   done.length === chapters.length
     ? `**All ${chapters.length} chapters and appendices**, covering **${ALGORITHMS.length} algorithms** ` +
-        `across **${renderers.length} renderers**.`
+        `across **${renderers.length} renderers** — ${SCOPE}.`
     : `**${done.length} of ${chapters.length} chapters**, covering **${ALGORITHMS.length} algorithms** ` +
-        `across **${renderers.length} renderers**. The rest of the book's outline is browsable as stubs.`,
+        `across **${renderers.length} renderers** — ${SCOPE}. The rest of the book's outline is ` +
+        `browsable as stubs.`,
   '',
 );
 

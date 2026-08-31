@@ -17,6 +17,9 @@ import { fileURLToPath } from 'node:url';
 import { ALGORITHMS } from '../src/algorithms/registry.ts';
 import type { AlgorithmModule, GraphInput } from '../src/algorithms/types.ts';
 
+const source = (rel: string): string =>
+  readFileSync(fileURLToPath(new URL(`../${rel}`, import.meta.url)), 'utf8');
+
 const chapter = (slug: string): string =>
   readFileSync(
     fileURLToPath(new URL(`../src/content/chapters/${slug}.mdx`, import.meta.url)),
@@ -69,5 +72,34 @@ test('the all-pairs chapter describes negative weights per algorithm, not for al
   assert.ok(
     !sweeping.test(mdx),
     'the chapter attributes weight behaviour to all four players; two of them do not have it',
+  );
+});
+
+test('the home page states its scope instead of promising the whole book', () => {
+  const index = source('src/pages/index.astro');
+
+  // The count is the registry's, not a number someone typed — which is the
+  // only way it stays true as algorithms land.
+  assert.match(
+    index,
+    /\{ALGORITHMS\.length\}/,
+    'the hero states a coverage figure that is not derived from the registry',
+  );
+  assert.ok(
+    !/every algorithm in the book/i.test(index),
+    'the hero promises every algorithm in the book; the registry holds the headline ones',
+  );
+
+  // …and the README's generated block says the same thing, so a reader who
+  // arrives from GitHub is told the same scope.
+  const readme = source('README.md');
+  assert.ok(
+    readme.includes(`**${ALGORITHMS.length} algorithms**`),
+    'the README contents block is out of date — run `npm run readme`',
+  );
+  assert.match(
+    readme,
+    /headline algorithms/,
+    'the README states a count without saying it is the headline algorithms',
   );
 });

@@ -1,8 +1,13 @@
 # Loop Invariant
 
 An interactive, animated companion to _Introduction to Algorithms_ (Cormen, Leiserson, Rivest &
-Stein, 4th edition). Every algorithm plays back step by step against the pseudocode it comes from,
-with the executing line highlighted in lockstep with the data.
+Stein, 4th edition). Every algorithm here plays back step by step against the pseudocode it comes
+from, with the executing line highlighted in lockstep with the data.
+
+"Every algorithm here" is the book's **headline algorithms** — its named procedures — and not the
+exercises, starred sections and end-of-chapter problems around them. Those are catalogued in the
+Tier-2 backlog in [docs/PROGRESS.md](docs/PROGRESS.md). The counts below are generated from the
+registry, so they cannot drift from what is actually built.
 
 Built with [Astro](https://astro.build). Static output, no client framework — the interactive parts
 are plain TypeScript and Canvas.
@@ -30,7 +35,7 @@ npm run dev      # http://localhost:4321
 
 <!-- generated:contents -->
 
-**All 39 chapters and appendices**, covering **79 algorithms** across **6 renderers**.
+**All 39 chapters and appendices**, covering **79 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
 
 ### Part I — Foundations
 
