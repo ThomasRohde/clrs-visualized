@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { ALGORITHMS } from '../src/algorithms/registry.ts';
+import { ALL_CHAPTERS, APPENDICES, CHAPTERS } from '../src/lib/book.ts';
 import type { AlgorithmModule, GraphInput } from '../src/algorithms/types.ts';
 
 const source = (rel: string): string =>
@@ -101,5 +102,35 @@ test('the home page states its scope instead of promising the whole book', () =>
     readme,
     /headline algorithms/,
     'the README states a count without saying it is the headline algorithms',
+  );
+});
+
+test('the book model keeps 35 numbered chapters apart from four appendices', () => {
+  // The distinction is carried by one field — an appendix has number 0 — and
+  // three surfaces used to report the flat total of 39 as chapters. Fixing
+  // the wording is not enough on its own; this is what keeps it fixed.
+  assert.equal(CHAPTERS.length + APPENDICES.length, ALL_CHAPTERS.length);
+  assert.equal(APPENDICES.length, 4, 'the fourth edition has appendices A to D');
+  assert.deepEqual(
+    CHAPTERS.map((c) => c.number),
+    Array.from({ length: 35 }, (_, i) => i + 1),
+    'the numbered chapters must be 1 to 35, in order and with no gaps',
+  );
+  for (const a of APPENDICES) {
+    assert.match(a.title, /^[A-D] — /, `"${a.title}" does not read as an appendix`);
+  }
+
+  // …and the surfaces that report the counts must report both.
+  for (const rel of ['src/pages/index.astro', 'README.md', 'docs/PROGRESS.md']) {
+    assert.ok(
+      !new RegExp(`\b${ALL_CHAPTERS.length} chapters\b`).test(source(rel)),
+      `${rel} calls all ${ALL_CHAPTERS.length} entries chapters; ${APPENDICES.length} are appendices`,
+    );
+  }
+  assert.ok(
+    source('README.md').includes(
+      `**All ${CHAPTERS.length} chapters and ${APPENDICES.length} appendices**`,
+    ),
+    'the README contents block does not distinguish chapters from appendices — run `npm run readme`',
   );
 });

@@ -35,7 +35,7 @@ npm run dev      # http://localhost:4321
 
 <!-- generated:contents -->
 
-**All 39 chapters and appendices**, covering **79 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
+**All 35 chapters and 4 appendices**, covering **79 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
 
 ### Part I — Foundations
 

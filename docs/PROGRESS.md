@@ -11,15 +11,17 @@ the end of every working session. A stale tracker is worse than none.
 
 ## Resume here
 
-> **Phase:** F — **complete. All 39 chapters and all four appendices are written, and all six
+> **Phase:** F — **complete. All 35 chapters and all four appendices are written, and all six
 > renderers are built.** The book is done at Tier 1.
 > **Next task:** **nothing is outstanding.** Housekeeping is closed too — CI, deploy, the generated
-> README and the skills. The only two steps left are outside the repository: **add a git remote and
-> push**, then set **Settings → Pages → Source = GitHub Actions**, and the deploy workflow does the
-> rest. After that, the [Tier-2 backlog](#tier-2-backlog) is where any further depth comes from;
-> nothing in it is a gap, and promoting a row is a decision rather than an obligation.
-> **The section lists are no longer guesses.** All 39 were checked against photographs of the 4e
-> contents on 2026-08-30 — see the edition section for the eight things that corrected.
+> README and the skills — and so is everything that had to happen outside the repository:
+> `origin` is <https://github.com/ThomasRohde/clrs-visualized>, and **Settings → Pages → Source is
+> GitHub Actions**, serving <https://thomasrohde.github.io/clrs-visualized/>. The
+> [Tier-2 backlog](#tier-2-backlog) is where any further depth comes from; nothing in it is a gap,
+> and promoting a row is a decision rather than an obligation.
+> **The section lists are no longer guesses.** All 39 rows — 35 chapters and four appendices — were
+> checked against photographs of the 4e contents on 2026-08-30; see the edition section for the
+> eight things that corrected.
 > **Last completed:** **the prose chapters and the optional chapter 3 plot** — chapters 1, 3, 29 and
 > 34 and appendices A–D, plus `asymptotic-bound` on R6, which was carried as optional from the start
 > and turned out to be worth building. Before them, **R6 and ch 33**, **ch 26**, **ch 35** and
@@ -35,7 +37,7 @@ Settled at the outset so they don't get relitigated mid-grind.
 | Question                      | Decision                                                                                                                                                                                                      |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Sequencing**                | Renderer-batched. Clear every chapter the current renderer serves, then build one new renderer and clear all of its chapters. Book order applies _within_ a phase, not across phases.                         |
-| **Which chapters are "done"** | All 39 in `src/lib/book.ts`. Chapters with no animatable algorithm (1, 3, 34, appendices A–D) get a shorter prose-and-diagram treatment rather than being padded out.                                         |
+| **Which chapters are "done"** | All 39 rows in `src/lib/book.ts` — 35 chapters and four appendices. Chapters with no animatable algorithm (1, 3, 34, appendices A–D) get a shorter prose-and-diagram treatment rather than being padded out.  |
 | **Depth per chapter**         | **Tier 1** — the headline algorithms of the book's numbered sections. Starred sections, exercises and end-of-chapter problems are **Tier 2**: catalogued in the [backlog](#tier-2-backlog) but not built yet. |
 
 Tier 2 is deliberately written down rather than dropped. Scaling up later is promoting rows out of
@@ -509,7 +511,7 @@ revisiting during Phase B.
 | ✅    | Remainder and prose   | R6           | 13       | 22         |
 
 **All six phases are closed.** The phases were ordered so that no phase waited on a renderer a later
-phase would build, and none did. The final count is 39 chapters, 4 appendices, 79 players and 6
+phase would build, and none did. The final count is 35 chapters, 4 appendices, 79 players and 6
 renderers; what remains is [housekeeping](#housekeeping) and the optional
 [Tier-2 backlog](#tier-2-backlog).
 
@@ -956,9 +958,10 @@ the work it tracks isn't checkpointed.
       `actions/configure-pages`, so a GitHub Pages **project** site and a **user** site both work
       with no configuration at all. **The href() claim is now checked rather than asserted**:
       `scripts/check-base-path.mjs` reads every href and src in `dist/` and requires the prefix —
-      1920 links, all of them correct, and the checker was confirmed to fail on a root build. Two
-      things remain, and neither can be done from inside the repository: **add a remote and push**,
-      and set **Settings → Pages → Source = GitHub Actions**.
+      1920 links, all of them correct, and the checker was confirmed to fail on a root build. The
+      two steps that had to happen outside the repository are done: `origin` is
+      <https://github.com/ThomasRohde/clrs-visualized>, and **Settings → Pages → Source** is set to
+      **GitHub Actions**, serving <https://thomasrohde.github.io/clrs-visualized/>.
 - [x] **Build time.** ~~Re-measure `npm run build` at the end of Phase C.~~ Measured at the end of
       Phase D: **40 pages in 3.3 s** with 43 lazy chunks, against 3 chapters and 4 algorithms at the
       start. It is flat — the per-algorithm chunking is doing its job, and nothing here needs

@@ -1,7 +1,7 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { BOOK, ALL_CHAPTERS } from '../lib/book';
+import { APPENDICES, BOOK, CHAPTERS } from '../lib/book';
 import { chapterHref } from '../lib/paths';
 import { ALGORITHMS, requireAlgorithm } from '../algorithms/registry';
 import { legendFor, ROLE_VAR } from '../visualizers/roles';
@@ -34,7 +34,9 @@ const heroLegend = legendFor('insertion-sort');
       <div class="hero-actions">
         <a class="cta" href={chapterHref('getting-started')}>Start at chapter 2</a>
         <span class="hero-meta mono">
-          {ALGORITHMS.length} algorithms animated · {ALL_CHAPTERS.length} chapters
+          {ALGORITHMS.length} algorithms animated · {CHAPTERS.length} chapters and {
+            APPENDICES.length
+          } appendices
         </span>
       </div>
     </div>
