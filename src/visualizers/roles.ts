@@ -37,14 +37,23 @@ export const ROLE_VAR: Record<Role, string> = {
  * or a role a step produces that is missing here — fails the build rather
  * than quietly shipping a key that lies.
  */
-export const DEFAULT_LEGEND: Array<[Role, string]> = [
+/**
+ * A key: each coded colour paired with what it means for one algorithm.
+ *
+ * Named because two things read it — the on-screen key, and `describe.ts`,
+ * which uses the same words for the same states so a screen reader is not
+ * given a second vocabulary for the six roles.
+ */
+export type Legend = Array<[Role, string]>;
+
+export const DEFAULT_LEGEND: Legend = [
   ['look', 'being compared'],
   ['move', 'being moved'],
   ['done', 'in final position'],
   ['rest', 'untouched'],
 ];
 
-export const LEGENDS: Record<string, Array<[Role, string]>> = {
+export const LEGENDS: Record<string, Legend> = {
   'insertion-sort': [
     ['mark', 'the key'],
     ['look', 'compared with the key'],
@@ -724,6 +733,6 @@ export const LEGENDS: Record<string, Array<[Role, string]>> = {
   ],
 };
 
-export function legendFor(algorithmId: string): Array<[Role, string]> {
+export function legendFor(algorithmId: string): Legend {
   return LEGENDS[algorithmId] ?? DEFAULT_LEGEND;
 }

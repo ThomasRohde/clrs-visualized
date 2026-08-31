@@ -130,6 +130,7 @@ src/
                          One Canvas renderer per kind of structure
     renderers.ts         Kind → renderer, as dynamic imports
     roles.ts             The six coded colours, and what each means per algorithm
+    describe.ts          The canvas in words, for screen readers
     player.ts            Playback: transport, scrubbing, code highlighting
     tape.ts              The trace tape, classified from Step alone
   components/
@@ -158,6 +159,16 @@ that paints one the key never mentions.
 Hue is never the only channel. Settled bars are square-topped, moving ones get an ink outline, and
 facts about the _data_ — a red-black node's colour, a centroid's population — are drawn as neutral
 badges rather than borrowing a coded colour.
+
+### The picture, in words
+
+A canvas is a bitmap, so every player also writes its state out as a sentence — the array or the
+structure, the buffers beside it, and what the step is emphasising, named with the same wording the
+on-screen key uses. It lives in a visually hidden element the canvas points at with
+`aria-describedby`, and is rewritten on every step and every new input. It is deliberately not a
+live region; instead the narration stops announcing while the trace is playing and starts again
+when it is paused. `tests/describe.test.ts` asserts that two steps read out the same words exactly
+when they draw the same picture, so nothing on screen goes unsaid.
 
 ### Verification, not re-running
 

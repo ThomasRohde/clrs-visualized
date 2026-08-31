@@ -1,4 +1,5 @@
 import type { Step, VisualizerKind } from '../algorithms/types.ts';
+import type { Role } from './roles.ts';
 
 /**
  * Which renderer draws which algorithm.
@@ -37,6 +38,18 @@ export interface RenderOptions {
 export interface Renderer {
   draw(canvas: HTMLCanvasElement, step: Step | undefined, opts: RenderOptions): void;
   resize(canvas: HTMLCanvasElement, step: Step | undefined, opts: RenderOptions): void;
+  /**
+   * Which coded role each thing on screen is painted in, keyed by the id it
+   * belongs to — a bar's position, a vertex's id, `from>to` for an edge.
+   *
+   * This is the renderer's own colour decision, already written as the
+   * `rolesFor…` exports that `tests/legends.test.ts` checks the key against.
+   * Naming it in the contract is what lets `describe.ts` build the canvas's
+   * text alternative out of exactly what is painted: a second reading of
+   * `step.hi` would be a second vocabulary, and the two would drift the first
+   * time a renderer learned a new highlight key.
+   */
+  roles(step: Step | undefined): Map<string | number, Role>;
 }
 
 /**

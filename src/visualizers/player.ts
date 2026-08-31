@@ -7,7 +7,9 @@ import type {
   Step,
 } from '../algorithms/types.ts';
 import { loadAlgorithm } from '../algorithms/lazy.ts';
+import { describeStep } from './describe.ts';
 import { activateWhenReady, KeyboardTarget } from './keyboard-target.ts';
+import { legendFor, type Legend } from './roles.ts';
 import { loadRenderer, type Renderer } from './renderers.ts';
 import { Tape } from './tape.ts';
 
@@ -68,6 +70,10 @@ export class AlgorithmPlayer {
   /** One chip container per aux row the module declared, keyed by `hi.aux` key. */
   private auxRows = new Map<string, HTMLElement>();
   private note!: HTMLElement;
+  /** The canvas's text alternative — see describe.ts. */
+  private state!: HTMLElement;
+  /** This algorithm's key, so the description names roles as the legend does. */
+  private legend: Legend = [];
   private statCompares!: HTMLElement;
   private statSwaps!: HTMLElement;
   private statWrites!: HTMLElement;
@@ -94,6 +100,7 @@ export class AlgorithmPlayer {
     const id = this.root.dataset.algorithm;
     if (!id) throw new Error('Visualizer root is missing data-algorithm.');
     this.algo = await loadAlgorithm(id);
+    this.legend = legendFor(id);
     // Before bind(): wire() starts a ResizeObserver, which fires on observe,
     // and resizeAll() draws.
     this.renderer = await loadRenderer(this.algo.visualizer);
@@ -124,6 +131,7 @@ export class AlgorithmPlayer {
       this.auxRows.set(el.dataset.auxKey!, el);
     });
     this.note = this.q('[data-el="note"]');
+    this.state = this.q('[data-el="state"]');
     this.statCompares = this.q('[data-el="stat-compares"]');
     this.statSwaps = this.q('[data-el="stat-swaps"]');
     this.statWrites = this.q('[data-el="stat-writes"]');
@@ -252,6 +260,13 @@ export class AlgorithmPlayer {
 
     const last = this.steps.length - 1;
     this.note.textContent = step.note;
+    // What the canvas is drawing, for anyone who cannot see it. Rewritten on
+    // every step and every new input, which is the whole contract.
+    this.state.textContent = describeStep(step, {
+      legend: this.legend,
+      roles: this.renderer.roles(step),
+      aux: this.algo.aux,
+    });
     this.statCompares.textContent = String(step.stats.comparisons);
     this.statSwaps.textContent = String(step.stats.swaps);
     this.statWrites.textContent = String(step.stats.writes);
@@ -340,6 +355,11 @@ export class AlgorithmPlayer {
   play(): void {
     if (this.index >= this.steps.length - 1) this.setIndex(0);
     this.playing = true;
+    // Silence the narration's live region while it runs: politely announcing
+    // every step of a 220-step trace is not an accessible experience, it is a
+    // denial of service. Stepping and scrubbing still announce, because those
+    // are one deliberate change at a time.
+    this.note.setAttribute('aria-live', 'off');
     this.btnPlay.classList.add('is-playing');
     this.btnPlay.setAttribute('aria-label', 'Pause');
     this.lastTick = performance.now();
@@ -348,6 +368,7 @@ export class AlgorithmPlayer {
 
   pause(): void {
     this.playing = false;
+    this.note.setAttribute('aria-live', 'polite');
     this.btnPlay.classList.remove('is-playing');
     this.btnPlay.setAttribute('aria-label', 'Play');
     if (this.rafId !== null) {

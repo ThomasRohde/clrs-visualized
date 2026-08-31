@@ -88,7 +88,21 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
       }
 
       <div class="stage-canvas-wrap">
-        <canvas data-el="canvas" role="img" aria-label={`${algo.name} visualization`}></canvas>
+        <canvas
+          data-el="canvas"
+          role="img"
+          aria-label={`${algo.name} visualization`}
+          aria-describedby={`${id}-state`}></canvas>
+        {
+          /*
+          The canvas is a bitmap, so the state it is drawing exists nowhere a
+          screen reader can reach. The player rewrites this on every step and
+          every input change; `aria-describedby` associates it with the image
+          without making it a live region, which read out on every frame of
+          playback would be unusable. See src/visualizers/describe.ts.
+        */
+        }
+        <p class="sr-only" id={`${id}-state`} data-el="state">Loading…</p>
       </div>
 
       <div class="readout">
@@ -413,6 +427,20 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
     width: 100%;
     flex: 1;
     display: block;
+  }
+
+  /* Clipped rather than `display: none`, which some screen readers skip even
+     when it is the target of aria-describedby. */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
   }
 
   /* ---------- narration + counters ---------- */
