@@ -1,4 +1,5 @@
-# Every gate this project has, on every push.
+# Every gate this project has, on every push — and the gate the deploy runs
+# behind.
 #
 # The generative suite is the safety net for 79 recorders: each one is checked
 # against its own `result` contract on random and edge-case inputs, and several
@@ -6,16 +7,30 @@
 # that no amount of reading would have — an RSA exponent that made the cipher
 # the identity, a gradient-descent guarantee asserted unconditionally when it
 # only holds below a curvature bound. It has to run automatically.
+#
+# **This workflow is reusable, and that is how Deploy is gated.** `workflow_call`
+# below lets deploy.yml run it as a job (`uses: ./.github/workflows/ci.yml`), so
+# publishing waits on every job here having passed *for the commit being
+# published* — not for a run that happened to finish first. A job added to this
+# file is therefore part of the deploy gate automatically, with nothing to
+# remember on the other side.
+#
+# The default branch is deliberately **not** in the push trigger: on master and
+# main these jobs run inside Deploy instead, so the gates run once per commit
+# rather than twice. Every other branch, and every pull request, runs them here.
 name: CI
 
 on:
   push:
-    branches: ['**']
+    branches-ignore: [master, main]
   pull_request:
+  workflow_call:
 
 # A second push supersedes the first; nothing here is worth finishing twice.
+# Keyed by workflow as well as ref, so a run called from Deploy and a run
+# triggered directly cannot cancel each other.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

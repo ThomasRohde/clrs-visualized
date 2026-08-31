@@ -8,6 +8,7 @@ import {
   type ParsedInput,
   type Trace,
 } from '../types.ts';
+import { determinant, isSingular, zeroTolerance } from './singular.ts';
 
 /**
  * LUP SOLVE — CLRS §28.1.
@@ -38,6 +39,13 @@ import {
  * The subtraction in each step is the same one: everything already known,
  * multiplied by its coefficient, taken off the right-hand side. What is left
  * is a single unknown times a single coefficient.
+ *
+ * **Both passes need A to be non-singular**, and the run checks that before it
+ * starts rather than dividing by whatever U's diagonal happens to hold. A zero
+ * there means the system has no unique solution — no solution at all, or a
+ * whole family of them — and neither is something substitution can hand back.
+ * The run says so and stops. Type `1, 2, 2, 4, 3, 7` into the box to see it:
+ * the second equation is twice the first on the left and not on the right.
  */
 
 const round = (x: number): number => Math.round(x * 100) / 100;
@@ -128,6 +136,35 @@ export function record(input: number[]): Trace {
     `PA = LU is already known. Permute b to match, and the rest is substitution.`,
   );
 
+  /**
+   * Both passes assume A is non-singular, and this is where that assumption is
+   * checked rather than discovered.
+   *
+   * Back substitution divides by `u_ii`. A zero there means A is singular: the
+   * system has either no solution or infinitely many, and in neither case is
+   * there an x to substitute for. Dividing anyway gives ±∞ or NaN; **skipping**
+   * the division and calling the unknown 0 — which is what this recorder used
+   * to do — is worse, because it hands back a vector that looks like an answer
+   * and is not one.
+   */
+  const tol = zeroTolerance(input);
+  const singular: number[] = [];
+  for (let i = 0; i < n; i++) if (Math.abs(F[i]![i]!) <= tol) singular.push(i);
+  if (singular.length > 0) {
+    emit(
+      'LUP-SOLVE',
+      3,
+      snapshot(),
+      {
+        look: singular.map((i) => cell(i, i)),
+        singular: true,
+        aux: { pass: chips('setup') },
+      },
+      `u${singular[0]! + 1}${singular[0]! + 1} is 0, so A is singular and back substitution has nothing to divide by. The system has no unique solution, and there is no x to report.`,
+    );
+    return { steps, output: { n, singular: 1 } };
+  }
+
   // ---- forward substitution: Ly = Pb -----------------------------------
   for (let i = 0; i < n; i++) {
     let sum = b[pi[i]!]!;
@@ -137,7 +174,7 @@ export function record(input: number[]): Trace {
     stats.comparisons += i;
     emit(
       'LUP-SOLVE',
-      3,
+      5,
       snapshot(),
       {
         look: [
@@ -166,12 +203,12 @@ export function record(input: number[]): Trace {
   for (let i = n - 1; i >= 0; i--) {
     let sum = y[i] as number;
     for (let j = i + 1; j < n; j++) sum -= F[i]![j]! * (x[j] as number);
-    x[i] = F[i]![i] === 0 ? 0 : sum / F[i]![i]!;
+    x[i] = sum / F[i]![i]!;
     stats.writes++;
     stats.comparisons += n - 1 - i;
     emit(
       'LUP-SOLVE',
-      5,
+      7,
       snapshot(),
       {
         look: [
@@ -198,7 +235,7 @@ export function record(input: number[]): Trace {
 
   emit(
     'LUP-SOLVE',
-    6,
+    8,
     snapshot(),
     {
       done: [
@@ -220,12 +257,27 @@ export function record(input: number[]): Trace {
  * `Ax = b` is the claim and this checks the claim directly, against the
  * matrix as it was given rather than as it was factored — so a mistake in
  * either the factoring or either substitution pass shows up here.
+ *
+ * A run that stopped at a singular pivot is making the other claim, and it is
+ * checked against the determinant rather than against the factorization it
+ * abandoned. Only that direction is asserted: a matrix the elimination decided
+ * was singular really must be, but a merely ill-conditioned one that slipped
+ * through is caught by `Ax = b` below anyway.
  */
 function verify(input: number[], trace: Trace): string | null {
   const n = Math.round((-1 + Math.sqrt(1 + 4 * input.length)) / 2);
   const A: number[][] = Array.from({ length: n }, (_, i) => input.slice(i * n, i * n + n));
   const b = input.slice(n * n);
-  const x = (trace.steps.at(-1)!.hi as { solution?: number[] }).solution;
+  const hi = trace.steps.at(-1)!.hi as { solution?: number[]; singular?: boolean };
+
+  if (hi.singular) {
+    if (hi.solution) return 'the run reported a singular system and returned a solution anyway';
+    return isSingular(A, input)
+      ? null
+      : `the run reported a singular system, but |A| is ${determinant(A)}`;
+  }
+
+  const x = hi.solution;
   if (!x) return 'the run returned no solution';
   if (x.some((v) => !Number.isFinite(v))) return 'the solution has a non-finite entry';
 
@@ -288,11 +340,17 @@ export const lupSolve: AlgorithmModule = {
   aux: [{ key: 'pass', label: 'pass', hint: 'which substitution is running' }],
   procOrder: ['LUP-SOLVE'],
   procedures: {
+    // Lines 2-3 are not in the book's LUP-SOLVE, which takes a non-singular A
+    // as a precondition. A player cannot: the input box will hand it a
+    // singular one, and pseudocode that says nothing about that case while
+    // the recorder stops on it would be two different algorithms side by side.
     'LUP-SOLVE': {
       title: 'LUP-SOLVE(L, U, π, b, n)',
-      indent: [0, 0, 1, 0, 1, 0],
+      indent: [0, 0, 1, 0, 1, 0, 1, 0],
       lines: [
         'let x and y be new vectors of length n',
+        'if u_ii == 0 for some i',
+        'error "no unique solution"',
         'for i = 1 to n',
         'y_i = b_{π[i]} − Σ_{j=1}^{i−1} l_ij y_j',
         'for i = n downto 1',

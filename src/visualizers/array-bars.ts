@@ -400,3 +400,14 @@ export function resize(
   if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   draw(canvas, step, opts);
 }
+
+/**
+ * Everything this renderer paints in a coded role, in one map.
+ *
+ * Bars are the only thing this renderer paints in a coded colour. Part of the `Renderer` contract, and what `describe.ts` reads to say
+ * out loud what the picture is emphasising.
+ */
+export function roles(step: Step | undefined): Map<string | number, Role> {
+  if (!step) return new Map();
+  return new Map<string | number, Role>([...rolesForStep(step)]);
+}

@@ -32,7 +32,9 @@ This is Gaussian elimination with the multipliers written down instead of discar
 transforms **one matrix in place** — a trick worth understanding rather than being startled by.
 Below the diagonal an entry holds the multiplier that eliminated it, which is an entry of `L`. On and
 above the diagonal it holds `U`. The two triangles never collide, because `L`'s diagonal is all ones
-and is not stored.
+and is not stored. In place is not the same as free: `π` is a separate vector of `n` entries and is
+part of the answer, so the extra space is `Θ(n)`. What sharing one matrix saves is the matrix, which
+was the expensive part.
 
 **The P is not decoration.** Without row exchanges the algorithm divides by whatever happens to be on
 the diagonal. That may be zero, in which case it fails outright on a perfectly invertible matrix. Or

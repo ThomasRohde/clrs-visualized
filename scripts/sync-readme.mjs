@@ -29,8 +29,20 @@ const END = '<!-- /generated:contents -->';
 const load = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 const { BOOK } = await load('src/lib/book.ts');
 const { ALGORITHMS } = await load('src/algorithms/registry.ts');
+const { parseDraftFlag } = await load('src/lib/drafts.ts');
 
-const written = (slug) => existsSync(join(ROOT, 'src/content/chapters', `${slug}.mdx`));
+/**
+ * Has this chapter been written *and published*?
+ *
+ * A draft is served as an unwritten stub in a production build, so listing it
+ * here would advertise a page the site does not serve. The flag is read
+ * through `parseDraftFlag` rather than a regex of its own, so this script and
+ * the site cannot disagree about which chapters exist — see src/lib/drafts.ts.
+ */
+const written = (slug) => {
+  const file = join(ROOT, 'src/content/chapters', `${slug}.mdx`);
+  return existsSync(file) && !parseDraftFlag(readFileSync(file, 'utf8'));
+};
 
 /** Which algorithms a chapter embeds, read from its own frontmatter. */
 function algorithmsOf(slug) {
@@ -44,6 +56,12 @@ function algorithmsOf(slug) {
 const byId = new Map(ALGORITHMS.map((a) => [a.id, a]));
 const chapters = BOOK.flatMap((p) => p.chapters);
 const done = chapters.filter((c) => written(c.slug));
+// The book has 35 numbered chapters and four appendices, and an appendix
+// carries number 0. Reporting all 39 as chapters was wrong about four of them.
+const numbered = chapters.filter((c) => c.number > 0);
+const appendices = chapters.filter((c) => c.number === 0);
+const doneNumbered = done.filter((c) => c.number > 0);
+const doneAppendices = done.filter((c) => c.number === 0);
 const renderers = [...new Set(ALGORITHMS.map((a) => a.visualizer))];
 
 const RENDERER_NOTE = {
@@ -56,12 +74,20 @@ const RENDERER_NOTE = {
 };
 
 const lines = [];
+// "Headline algorithms" is the scope decision recorded in docs/PROGRESS.md as
+// Tier 1: the book's named procedures, not the exercises and variants around
+// them. Saying so here is what stops the count reading as a claim to have
+// animated everything in the book.
+const SCOPE = 'the book’s headline algorithms rather than every exercise and variant';
+
 lines.push(
   done.length === chapters.length
-    ? `**All ${chapters.length} chapters and appendices**, covering **${ALGORITHMS.length} algorithms** ` +
-        `across **${renderers.length} renderers**.`
-    : `**${done.length} of ${chapters.length} chapters**, covering **${ALGORITHMS.length} algorithms** ` +
-        `across **${renderers.length} renderers**. The rest of the book's outline is browsable as stubs.`,
+    ? `**All ${numbered.length} chapters and ${appendices.length} appendices**, covering ` +
+        `**${ALGORITHMS.length} algorithms** across **${renderers.length} renderers** — ${SCOPE}.`
+    : `**${doneNumbered.length} of ${numbered.length} chapters and ${doneAppendices.length} of ` +
+        `${appendices.length} appendices**, covering **${ALGORITHMS.length} algorithms** across ` +
+        `**${renderers.length} renderers** — ${SCOPE}. The rest of the book's outline is ` +
+        `browsable as stubs.`,
   '',
 );
 
@@ -104,5 +130,8 @@ if (process.argv.includes('--check')) {
   console.log('README.md contents block is up to date.');
 } else {
   writeFileSync(README, next);
-  console.log(`README.md: ${done.length} chapters, ${ALGORITHMS.length} algorithms.`);
+  console.log(
+    `README.md: ${doneNumbered.length} chapters, ${doneAppendices.length} appendices, ` +
+      `${ALGORITHMS.length} algorithms.`,
+  );
 }

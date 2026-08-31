@@ -123,6 +123,20 @@ export const ALL_CHAPTERS: Array<ChapterOutline & { part: PartOutline }> = BOOK.
   part.chapters.map((c) => ({ ...c, part })),
 );
 
+/**
+ * The numbered chapters, 1–35.
+ *
+ * An appendix carries `number: 0`, which is the whole of the distinction — so
+ * these two lists are derived here rather than filtered at each call site. The
+ * flat count is 39, and "39 chapters" was written on the index page, in the
+ * generated README and in the tracker before anyone noticed that four of them
+ * are appendices.
+ */
+export const CHAPTERS: ChapterOutline[] = ALL_CHAPTERS.filter((c) => c.number > 0);
+
+/** Appendices A–D. Numbered 0, because the book does not number them. */
+export const APPENDICES: ChapterOutline[] = ALL_CHAPTERS.filter((c) => c.number === 0);
+
 export function findChapter(slug: string) {
   return ALL_CHAPTERS.find((c) => c.slug === slug);
 }

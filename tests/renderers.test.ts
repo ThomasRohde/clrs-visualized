@@ -8,6 +8,8 @@
  *  - a module points at a kind nobody has written, and the canvas stays blank
  *  - a renderer is registered but does not actually export `draw`/`resize`,
  *    which only shows up when a frame is drawn
+ *  - it exports those and not `roles`, in which case it draws correctly and
+ *    the canvas's text alternative silently stops naming what is highlighted
  *
  * So this resolves every registered kind for real, through the same dynamic
  * import the browser uses, and checks what came back. `array-bars.ts` touches
@@ -30,11 +32,16 @@ test('every kind a registered module declares has a renderer', async () => {
   }
 });
 
-test('every registered renderer really exports draw and resize', async () => {
+test('every registered renderer really exports draw, resize and roles', async () => {
   for (const kind of Object.keys(RENDERER_LOADERS) as VisualizerKind[]) {
     const renderer = await loadRenderer(kind);
     assert.equal(typeof renderer.draw, 'function', `${kind}: no draw()`);
     assert.equal(typeof renderer.resize, 'function', `${kind}: no resize()`);
+    // `roles` is what describe.ts reads to say out loud what the picture
+    // emphasises, and a renderer without it draws perfectly while the canvas's
+    // text alternative quietly stops mentioning any of it.
+    assert.equal(typeof renderer.roles, 'function', `${kind}: no roles()`);
+    assert.equal(renderer.roles(undefined).size, 0, `${kind}: roles() on no step is not empty`);
   }
 });
 

@@ -2,6 +2,8 @@
   "name": "clrs-visualized",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
+  "author": "Thomas Klok Rohde",
   "type": "module",
   "description": "Loop Invariant \u2014 an interactive, animated companion to Introduction to Algorithms (CLRS, 4th ed.)",
   "scripts": {

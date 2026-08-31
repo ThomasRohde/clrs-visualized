@@ -1,8 +1,13 @@
 # Loop Invariant
 
 An interactive, animated companion to _Introduction to Algorithms_ (Cormen, Leiserson, Rivest &
-Stein, 4th edition). Every algorithm plays back step by step against the pseudocode it comes from,
-with the executing line highlighted in lockstep with the data.
+Stein, 4th edition). Every algorithm here plays back step by step against the pseudocode it comes
+from, with the executing line highlighted in lockstep with the data.
+
+"Every algorithm here" is the book's **headline algorithms** — its named procedures — and not the
+exercises, starred sections and end-of-chapter problems around them. Those are catalogued in the
+Tier-2 backlog in [docs/PROGRESS.md](docs/PROGRESS.md). The counts below are generated from the
+registry, so they cannot drift from what is actually built.
 
 Built with [Astro](https://astro.build). Static output, no client framework — the interactive parts
 are plain TypeScript and Canvas.
@@ -30,7 +35,7 @@ npm run dev      # http://localhost:4321
 
 <!-- generated:contents -->
 
-**All 39 chapters and appendices**, covering **79 algorithms** across **6 renderers**.
+**All 35 chapters and 4 appendices**, covering **79 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
 
 ### Part I — Foundations
 
@@ -125,6 +130,7 @@ src/
                          One Canvas renderer per kind of structure
     renderers.ts         Kind → renderer, as dynamic imports
     roles.ts             The six coded colours, and what each means per algorithm
+    describe.ts          The canvas in words, for screen readers
     player.ts            Playback: transport, scrubbing, code highlighting
     tape.ts              The trace tape, classified from Step alone
   components/
@@ -154,6 +160,16 @@ Hue is never the only channel. Settled bars are square-topped, moving ones get a
 facts about the _data_ — a red-black node's colour, a centroid's population — are drawn as neutral
 badges rather than borrowing a coded colour.
 
+### The picture, in words
+
+A canvas is a bitmap, so every player also writes its state out as a sentence — the array or the
+structure, the buffers beside it, and what the step is emphasising, named with the same wording the
+on-screen key uses. It lives in a visually hidden element the canvas points at with
+`aria-describedby`, and is rewritten on every step and every new input. It is deliberately not a
+live region; instead the narration stops announcing while the trace is playing and starts again
+when it is paused. `tests/describe.test.ts` asserts that two steps read out the same words exactly
+when they draw the same picture, so nothing on screen goes unsaid.
+
 ### Verification, not re-running
 
 Every algorithm declares what a correct run produces. Where the book proves a theorem, the test
@@ -170,6 +186,13 @@ curvature bound, a parallel merge that would have had a linear span.
 Copy `src/content/chapters/_template.mdx` to `<slug>.mdx`, where `<slug>` matches the entry in
 `src/lib/book.ts`. Write prose, and drop in `<AlgorithmPlayer id="..." />` wherever a visualization
 helps. The sidebar, home page and progress bar update themselves.
+
+Set `draft: true` in the frontmatter while it is still being written. A draft is **readable in
+`npm run dev`**, with a banner on it, and in a production build behaves exactly as if the file were
+not there: its route serves the unwritten stub, it is dimmed in the sidebar and on the home page,
+and it is left out of the generated contents above. Clear the flag to publish. The rule lives in
+`src/lib/drafts.ts`; every surface goes through it, and `tests/drafts.test.ts` fails any that
+doesn't.
 
 There is a `add-chapter` skill in `.claude/skills/` with the full checklist, including two MDX traps
 that will otherwise cost you an afternoon.
@@ -196,6 +219,15 @@ Nothing is hardcoded. `astro.config.mjs` reads two environment variables:
 `.github/workflows/deploy.yml` derives both from `actions/configure-pages`, so a GitHub Pages
 project site works with no configuration at all — push, and set Settings → Pages → Source
 to "GitHub Actions".
+
+**Deploy runs behind CI, as a job dependency rather than a hope.** `ci.yml` is a reusable workflow
+(`workflow_call`), and deploy.yml's first job is `uses: ./.github/workflows/ci.yml`; everything that
+touches Pages `needs` it. So nothing publishes until types, lint, formatting, README freshness, the
+generative suite, the browser pass over every player and the subpath link check have all passed
+**for the commit being published** — a manual `workflow_dispatch` included, since there is no input
+that turns the gate off. Adding a job to `ci.yml` adds it to the gate; in exchange, CI does not run
+standalone on `master`/`main`, because it runs inside Deploy there. `tests/workflows.test.ts`
+asserts the whole chain, and was checked by removing the dependency and watching it fail.
 
 Every internal link goes through `href()` / `chapterHref()` in `src/lib/paths.ts`, and CI builds
 under a subpath and asserts that every emitted link carries the prefix. That check exists because a
@@ -225,6 +257,11 @@ A few decisions worth knowing before editing, each of which fixed a real bug:
 
 ## Licence and attribution
 
-This is an unofficial study companion. Pseudocode is transcribed from _Introduction to Algorithms_,
-4th edition for teaching purposes; the book's text and pseudocode are © MIT Press. The site code is
-yours to do with as you like.
+The site's own code and prose — everything under `src/`, `scripts/` and `tests/` — is **MIT
+licensed**; see [LICENSE](LICENSE) for the terms and the full scope. Take it, fork it, ship it.
+
+That licence covers this repository's work and nothing else. Pseudocode transcribed from
+_Introduction to Algorithms_, 4th edition, along with the book's algorithm names, section numbering
+and chapter structure, remains © MIT Press and is reproduced here for study and commentary. This is
+an unofficial companion, not endorsed by the authors or by MIT Press. Reusing the code is a matter
+of the MIT licence; reusing the book's pseudocode is a matter between you and MIT Press.

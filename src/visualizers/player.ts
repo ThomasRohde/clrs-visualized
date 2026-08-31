@@ -7,6 +7,9 @@ import type {
   Step,
 } from '../algorithms/types.ts';
 import { loadAlgorithm } from '../algorithms/lazy.ts';
+import { describeStep } from './describe.ts';
+import { activateWhenReady, KeyboardTarget } from './keyboard-target.ts';
+import { legendFor, type Legend } from './roles.ts';
 import { loadRenderer, type Renderer } from './renderers.ts';
 import { Tape } from './tape.ts';
 
@@ -49,6 +52,14 @@ export class AlgorithmPlayer {
   private baseInput: AlgorithmInput = [];
   private maxValue = 1;
   private rafId: number | null = null;
+  /**
+   * True once `init()` has finished. Until then the buttons are unbound, the
+   * trace is empty and there is no renderer, so the player must not be the
+   * keyboard's target — see keyboard-target.ts.
+   */
+  private ready = false;
+  /** The reader touched this player while it was still loading. */
+  private claimPending = false;
   private tape!: Tape;
   /** Chosen from the module's `visualizer` kind, before anything can draw. */
   private renderer!: Renderer;
@@ -59,6 +70,10 @@ export class AlgorithmPlayer {
   /** One chip container per aux row the module declared, keyed by `hi.aux` key. */
   private auxRows = new Map<string, HTMLElement>();
   private note!: HTMLElement;
+  /** The canvas's text alternative — see describe.ts. */
+  private state!: HTMLElement;
+  /** This algorithm's key, so the description names roles as the legend does. */
+  private legend: Legend = [];
   private statCompares!: HTMLElement;
   private statSwaps!: HTMLElement;
   private statWrites!: HTMLElement;
@@ -85,6 +100,7 @@ export class AlgorithmPlayer {
     const id = this.root.dataset.algorithm;
     if (!id) throw new Error('Visualizer root is missing data-algorithm.');
     this.algo = await loadAlgorithm(id);
+    this.legend = legendFor(id);
     // Before bind(): wire() starts a ResizeObserver, which fires on observe,
     // and resizeAll() draws.
     this.renderer = await loadRenderer(this.algo.visualizer);
@@ -95,7 +111,11 @@ export class AlgorithmPlayer {
     const size = Number(this.root.dataset.size ?? this.algo.defaultSize ?? 12);
     this.setInput(makeInput(size, this.algo.input));
     this.resizeAll();
+    this.ready = true;
     this.root.dataset.ready = 'true';
+    // A reader who clicked during the load meant it, and their choice outranks
+    // whichever player mountAll would otherwise hand the keyboard to.
+    if (this.claimPending) AlgorithmPlayer.keyboard.claim(this);
   }
 
   private q<T extends HTMLElement>(sel: string): T {
@@ -111,6 +131,7 @@ export class AlgorithmPlayer {
       this.auxRows.set(el.dataset.auxKey!, el);
     });
     this.note = this.q('[data-el="note"]');
+    this.state = this.q('[data-el="state"]');
     this.statCompares = this.q('[data-el="stat-compares"]');
     this.statSwaps = this.q('[data-el="stat-swaps"]');
     this.statWrites = this.q('[data-el="stat-writes"]');
@@ -164,7 +185,65 @@ export class AlgorithmPlayer {
 
   // ---------- rendering ----------
 
+  /**
+   * Reserve the narration box for the tallest sentence this trace contains.
+   *
+   * The box has a fixed height so that a longer sentence never shoves the
+   * transport down mid-run, and that height used to be three lines. Three is
+   * right beside a sidebar at 1440 and wrong on a phone, where the same
+   * sentence wraps to five — and wrong in a subtler way anywhere, because a
+   * superscript in `D⁰ is the weight matrix` raises that line's box by 11px
+   * without adding a line at all. Both were caught only by stepping a player
+   * at 375 and watching the panel breathe.
+   *
+   * So it is measured rather than guessed. Every distinct narration is cloned
+   * into an absolutely positioned probe inside the box — cloned, so it carries
+   * the same classes and Astro's scoped-style attribute and therefore wraps
+   * exactly as the real one does — and the whole probe is laid out **once**.
+   * Setting the real element's text in a loop would be one forced reflow per
+   * step, which is 220 of them on radix sort.
+   *
+   * Re-measured on every resize rather than only when the width changes: the
+   * narration font is a web font, and the same sentence in the fallback wraps
+   * to fewer lines at exactly the same width. A guard on width alone reserved
+   * the pre-font-load height and was short by a line on the sentences that
+   * mattered.
+   */
+  private reserveNoteHeight(): void {
+    if (this.note.clientWidth === 0) return;
+
+    const probe = document.createElement('div');
+    probe.setAttribute('aria-hidden', 'true');
+    probe.style.cssText =
+      'position:absolute;left:0;right:0;top:0;visibility:hidden;pointer-events:none';
+
+    const seen = new Set<string>();
+    for (const step of this.steps) {
+      if (seen.has(step.note)) continue;
+      seen.add(step.note);
+      const clone = this.note.cloneNode(false) as HTMLElement;
+      clone.removeAttribute('data-el');
+      clone.removeAttribute('aria-live');
+      clone.textContent = step.note;
+      probe.appendChild(clone);
+    }
+
+    this.note.appendChild(probe);
+    let tallest = 0;
+    for (const child of probe.children) {
+      // The fractional height, rounded up: `offsetHeight` is an integer, and
+      // reserving 79 for a box that really wants 79.13 moves the transport by
+      // a pixel — which the browser pass notices and a reader would not.
+      tallest = Math.max(tallest, child.getBoundingClientRect().height);
+    }
+    probe.remove();
+    // Each clone keeps the CSS floor of three lines, so this is never smaller
+    // than the height the box had before.
+    this.note.style.minHeight = `${Math.ceil(tallest)}px`;
+  }
+
   private resizeAll(): void {
+    this.reserveNoteHeight();
     this.renderer.resize(this.canvas, this.steps[this.index], { maxValue: this.maxValue });
     this.tape.layout();
     this.tape.render(this.index);
@@ -181,6 +260,13 @@ export class AlgorithmPlayer {
 
     const last = this.steps.length - 1;
     this.note.textContent = step.note;
+    // What the canvas is drawing, for anyone who cannot see it. Rewritten on
+    // every step and every new input, which is the whole contract.
+    this.state.textContent = describeStep(step, {
+      legend: this.legend,
+      roles: this.renderer.roles(step),
+      aux: this.algo.aux,
+    });
     this.statCompares.textContent = String(step.stats.comparisons);
     this.statSwaps.textContent = String(step.stats.swaps);
     this.statWrites.textContent = String(step.stats.writes);
@@ -269,6 +355,11 @@ export class AlgorithmPlayer {
   play(): void {
     if (this.index >= this.steps.length - 1) this.setIndex(0);
     this.playing = true;
+    // Silence the narration's live region while it runs: politely announcing
+    // every step of a 220-step trace is not an accessible experience, it is a
+    // denial of service. Stepping and scrubbing still announce, because those
+    // are one deliberate change at a time.
+    this.note.setAttribute('aria-live', 'off');
     this.btnPlay.classList.add('is-playing');
     this.btnPlay.setAttribute('aria-label', 'Pause');
     this.lastTick = performance.now();
@@ -277,6 +368,7 @@ export class AlgorithmPlayer {
 
   pause(): void {
     this.playing = false;
+    this.note.setAttribute('aria-live', 'polite');
     this.btnPlay.classList.remove('is-playing');
     this.btnPlay.setAttribute('aria-label', 'Play');
     if (this.rafId !== null) {
@@ -306,7 +398,12 @@ export class AlgorithmPlayer {
   // ---------- events ----------
 
   private wire(): void {
-    const claim = () => AlgorithmPlayer.setActive(this);
+    // Deferred rather than dropped when the player is still loading: the
+    // listeners are live from here, but `init()` has not finished.
+    const claim = () => {
+      if (this.ready) AlgorithmPlayer.keyboard.claim(this);
+      else this.claimPending = true;
+    };
 
     this.btnPlay.addEventListener('click', () => {
       claim();
@@ -375,6 +472,10 @@ export class AlgorithmPlayer {
     // neither of those fires a window resize.
     new ResizeObserver(() => this.resizeAll()).observe(this.root);
 
+    // …and the narration reserve depends on the font even when nothing
+    // changes width, so it is remeasured once the real one has arrived.
+    document.fonts?.ready.then(() => this.resizeAll());
+
     // Redraw when the theme changes, since colours come from CSS variables.
     // The tape's cached strip has to be repainted, not just blitted.
     const repaint = () => {
@@ -390,21 +491,28 @@ export class AlgorithmPlayer {
 
   // ---------- keyboard ----------
 
-  static active: AlgorithmPlayer | null = null;
+  /**
+   * The one keyboard target on the page, and the marking that shows which it
+   * is. The policy — earliest ready player, until the reader picks one — is in
+   * keyboard-target.ts, where it can be tested without a browser.
+   */
+  static readonly keyboard = new KeyboardTarget<AlgorithmPlayer>((previous, next) => {
+    if (previous) delete previous.root.dataset.active;
+    next.root.dataset.active = 'true';
+  });
 
-  /** Mark one player as the keyboard target, and show which one that is. */
-  static setActive(player: AlgorithmPlayer): void {
-    if (AlgorithmPlayer.active === player) return;
-    if (AlgorithmPlayer.active) delete AlgorithmPlayer.active.root.dataset.active;
-    AlgorithmPlayer.active = player;
-    player.root.dataset.active = 'true';
-  }
+  private static keysInstalled = false;
 
   static installKeyboardShortcuts(): void {
+    if (AlgorithmPlayer.keysInstalled) return;
+    AlgorithmPlayer.keysInstalled = true;
     document.addEventListener('keydown', (e) => {
       const target = document.activeElement;
       if (target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName)) return;
-      const player = AlgorithmPlayer.active;
+      // Null until a player has finished loading, which is what makes a key
+      // pressed during the load a no-op rather than a call into an unbuilt
+      // player.
+      const player = AlgorithmPlayer.keyboard.active;
       if (!player) return;
 
       if (e.key === ' ') {
@@ -509,18 +617,29 @@ export function traceMaxValue(steps: Step[], fallback: AlgorithmInput): number {
   return max;
 }
 
-/** Boot every visualizer on the page. */
+/**
+ * Boot every visualizer on the page.
+ *
+ * The shortcuts are installed first and do nothing until some player is ready,
+ * which is the safe order: the alternative is a window in which the listener
+ * is missing and a keypress is silently lost. Nothing becomes the keyboard's
+ * target until its `init()` has resolved — see keyboard-target.ts for why that
+ * mattered enough to be its own file.
+ */
 export function mountAll(): void {
-  const roots = document.querySelectorAll<HTMLElement>('[data-algorithm]');
-  let first: AlgorithmPlayer | null = null;
-  roots.forEach((root) => {
-    const player = new AlgorithmPlayer(root);
-    if (!first) first = player;
-    player.init().catch((err) => {
-      console.error(err);
-      root.dataset.error = 'true';
-    });
-  });
-  if (first) AlgorithmPlayer.setActive(first);
   AlgorithmPlayer.installKeyboardShortcuts();
+
+  const players = [...document.querySelectorAll<HTMLElement>('[data-algorithm]')].map((root) => {
+    const player = new AlgorithmPlayer(root);
+    return { player, root, ready: player.init() };
+  });
+
+  activateWhenReady(
+    AlgorithmPlayer.keyboard,
+    players,
+    (player: AlgorithmPlayer, error: unknown) => {
+      console.error(error);
+      players.find((p) => p.player === player)!.root.dataset.error = 'true';
+    },
+  );
 }

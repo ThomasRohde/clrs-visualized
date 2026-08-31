@@ -347,3 +347,24 @@ test('randomization frees quicksort from its dependence on the input order', () 
     `randomized quicksort should beat the sorted-input worst case (median ${median} vs ${deterministic})`,
   );
 });
+
+test('LUP decomposition counts its permutation vector in the space it claims', () => {
+  // Sharing one matrix between L and U is what makes the factoring "in
+  // place", and it says nothing about π — which is a separate array of n
+  // entries and is the part of the answer the caller actually keeps. The
+  // trace is what settles the fact, so the claim is checked against it.
+  const lup = ALGORITHMS.find((a) => a.id === 'lup-decomposition')!;
+  const n = 4;
+  const input = [4, 1, 2, 3, 1, 5, 1, 2, 2, 1, 6, 1, 3, 2, 1, 7];
+  const last = lup.record(input).steps.at(-1)!;
+  const pi = (last.hi as { permutation?: number[] }).permutation;
+
+  assert.ok(pi, 'the run returned no permutation, so there is nothing to size');
+  assert.equal(pi.length, n, 'π holds one entry per row');
+  assert.match(
+    lup.complexity.space,
+    /Θ\(n\)/,
+    `lup-decomposition returns ${pi.length} extra entries, so its space cannot be constant: ` +
+      `"${lup.complexity.space}"`,
+  );
+});
