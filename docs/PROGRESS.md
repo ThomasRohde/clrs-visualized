@@ -11,27 +11,29 @@ the end of every working session. A stale tracker is worse than none.
 
 ## Resume here
 
-> **Phase:** F — **complete. All 35 chapters and all four appendices are written, and all six
-> renderers are built.** The book is done at Tier 1.
-> **Next task:** **nothing is outstanding.** Housekeeping is closed too — CI, deploy, the generated
-> README and the skills — and so is everything that had to happen outside the repository:
-> `origin` is <https://github.com/ThomasRohde/clrs-visualized>, and **Settings → Pages → Source is
-> GitHub Actions**, serving <https://thomasrohde.github.io/clrs-visualized/> — and **the deploy now
-> runs behind CI**, so a red commit cannot publish. The [Tier-2 backlog](#tier-2-backlog) is where
-> any further depth comes from; nothing in it is a gap, and promoting a row is a decision rather
-> than an obligation.
-> **The section lists are no longer guesses.** All 39 rows — 35 chapters and four appendices — were
-> checked against photographs of the 4e contents on 2026-08-30; see the edition section for the
-> eight things that corrected.
-> **Last completed:** **an independent review's fourteen issues**, one commit each, merged as
-> [#15](https://github.com/ThomasRohde/clrs-visualized/pull/15) — three real correctness bugs in
-> Johnson, Floyd-Warshall and LUP solve, the deploy gate, the keyboard target, the `draft` flag, a
-> text alternative for every canvas, and a 375px row in `verify:players` that found clipped legends
-> on every renderer family. See the session log for the whole of it. Before that, **the prose
-> chapters and the optional chapter 3 plot** — chapters 1, 3, 29 and 34 and appendices A–D, plus
-> `asymptotic-bound` on R6. Tests (997), `check`, `lint`, `format:check`, `build` and
-> `verify:players` all clean across 79 players and four theme/width combinations, and every new
-> player was stepped through and **looked at** in both themes.
+> **Phase:** G — **the first promotion out of the Tier-2 backlog.** The book itself is finished:
+> Phases A–F are closed, all 35 chapters and all four appendices are written, all six renderers are
+> built, and housekeeping — CI, deploy, the generated README, the skills — is closed too. `origin`
+> is <https://github.com/ThomasRohde/clrs-visualized>, **Settings → Pages → Source is GitHub
+> Actions**, the site serves at <https://thomasrohde.github.io/clrs-visualized/>, and **the deploy
+> runs behind CI**, so a red commit cannot publish.
+> **Next task:** **G1** — `binary-search`, `count-inversions` and `hoare-partition`, in chapters 2
+> and 7. See [Phase G](#phase-g--the-first-tier-2-promotion) for the batches and the
+> [backlog](#tier-2-backlog) for the status of every other row.
+> **Phase G is optional in a way A–F were not.** Nothing in the backlog is a gap; promoting a row is
+> a decision. Nine of the twenty-four were promoted, chosen because each teaches something no player
+> on the site currently shows, and the rest stay catalogued exactly as they were.
+> **Last completed:** **the backlog table itself, which had gone six phases without being
+> revisited.** Six of its rows were no longer work: `RSA end to end` had shipped as Tier 1 (§31.7 is
+> a numbered section and was never Tier 2), `matrix-inverse`, `least-squares` and `recursive-fft`
+> were decided against in Phase E with reasons, and §9.3's walkthrough and §16.4's `table-delete`
+> are changes to players that already ship rather than new ones. Two more are now ❓ against the 4e
+> contents, which `toc-4/` can no longer settle. Before that, **an independent review's fourteen
+> issues**, merged as [#15](https://github.com/ThomasRohde/clrs-visualized/pull/15) — three real
+> correctness bugs in Johnson, Floyd-Warshall and LUP solve, the deploy gate, the keyboard target,
+> the `draft` flag, a text alternative for every canvas, and a 375px row in `verify:players` that
+> found clipped legends on every renderer family. 997 tests, `check`, `lint`, `format:check`,
+> `build` and `verify:players` all clean across 79 players and four theme/width combinations.
 
 ---
 
@@ -59,6 +61,8 @@ the backlog table into a phase — no restructuring of this document, no rework 
 | ⬜   | Not started                                                     |
 | 🔒   | Blocked — the blocking item is named in the row                 |
 | ❓   | Section contents need checking against the book before starting |
+| ⛔   | Decided against, with the reason recorded — not pending work    |
+| ✏️   | A change to a player that already ships, not a new one          |
 
 ---
 
@@ -124,6 +128,7 @@ where they are rather than all up front.
 | **E5** | Complexity rows beyond sorting     | ch 5, 9    | ✅     |
 | **E6** | Colour semantics for data colour   | ch 13      | ✅     |
 | **E7** | Tape classification without arrays | Phase C on | ✅     |
+| **E8** | A zero baseline for `array-bars`   | ch 4 (G2)  | ⬜     |
 
 **E1 — Generalize the test contract. ✅ Done in Phase A.** `AlgorithmModule.result` is a
 `ResultContract`: a `kind` of `sorts` (the default, so no existing module changed) / `permutes` /
@@ -258,6 +263,19 @@ arrays in it at all, checking it still separates `move` / `look` / `scope` / `re
 asserts that stripping `array` off every step of all 15 real traces changes not one classification.
 That second test is the guard — a tape that quietly degrades to all-`rest` still draws, so the
 failure would never announce itself.
+
+**E8 — A zero baseline for `array-bars`. ⬜ Scheduled for Phase G2.** `array-bars.ts` computes a
+bar's height as `Math.max(3, (val / opts.maxValue) * plotH)`, so **a negative value draws as a 3px
+stub** — visually identical to an ∞ sentinel, with its true value printed above it — and
+`traceMaxValue` tracks only a maximum. Problem 4-1's maximum subarray is trivial unless the input
+has negative numbers in it, so it cannot be drawn until this is fixed.
+
+`RenderOptions` gains `minValue`, computed by a `traceMinValue` beside `traceMaxValue` and **fixed
+for the whole trace** — the plot renderer's axis rule, restated, and for the same reason: a baseline
+that moved between frames would move every bar on screen. **The baseline is gated on
+`minValue < 0`**, so a trace with nothing negative in it draws exactly the pixels it draws today.
+That gate is what keeps E8 from being a change to forty shipped players, and it is the same
+guarantee the cells multi-row work gave when it learned to draw more than three rows.
 
 `Tape`'s constructor gave up its TypeScript parameter property to get there: Node's native
 type-stripping rejects those outright, and the module has to import cleanly in a test. Worth
@@ -514,11 +532,16 @@ revisiting during Phase B.
 | ✅    | Graphs                | R4           | 5        | 12         |
 | ✅    | Grids and matrices    | R5           | 6        | 17         |
 | ✅    | Remainder and prose   | R6           | 13       | 22         |
+| 🚧    | Tier 2, first batch   | —            | 8 again  | 9          |
 
 **All six phases are closed.** The phases were ordered so that no phase waited on a renderer a later
 phase would build, and none did. The final count is 35 chapters, 4 appendices, 79 players and 6
-renderers; what remains is [housekeeping](#housekeeping) and the optional
-[Tier-2 backlog](#tier-2-backlog).
+renderers; [housekeeping](#housekeeping) is closed too.
+
+**Phase G is the first promotion out of the [Tier-2 backlog](#tier-2-backlog), and it is optional in
+a way A–F were not.** Nine rows, chosen because each teaches something no player on the site
+currently shows; it revisits eight chapters rather than writing any, and it is the first phase whose
+chapters were already ✅ before it started.
 
 ### Phase A — everything the current renderer already serves
 
@@ -759,6 +782,34 @@ Then the rest, in book order:
 - [x] **Appendix C** — Counting and Probability — **linearity of expectation** as the technique, since it needs no independence and independence is exactly what is usually missing — the indicator-variable pattern that produces chapter 5's hiring bound, quicksort's expected comparisons and universal hashing's chain length is written out as a pattern.
 - [x] **Appendix D** — Matrices — the operations Parts IV and VII assume, and the observation that four chapters use a matrix to mean four different things — adjacency, transition, DP table, transformation. The (min, +) semiring substitution is the one worth remembering, since it is what lets chapter 23 run one triple loop for shortest paths, closure and products alike.
 
+### Phase G — the first Tier-2 promotion
+
+Nine players across eight chapters that are already ✅ at Tier 1. **Every chapter here keeps its
+Tier-1 spine untouched**: a promoted algorithm goes in a trailing `## Beyond the numbered sections`
+heading at the end of the chapter, and in five of the eight the "What is not here" paragraph that
+already names the algorithm becomes that section's introduction. The tier stays legible to the
+reader, which is the point — these are exercises, problems and starred sections, and a page that
+blurred them into the numbered ones would be claiming the book covers more than it does.
+
+Batched so the convention is settled on the cheapest chapter first, the one engine change is
+isolated, and the one large item stands alone.
+
+- [ ] **G1** — ch 2 and ch 7 on R1: `binary-search` (Ex. 2.3-6), `count-inversions` (Prob. 2-4),
+      `hoare-partition` (Prob. 7-1). The pilot: it settles the trailing-section convention on the
+      most-read chapter, and all three reuse scaffolding that already exists. Binary search is the
+      highest-value row in the backlog — chapters 12, 26 and 32 all invoke one and none has a
+      picture of it.
+- [ ] **E8** — the zero baseline, on its own, verified by a `--shots` run before and after showing
+      that nothing without a negative value moved.
+- [ ] **G2** — ch 4: `maximum-subarray` (Prob. 4-1), the row E8 unblocks.
+- [ ] **G3** — ch 20 and ch 22 on R4: `articulation-points` (Prob. 20-2, with bridges) and
+      `difference-constraints` (§22.4 — a numbered, unstarred section that chapter 22 ruled prose,
+      and the only row here that would have been Tier 1 under this file's own rule).
+- [ ] **G4** — ch 25: `hopcroft-karp` (§25.1), alone, being the only row that adds a layer of
+      machinery rather than reusing one.
+- [ ] **G5** — ch 31 and ch 32 on R5: `miller-rabin` (§31.8 ★) and `boyer-moore` (Prob. 32-1). Both
+      slot into a comparison their chapter has already set up.
+
 ---
 
 ## Chapters
@@ -913,31 +964,50 @@ there.
 Catalogued now so the decision to stay at Tier 1 is reversible without re-planning. Promote a row
 into a phase when you want it; nothing here changes the shape of the work above.
 
-| Ch  | Algorithm                                  | Source             | Renderer |
-| --- | ------------------------------------------ | ------------------ | -------- |
-| 2   | `linear-search`                            | Ex. 2.1-3          | R1       |
-| 2   | `binary-search`                            | Ex. 2.3-6          | R1       |
-| 2   | `bubble-sort`                              | Prob. 2-2          | R1       |
-| 2   | `horner`                                   | Prob. 2-3          | R1       |
-| 2   | `count-inversions`                         | Prob. 2-4          | R1       |
-| 4   | `maximum-subarray` (divide and conquer)    | Prob. 4-1          | R1       |
-| 7   | `hoare-partition`                          | Prob. 7-1          | R1       |
-| 7   | `tail-recursive-quicksort`                 | Prob. 7-4          | R1       |
-| 8   | decision-tree lower bound                  | §8.1               | R3       |
-| 9   | `select` worst-case analysis walkthrough   | §9.3               | R1       |
-| 11  | perfect hashing                            | §11.5              | R2       |
-| 15  | `fractional-knapsack`, task scheduling     | §15.2 ex, problems | R2       |
-| 16  | `table-delete` and full potential analysis | §16.4              | R2       |
-| 20  | `euler-tour`, `articulation-points`        | Problems           | R4       |
-| 22  | difference constraints (§22.4 reduction)   | §22.4              | R4       |
-| 24  | push-relabel family                        | Problems           | R4       |
-| 25  | `hopcroft-karp` — augmenting in phases     | §25.1              | R4       |
-| 31  | RSA end to end                             | §31.7              | R2       |
-| 31  | `miller-rabin` primality testing           | §31.8 (★)          | R2       |
-| 28  | `matrix-inverse` — LUP-SOLVE, n times      | §28.2              | R5       |
-| 28  | `least-squares` — build AᵀA, then solve    | §28.3              | R5       |
-| 30  | `recursive-fft` — the same butterfly       | §30.2              | R5       |
-| 32  | `boyer-moore` — right-to-left, sublinear   | Problems           | R5       |
+**Read the status column before treating a row as work.** The table was written in one sitting at
+the start and went six phases without being revisited, so by the time Phase G came to promote out of
+it, six of its rows were no longer things to build: one had shipped, three had been decided against
+in Phase E with the reason written down, and two were changes to a player that already exists rather
+than new players. A backlog that lists settled decisions as open work is the same failure this
+tracker exists to prevent, so they stay listed — marked, not deleted, since the decision is worth
+more than the row.
+
+| Ch  | Algorithm                                   | Source     | Renderer | Status                                                                   |
+| --- | ------------------------------------------- | ---------- | -------- | ------------------------------------------------------------------------ |
+| 2   | `linear-search`                             | Ex. 2.1-3  | R1       | ⬜                                                                       |
+| 2   | `binary-search`                             | Ex. 2.3-6  | R1       | 🚧 G1                                                                    |
+| 2   | `bubble-sort`                               | Prob. 2-2  | R1       | ⬜                                                                       |
+| 2   | `horner`                                    | Prob. 2-3  | R1       | ⬜                                                                       |
+| 2   | `count-inversions`                          | Prob. 2-4  | R1       | 🚧 G1                                                                    |
+| 4   | `maximum-subarray`                          | Prob. 4-1  | R1       | 🔒 **E8** — then G2                                                      |
+| 7   | `hoare-partition`                           | Prob. 7-1  | R1       | 🚧 G1                                                                    |
+| 7   | `tail-recursive-quicksort`                  | Prob. 7-4  | R1       | ⬜                                                                       |
+| 8   | decision-tree lower bound                   | §8.1       | R3       | ⬜ needs a decision first — it is a proof, and has no procedure to panel |
+| 9   | `select`'s worst-case regions               | §9.3       | R1       | ✏️ a marking on the shipped `select`, not a second player                |
+| 11  | perfect hashing                             | 3e §11.5   | R2       | ❓ 4e's §11.5 is "Practical considerations" — check a 4e copy first      |
+| 15  | `fractional-knapsack`                       | §15.2 ex   | R2       | ⬜                                                                       |
+| 15  | task scheduling                             | 3e §16.5   | R2       | ❓ matroid material; 4e may not have it in ch 15 at all                  |
+| 16  | `table-delete` and the two-regime potential | §16.4      | R2       | ✏️ a second procedure on the shipped `dynamic-table`                     |
+| 20  | `euler-tour`                                | Prob. 20-3 | R4       | ⬜                                                                       |
+| 20  | `articulation-points`, and bridges          | Prob. 20-2 | R4       | 🚧 G3                                                                    |
+| 22  | `difference-constraints`                    | §22.4      | R4       | 🚧 G3 — the one row here that is a numbered, unstarred section           |
+| 24  | push-relabel family                         | Problems   | R4       | ⬜ the largest thing left in the table                                   |
+| 25  | `hopcroft-karp` — augmenting in phases      | §25.1      | R4       | 🚧 G4                                                                    |
+| 28  | `matrix-inverse`                            | §28.2      | R5       | ⛔ Phase E: it is LUP-SOLVE's trace, n times over                        |
+| 28  | `least-squares`                             | §28.3      | R5       | ⛔ Phase E: both of its halves are already players on that page          |
+| 30  | `recursive-fft`                             | §30.2      | R5       | ⛔ Phase E: the same butterfly the iterative player draws                |
+| 31  | `miller-rabin` primality testing            | §31.8 (★)  | R5       | 🚧 G5 — **R5, not the R2 first written here**: ch 31 landed on the grid  |
+| 32  | `boyer-moore` — right-to-left, sublinear    | Prob. 32-1 | R5       | 🚧 G5                                                                    |
+
+**One row left the table rather than being marked.** `RSA end to end (§31.7)` was catalogued as Tier
+2 before chapter 31 was written and then built as Tier 1 — §31.7 is a numbered, unstarred section,
+so it was never Tier 2 by this file's own rule. The `rsa` player has been embedded in chapter 31
+since 2026-08-30.
+
+**Two rows are marked ❓ for the reason the chapter rows used to be**, and it cannot be resolved from
+what is on disk: `toc-4/` was untracked and is gone from the working directory, so the 4e contents
+are no longer photographable without the book to hand. Both rows carry 3e numbering, and 3e→4e is
+exactly where this project has been wrong before.
 
 ---
 
