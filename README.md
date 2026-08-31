@@ -35,7 +35,7 @@ npm run dev      # http://localhost:4321
 
 <!-- generated:contents -->
 
-**All 35 chapters and 4 appendices**, covering **86 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
+**All 35 chapters and 4 appendices**, covering **88 algorithms** across **6 renderers** — the book’s headline algorithms rather than every exercise and variant.
 
 ### Part I — Foundations
 
@@ -87,8 +87,8 @@ npm run dev      # http://localhost:4321
 - **28. Matrix Operations** — LUP Decomposition, LUP Solve
 - **29. Linear Programming** — prose
 - **30. Polynomials and the FFT** — Iterative FFT
-- **31. Number-Theoretic Algorithms** — Extended Euclid, Modular Exponentiation, RSA
-- **32. String Matching** — Naive String Matcher, Rabin-Karp, Finite-Automaton Matcher, Knuth-Morris-Pratt, Suffix Array
+- **31. Number-Theoretic Algorithms** — Extended Euclid, Modular Exponentiation, RSA, Miller-Rabin
+- **32. String Matching** — Naive String Matcher, Rabin-Karp, Finite-Automaton Matcher, Knuth-Morris-Pratt, Suffix Array, Boyer-Moore
 - **33. Machine-Learning Algorithms** — k-Means Clustering, Multiplicative Weights, Gradient Descent
 - **34. NP-Completeness** — prose
 - **35. Approximation Algorithms** — Approximate Vertex Cover, Approximate TSP Tour, Greedy Set Cover, Approximate Subset Sum
@@ -106,7 +106,7 @@ npm run dev      # http://localhost:4321
 - `cells` — rows of boxes with pointer arcs — lists, stacks, hash chains, string matching (13)
 - `tree` — rooted trees and forests, with nodes sized to their keys (8)
 - `graph` — graphs, with recorder-owned layouts fixed for the whole trace (19)
-- `grid` — tables and matrices, with cell-to-cell dependency arrows (23)
+- `grid` — tables and matrices, with cell-to-cell dependency arrows (25)
 - `plot` — continuous data — scatters, curves and series (4)
 
 <!-- /generated:contents -->

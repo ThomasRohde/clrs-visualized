@@ -91,6 +91,7 @@ export const ALGORITHM_LOADERS: Record<string, () => Promise<AlgorithmModule>> =
   'finite-automaton-matcher': () =>
     import('./strings/finite-automaton-matcher.js').then((m) => m.finiteAutomatonMatcher),
   kmp: () => import('./strings/kmp.js').then((m) => m.kmp),
+  'boyer-moore': () => import('./strings/boyer-moore.js').then((m) => m.boyerMoore),
   'iterative-fft': () => import('./fft/iterative-fft.js').then((m) => m.iterativeFft),
   'lup-decomposition': () =>
     import('./matrix/lup-decomposition.js').then((m) => m.lupDecomposition),
@@ -102,6 +103,7 @@ export const ALGORITHM_LOADERS: Record<string, () => Promise<AlgorithmModule>> =
   'modular-exponentiation': () =>
     import('./numbers/modular-exponentiation.js').then((m) => m.modularExponentiation),
   rsa: () => import('./numbers/rsa.js').then((m) => m.rsa),
+  'miller-rabin': () => import('./numbers/miller-rabin.js').then((m) => m.millerRabin),
   'move-to-front': () => import('./online/move-to-front.js').then((m) => m.moveToFront),
   'online-caching': () => import('./online/online-caching.js').then((m) => m.onlineCaching),
   'approx-vertex-cover': () =>

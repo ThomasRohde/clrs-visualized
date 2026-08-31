@@ -1,8 +1,8 @@
 ---
 title: Number-Theoretic Algorithms
 section: '§31.1–31.8'
-summary: The oldest algorithm in the book, the one that makes big exponents possible, and the cryptosystem the two of them add up to.
-algorithms: ['extended-euclid', 'modular-exponentiation', 'rsa']
+summary: The oldest algorithm in the book, the one that makes big exponents possible, the cryptosystem the two of them add up to, and the test that finds the primes it needs.
+algorithms: ['extended-euclid', 'modular-exponentiation', 'rsa', 'miller-rabin']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -142,11 +142,59 @@ in the address bar rests on.
 
 </ComplexityCard>
 
-## What is not here
+## Beyond the numbered sections
 
-**Miller-Rabin** has no player: §31.8 is starred, so it sits at this site's Tier 2. It would be a
-good one to add — the search for a nontrivial square root of 1 happens _inside_ the squaring loop
-the second player already draws.
+§31.1 to §31.7 are above. §31.8 is **starred** — material the book marks as skippable — which is
+what puts it here rather than among them, and it is marked as such rather than blended in.
+
+### §31.8 — Miller-Rabin primality testing
+
+Everything above needs primes. RSA's whole security rests on `n = pq` with p and q large and secret,
+and there is no way to write down a large prime except to test candidates until one passes. So: how
+do you decide whether a number is prime, without factoring it?
+
+**Fermat's little theorem is the obvious start and is not enough.** If n is prime then
+`a^(n−1) ≡ 1 (mod n)` for every a not divisible by n, so a base that gives anything else proves n
+composite. The trouble is the converse: some composites pass for every base coprime to them. These
+are the **Carmichael numbers**, and the smallest is 561 = 3 · 11 · 17. Fermat's test is not merely
+weak on them; it is useless.
+
+Miller-Rabin patches the hole with one more observation, and it costs nothing to check. Write
+`n − 1 = 2ᵗ · u` with u odd. Then computing `a^(n−1)` means computing `a^u` and squaring it t times
+— which is the route §31.6's player already takes. Along the way, watch the squares.
+
+**If n is prime, the only square roots of 1 modulo n are 1 and n − 1.** So if the squaring sequence
+ever arrives at 1 from anything else, n cannot be prime. That value is a **nontrivial square root of
+1**, and it is a witness: proof, not evidence.
+
+<AlgorithmPlayer id="miller-rabin" size={3} />
+
+<ComplexityCard id="miller-rabin">
+  **The error is one-sided, and everything worth saying about this algorithm follows from that.**
+  COMPOSITE is a proof — a witness exists only for a composite, so the answer is never wrong, and
+  this page checks exactly that on every generated input. PRIME is the weaker claim: it means "s
+  bases were tried and none was a witness". At least three quarters of the bases below n are
+  witnesses for any composite n, so s trials leave a probability under 4⁻ˢ of being fooled. Twenty
+  trials put that below one in a trillion, which is how real key generation is done.
+
+Notice what that asymmetry buys. A test that could be wrong in both directions would be nearly
+useless for RSA, because a composite modulus breaks the cryptosystem silently. A test that is only
+ever wrong in the direction of "probably prime" can be run again with fresh bases, and each run
+multiplies the doubt by a quarter.
+
+**Type `561, 1` and press Randomize a few times.** 561 is the smallest Carmichael number: Fermat's
+test cannot see through it at all, and Miller-Rabin usually can — but with one trial, sometimes it
+does not. That is the algorithm being honest rather than broken, and it is why s exists.
+
+**Type `2047, 1` for the case that catches the lazy implementation.** 2047 = 23 · 89 is a strong
+pseudoprime to base 2, which is exactly the base a hurried implementation would hard-code.
+
+**And type a prime — `1013, 4`.** No number of trials will ever call it composite, because there is
+nothing to find. That is not luck; it is the theorem.
+
+</ComplexityCard>
+
+## What is not here
 
 **Integer factorization** is gone from this edition altogether. The third edition ended with
 Pollard's rho; the fourth drops it, which is a defensible call given that no method in the chapter

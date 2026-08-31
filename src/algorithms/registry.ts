@@ -64,6 +64,7 @@ import { naiveStringMatcher } from './strings/naive-string-matcher.ts';
 import { rabinKarp } from './strings/rabin-karp.ts';
 import { finiteAutomatonMatcher } from './strings/finite-automaton-matcher.ts';
 import { kmp } from './strings/kmp.ts';
+import { boyerMoore } from './strings/boyer-moore.ts';
 import { iterativeFft } from './fft/iterative-fft.ts';
 import { lupDecomposition } from './matrix/lup-decomposition.ts';
 import { lupSolve } from './matrix/lup-solve.ts';
@@ -72,6 +73,7 @@ import { galeShapley } from './graphs/gale-shapley.ts';
 import { hungarian } from './matrix/hungarian.ts';
 import { extendedEuclid } from './numbers/extended-euclid.ts';
 import { modularExponentiation } from './numbers/modular-exponentiation.ts';
+import { millerRabin } from './numbers/miller-rabin.ts';
 import { rsa } from './numbers/rsa.ts';
 import { moveToFront } from './online/move-to-front.ts';
 import { onlineCaching } from './online/online-caching.ts';
@@ -165,6 +167,7 @@ export const ALGORITHMS: AlgorithmModule[] = [
   rabinKarp,
   finiteAutomatonMatcher,
   kmp,
+  boyerMoore,
   iterativeFft,
   lupDecomposition,
   lupSolve,
@@ -174,6 +177,7 @@ export const ALGORITHMS: AlgorithmModule[] = [
   extendedEuclid,
   modularExponentiation,
   rsa,
+  millerRabin,
   moveToFront,
   onlineCaching,
   approxVertexCover,

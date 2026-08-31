@@ -54,6 +54,22 @@ export const DEFAULT_LEGEND: Legend = [
 ];
 
 export const LEGENDS: Record<string, Legend> = {
+  'boyer-moore': [
+    ['scope', 'the window this shift is testing'],
+    ['look', 'a pair of characters that agree, read from the right'],
+    ['mark', 'the bad character — the mismatch that decides the jump'],
+    ['move', 'an occurrence, the moment it is confirmed'],
+    ['done', 'an occurrence already found'],
+    ['rest', 'a character this shift never has to look at'],
+  ],
+  'miller-rabin': [
+    ['scope', 'the rectangle round the trial being run'],
+    ['look', 'the entry being squared'],
+    ['move', 'the square just computed'],
+    ['mark', 'the witness — the entry that proves n is composite'],
+    ['done', 'a chain that found no witness, and so no proof of anything'],
+    ['rest', 'not computed: the test stopped before it needed to'],
+  ],
   'hopcroft-karp': [
     ['scope', 'the ring round the vertices still unmatched — what a phase is shrinking'],
     ['look', 'the edge being tested against the layers, and the vertices it joins'],

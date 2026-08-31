@@ -1,9 +1,16 @@
 ---
 title: String Matching
-section: '§32.1–32.5'
-summary: Find a pattern in a text five ways — three that refuse to throw away what they have learned, and one that prepares the text instead of the pattern.
+section: '§32.1–32.5 · problems'
+summary: Find a pattern in a text six ways — three that refuse to throw away what they have learned, one that prepares the text instead of the pattern, and one that reads backwards.
 algorithms:
-  ['naive-string-matcher', 'rabin-karp', 'finite-automaton-matcher', 'kmp', 'suffix-array']
+  [
+    'naive-string-matcher',
+    'rabin-karp',
+    'finite-automaton-matcher',
+    'kmp',
+    'suffix-array',
+    'boyer-moore',
+  ]
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -171,12 +178,56 @@ it — which is why ⌈lg n⌉ rounds are enough.
 The last phase is the query. Two binary searches find the ends of the block, and every occurrence is
 inside it, found without ever scanning the text.
 
-## What is not here
+## Beyond the numbered sections
 
-**Boyer-Moore**, which is usually the fastest in practice and is a problem rather than a numbered
-section in this edition. It scans each window **right to left**, which lets a mismatch skip several
-shifts at once instead of one — sublinear on average, because it does not read every character of
-the text.
+§32.1 to §32.5 are above. What follows is from the chapter's problems, and is marked as such rather
+than blended in with the book's own numbered sections.
+
+### Boyer-Moore
+
+Every matcher above reads the pattern **left to right**. Boyer-Moore reads it **right to left**, and
+that single reversal is the whole idea: a mismatch at the far end of the pattern tells you something
+about characters you have not read at all, and lets you skip past them.
+
+It is the only matcher on this page that can be **sublinear** — on a long pattern over a large
+alphabet it does not look at most of the text — and it is what `grep` actually does.
+
+<AlgorithmPlayer id="boyer-moore" size={16} />
+
+<ComplexityCard id="boyer-moore">
+  **Two rules decide the jump, and the algorithm takes the larger.**
+
+The **bad-character** rule looks at the text character that caused the mismatch. It has a last
+occurrence in the pattern, `λ[c]` — that is the second aux row — so slide the pattern until they
+line up: `j − λ[c]`. If the character does not occur in the pattern at all, `λ` is 0 and the whole
+pattern jumps clear of it, which is where the big skips come from. A large alphabet makes that the
+common case, which is why this rule does most of the work on English and little of it on DNA.
+
+The **good-suffix** rule looks at what did match. The suffix `P[j+1‥m]` matched the text, so any
+shift that could work must line that suffix up with a place the pattern could hold it. `γ[j]` is how
+far to slide before that is possible, and it is written as the corner note on each pattern
+character, so at the moment of a mismatch the shift it allows is right there on screen.
+
+**Why both?** The bad-character rule can suggest a shift of zero, or a negative one — that happens
+whenever the bad character occurs to the _right_ of the mismatch in the pattern — and a matcher that
+took it would loop or go backwards. Watch for the step whose narration says so. The good-suffix rule
+is always at least 1, so the maximum of the two is always a real advance.
+
+**What this page checks is stronger than the answer.** Every one of the five matchers here is
+verified against the same shared substring search, so an agreement proves only that this input was
+handled correctly. Boyer-Moore is additionally checked for the property both heuristics exist to
+preserve: **no shift ever steps over an occurrence.** Every jump the run takes is recorded, and
+every position it skipped is tested. A wrong γ that happened to skip nothing on this text would slip
+past an answer check and not past this one.
+
+**Compare the tapes and the comparison counts.** Set every matcher on this page to the same `n` and
+look at the counters. The naive matcher's comparison count is roughly the length of the text; this
+one's is a fraction of it, and the gap widens with the pattern. That is the only algorithm here that
+gets _faster_ as the pattern gets longer.
+
+</ComplexityCard>
+
+## What is not here
 
 One note on the fourth section. **KMP is starred in the fourth edition** — the book marks it as
 material a course may skip. It has a player here anyway, because it is the classical answer to the
