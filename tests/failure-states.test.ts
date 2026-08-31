@@ -110,3 +110,76 @@ test('Johnson still runs Dijkstra on a graph whose negative edges are safe', () 
   assert.equal(trace.output?.dijkstras, 3);
   assertVerifies(johnson, safe);
 });
+
+test('Floyd-Warshall reports the negative cycle instead of calling the diagonal a distance', () => {
+  const fw = moduleFor('floyd-warshall');
+  const trace = fw.record(structuredClone(TWO_CYCLE));
+
+  const last = trace.steps.at(-1)!;
+  assert.deepEqual(
+    (last.hi as { negativeCycle?: number[] }).negativeCycle,
+    [1, 2],
+    'the vertices on the negative cycle were not reported',
+  );
+  assert.match(last.note, /negative-weight cycle/);
+  assert.ok(
+    !/true shortest distance/.test(last.note),
+    'the run still narrated the entries as shortest distances',
+  );
+
+  // Every pair here can reach the cycle and come back, so no entry is a
+  // distance and none may be shown as a finite one.
+  const matrix = (last.hi as { matrix?: number[][] }).matrix!;
+  for (let i = 1; i <= 2; i++) {
+    for (let j = 1; j <= 2; j++) {
+      assert.equal(matrix[i]![j], -Infinity, `d[${i},${j}] is still finite`);
+    }
+  }
+  assertVerifies(fw, TWO_CYCLE);
+});
+
+test('Floyd-Warshall leaves the entries a negative cycle cannot reach alone', () => {
+  const fw = moduleFor('floyd-warshall');
+  // 3 and 4 sit past the cycle; 4 → 3 is not reachable from it at all.
+  const mixed: GraphInput = {
+    kind: 'graph',
+    n: 4,
+    edges: [
+      { u: 1, v: 2, w: -1 },
+      { u: 2, v: 1, w: -1 },
+      { u: 2, v: 3, w: 5 },
+      { u: 4, v: 3, w: 7 },
+    ],
+    directed: true,
+    source: 1,
+  };
+  const trace = fw.record(structuredClone(mixed));
+  const last = trace.steps.at(-1)!;
+  const matrix = (last.hi as { matrix?: number[][] }).matrix!;
+
+  assert.deepEqual((last.hi as { negativeCycle?: number[] }).negativeCycle, [1, 2]);
+  assert.equal(matrix[1]![3], -Infinity, 'a pair running through the cycle should be −∞');
+  assert.equal(matrix[4]![3], 7, 'a pair the cycle cannot reach is still a shortest distance');
+  assert.equal(matrix[4]![4], 0, 'a vertex off the cycle still costs 0 to reach itself');
+  assert.equal(matrix[3]![1], Infinity, 'an unreachable pair is still unreachable');
+  assertVerifies(fw, mixed);
+});
+
+test('Floyd-Warshall narrates success when there is no negative cycle', () => {
+  const fw = moduleFor('floyd-warshall');
+  const fine: GraphInput = {
+    kind: 'graph',
+    n: 3,
+    edges: [
+      { u: 1, v: 2, w: -1 },
+      { u: 2, v: 3, w: 2 },
+      { u: 3, v: 1, w: 4 },
+    ],
+    directed: true,
+    source: 1,
+  };
+  const last = fw.record(structuredClone(fine)).steps.at(-1)!;
+  assert.equal((last.hi as { negativeCycle?: unknown }).negativeCycle, undefined);
+  assert.match(last.note, /true shortest distance/);
+  assertVerifies(fw, fine);
+});

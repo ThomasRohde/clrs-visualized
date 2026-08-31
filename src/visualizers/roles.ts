@@ -446,7 +446,10 @@ export const LEGENDS: Record<string, Array<[Role, string]>> = {
   // take, so it earns `mark` — it is what the reader should be watching, and
   // it is a set of cells rather than a single named one.
   'floyd-warshall': [
-    ['mark', 'row k and column k — every improvement comes through this cross'],
+    [
+      'mark',
+      'row k and column k — the cross an improvement comes through; then a negative diagonal entry',
+    ],
     ['look', 'the two entries a route through k would use'],
     ['move', 'the entry being tested, or just improved'],
     ['scope', 'row k, the round now being allowed'],
