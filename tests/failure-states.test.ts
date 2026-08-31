@@ -191,6 +191,32 @@ test('Floyd-Warshall narrates success when there is no negative cycle', () => {
 /** A = [[1,2],[2,4]] — the second row is twice the first, so |A| = 0. */
 const SINGULAR = [1, 2, 2, 4];
 
+test('LUP decomposition ends at the singular pivot rather than reporting Done as well', () => {
+  const lup = moduleFor('lup-decomposition');
+  const { steps } = lup.record([...SINGULAR]);
+  const last = steps.at(-1)!;
+
+  assert.equal((last.hi as { singular?: boolean }).singular, true);
+  assert.match(last.note, /singular/);
+  assert.equal(
+    (last.hi as { factored?: unknown }).factored,
+    undefined,
+    'a factorization was returned for a matrix that has none',
+  );
+  const terminal = steps.filter((s) => /^(Done|Every candidate)/.test(s.note));
+  assert.equal(terminal.length, 1, 'the trace holds both a singular error and a normal Done');
+  assertVerifies(lup, SINGULAR);
+});
+
+test('LUP decomposition still factors a non-singular matrix', () => {
+  const lup = moduleFor('lup-decomposition');
+  const input = [2, 3, 1, 4, 7, 5, 6, 9, 8];
+  const last = lup.record([...input]).steps.at(-1)!;
+  assert.equal((last.hi as { singular?: unknown }).singular, undefined);
+  assert.ok((last.hi as { factored?: unknown }).factored, 'no factorization was returned');
+  assertVerifies(lup, input);
+});
+
 test('LUP solve refuses a singular system rather than assigning zero at the zero pivot', () => {
   const solve = moduleFor('lup-solve');
   // Inconsistent: row 2 of A is twice row 1, but 7 is not twice 3.

@@ -8,6 +8,7 @@ import {
   type ParsedInput,
   type Trace,
 } from '../types.ts';
+import { determinant, isSingular } from './singular.ts';
 
 /**
  * LUP DECOMPOSITION — CLRS §28.1.
@@ -40,6 +41,11 @@ import {
  * That is the whole of numerical stability in this book, in one line of
  * pseudocode: the algorithm that is right on paper and the one that is right
  * in floating point differ by a `max`.
+ *
+ * **Pivoting cannot rescue a singular matrix**, only a badly ordered one. If
+ * every candidate in a column is zero there is no pivot to find, `PA = LU`
+ * has no solution, and the procedure does what its line 8 says and stops. Try
+ * `1, 2, 2, 4`, whose second row is twice its first.
  */
 
 const round = (x: number): number => Math.round(x * 100) / 100;
@@ -109,14 +115,18 @@ export function record(input: number[]): Trace {
     );
 
     if (best === 0) {
+      // `error` in the pseudocode is `error`: the procedure stops, and there
+      // is no π to return. Carrying on to emit an ordinary Done as well would
+      // put two terminal states in one trace and contradict the line the
+      // player is highlighting.
       emit(
         'LUP-DECOMPOSITION',
         8,
         snapshot(),
-        { mark: [cell(k, k)], aux: { lup: chips(k, 0) } },
-        `Every candidate is zero: the matrix is singular, and there is nothing to eliminate here.`,
+        { mark: [cell(k, k)], singular: true, aux: { lup: chips(k, 0) } },
+        `Every candidate in column ${k + 1} is zero, so no pivot exists: A is singular, PA = LU has no solution, and the procedure stops here.`,
       );
-      continue;
+      return { steps, output: { n, singular: 1 } };
     }
 
     if (at !== k) {
@@ -192,7 +202,7 @@ export function record(input: number[]): Trace {
     `Done: L below the diagonal, U on and above it, and π says which original row is which.`,
   );
 
-  return { steps, output: { n } };
+  return { steps, output: { n, singular: 0 } };
 }
 
 /**
@@ -202,13 +212,30 @@ export function record(input: number[]): Trace {
  * the single stored matrix, multiply them, and compare against A with its
  * rows permuted. Nothing about elimination is reused, so a wrong multiplier
  * or a mis-recorded swap shows up immediately.
+ *
+ * A run that stopped at a pivotless column is making no such claim, and is
+ * checked against the determinant instead. Only that direction is asserted: a
+ * matrix elimination called singular really must be, but a nearly singular one
+ * that squeaked past a tiny pivot still has to satisfy `PA = LU`, which is
+ * what the rest of this checks.
  */
 function verify(input: number[], trace: Trace): string | null {
   const n = Math.round(Math.sqrt(input.length));
   const A: number[][] = Array.from({ length: n }, (_, i) => input.slice(i * n, i * n + n));
-  const hi = trace.steps.at(-1)!.hi as { factored?: number[][]; permutation?: number[] };
+  const hi = trace.steps.at(-1)!.hi as {
+    factored?: number[][];
+    permutation?: number[];
+    singular?: boolean;
+  };
   const F = hi.factored;
   const pi = hi.permutation;
+
+  if (hi.singular) {
+    if (F) return 'the run reported a singular matrix and returned a factorization anyway';
+    return isSingular(A, input)
+      ? null
+      : `the run reported a singular matrix, but |A| is ${determinant(A)}`;
+  }
   if (!F || !pi) return 'the run returned no factorization';
 
   for (let i = 0; i < n; i++) {

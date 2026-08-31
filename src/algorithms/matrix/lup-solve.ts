@@ -8,6 +8,7 @@ import {
   type ParsedInput,
   type Trace,
 } from '../types.ts';
+import { determinant, isSingular, zeroTolerance } from './singular.ts';
 
 /**
  * LUP SOLVE — CLRS §28.1.
@@ -48,18 +49,6 @@ import {
  */
 
 const round = (x: number): number => Math.round(x * 100) / 100;
-
-/**
- * How close to zero counts as zero, for this matrix.
- *
- * Scaled by the largest entry, because "small" is only meaningful against
- * something: a pivot of 1e-12 is zero in a matrix of small integers and is an
- * ordinary number in one scaled by 1e-15. Exact equality would be right for
- * the integers the input box accepts and wrong the moment elimination leaves
- * a rounding crumb where a zero belongs.
- */
-const zeroTolerance = (values: number[]): number =>
-  1e-9 * Math.max(1, ...values.map((v) => Math.abs(v)));
 
 export function record(input: number[]): Trace {
   // n² entries of A, then n of b.
@@ -263,24 +252,6 @@ export function record(input: number[]): Trace {
 }
 
 /**
- * The determinant, by cofactor expansion.
- *
- * Exact on the integers the input box accepts, and independent of elimination
- * — which is the point, since it is the check on a run that *stopped* because
- * elimination found a zero pivot. n is at most 4, so 24 terms is nothing.
- */
-function determinant(M: number[][]): number {
-  const n = M.length;
-  if (n === 1) return M[0]![0]!;
-  let sum = 0;
-  for (let j = 0; j < n; j++) {
-    const minor = M.slice(1).map((row) => row.filter((_, c) => c !== j));
-    sum += (j % 2 === 0 ? 1 : -1) * M[0]![j]! * determinant(minor);
-  }
-  return sum;
-}
-
-/**
  * Substitute the answer back into the original system.
  *
  * `Ax = b` is the claim and this checks the claim directly, against the
@@ -301,11 +272,9 @@ function verify(input: number[], trace: Trace): string | null {
 
   if (hi.singular) {
     if (hi.solution) return 'the run reported a singular system and returned a solution anyway';
-    const det = determinant(A);
-    const scale = Math.max(1, ...input.map((v) => Math.abs(v))) ** n;
-    return Math.abs(det) <= 1e-6 * scale
+    return isSingular(A, input)
       ? null
-      : `the run reported a singular system, but |A| is ${det}`;
+      : `the run reported a singular system, but |A| is ${determinant(A)}`;
   }
 
   const x = hi.solution;
