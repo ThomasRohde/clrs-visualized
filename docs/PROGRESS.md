@@ -17,15 +17,18 @@ the end of every working session. A stale tracker is worse than none.
 > is <https://github.com/ThomasRohde/clrs-visualized>, **Settings → Pages → Source is GitHub
 > Actions**, the site serves at <https://thomasrohde.github.io/clrs-visualized/>, and **the deploy
 > runs behind CI**, so a red commit cannot publish.
-> **Next task:** **E8**, then **G2**. E8 is the zero baseline for `array-bars` and lands on its own,
-> with a `--shots` run before and after proving that nothing without a negative value moved; G2 is
-> then chapter 4's `maximum-subarray`, the row it unblocks. See
+> **Next task:** **G2** — chapter 4's `maximum-subarray` (Prob. 4-1), now that **E8** has landed and
+> `array-bars` can draw a value below zero. See
 > [Phase G](#phase-g--the-first-tier-2-promotion) for the batches and the
 > [backlog](#tier-2-backlog) for the status of every other row.
 > **Phase G is optional in a way A–F were not.** Nothing in the backlog is a gap; promoting a row is
 > a decision. Nine of the twenty-four were promoted, chosen because each teaches something no player
 > on the site currently shows, and the rest stay catalogued exactly as they were.
-> **Last completed:** **G1** — `binary-search` (Ex. 2.3-6), `count-inversions` (Prob. 2-4) and
+> **Last completed:** **E8**, the zero baseline for `array-bars` — a negative value used to draw as
+> a 3px stub indistinguishable from an ∞ sentinel. Its promise is that nothing else moved, and that
+> is asserted against the old formula in `tests/array-bars-axis.test.ts` rather than eyeballed,
+> because most players generate a random input and no two screenshot runs are comparable. Before
+> that, **G1** — `binary-search` (Ex. 2.3-6), `count-inversions` (Prob. 2-4) and
 > `hoare-partition` (Prob. 7-1), one commit each, plus the trailing `Beyond the numbered sections`
 > heading every Tier-2 promotion now uses. Before that, **the backlog table itself, which had gone
 > six phases without being revisited.** Six of its rows were no longer work: `RSA end to end` had shipped as Tier 1 (§31.7 is
@@ -132,7 +135,7 @@ where they are rather than all up front.
 | **E5** | Complexity rows beyond sorting     | ch 5, 9    | ✅     |
 | **E6** | Colour semantics for data colour   | ch 13      | ✅     |
 | **E7** | Tape classification without arrays | Phase C on | ✅     |
-| **E8** | A zero baseline for `array-bars`   | ch 4 (G2)  | ⬜     |
+| **E8** | A zero baseline for `array-bars`   | ch 4 (G2)  | ✅     |
 
 **E1 — Generalize the test contract. ✅ Done in Phase A.** `AlgorithmModule.result` is a
 `ResultContract`: a `kind` of `sorts` (the default, so no existing module changed) / `permutes` /
@@ -268,7 +271,7 @@ asserts that stripping `array` off every step of all 15 real traces changes not 
 That second test is the guard — a tape that quietly degrades to all-`rest` still draws, so the
 failure would never announce itself.
 
-**E8 — A zero baseline for `array-bars`. ⬜ Scheduled for Phase G2.** `array-bars.ts` computes a
+**E8 — A zero baseline for `array-bars`. ✅ Done, ahead of G2.** `array-bars.ts` computes a
 bar's height as `Math.max(3, (val / opts.maxValue) * plotH)`, so **a negative value draws as a 3px
 stub** — visually identical to an ∞ sentinel, with its true value printed above it — and
 `traceMaxValue` tracks only a maximum. Problem 4-1's maximum subarray is trivial unless the input
@@ -804,20 +807,13 @@ isolated, and the one large item stands alone.
       highest-value row in the backlog — chapters 12, 26 and 32 all invoke one and none has a
       picture of it.
 
-      **Landed, and three things came out of it that the rest of Phase G inherits.** The trailing
-          section works and is the convention now. `array-bars` has exactly **two** label lanes, so a
-          third marker over adjacent bars goes back on top of the first — `low`/`mid`/`high` collided
-          at 375px where `p`/`q`/`r` does not, and p/q/r is what MERGE-SORT calls them anyway. And
-          `rolesForStep` already reads `r` as merge's right-hand index, so emitting a search bound
-          under that name painted a bar `look` on every step — invisible to every test, obvious in one
-          screenshot. **Read `rolesForStep` before choosing a highlight key, not after.**
-
-          One test changed shape: the well-formed check measured a snapshot against `input.length + 1`,
-          which holds only until a module packs a parameter in front of its values. It now measures
-          through `inputSize` — the module's own answer, and the one the player puts in the n readout.
-
-- [ ] **E8** — the zero baseline, on its own, verified by a `--shots` run before and after showing
-      that nothing without a negative value moved.
+- [x] **E8** — the zero baseline. Landed on its own, and the no-op promise is asserted rather than
+      eyeballed: a screenshot comparison cannot check it, because most players generate a random
+      input and two runs differ for reasons unrelated to the change. The arithmetic came out of
+      `draw()` as `barSpan`, and `tests/array-bars-axis.test.ts` writes out the old formula and
+      checks the new function against it across the whole range. That test found the one case that
+      would have moved — on an axis starting at zero there is no _below_ to draw in, so a −∞ stub
+      would have hung outside the plot.
 - [ ] **G2** — ch 4: `maximum-subarray` (Prob. 4-1), the row E8 unblocks.
 - [ ] **G3** — ch 20 and ch 22 on R4: `articulation-points` (Prob. 20-2, with bridges) and
       `difference-constraints` (§22.4 — a numbered, unstarred section that chapter 22 ruled prose,
@@ -826,6 +822,24 @@ isolated, and the one large item stands alone.
       machinery rather than reusing one.
 - [ ] **G5** — ch 31 and ch 32 on R5: `miller-rabin` (§31.8 ★) and `boyer-moore` (Prob. 32-1). Both
       slot into a comparison their chapter has already set up.
+
+**What G1 landed, and what the rest of Phase G inherits from it.** The trailing section works and
+is the convention now. Two of the three findings are about the renderer rather than about any of
+those algorithms:
+
+- **`array-bars` has exactly two label lanes.** A third marker over adjacent bars goes back into
+  lane 0, on top of the first. `low`/`mid`/`high` collided that way at 375px and `p`/`q`/`r` does
+  not — which is also what MERGE-SORT calls them, so binary search's line 4 is now merge sort's
+  line 2 character for character.
+- **`rolesForStep` already claims some short names.** It reads `r` as merge's right-hand index and
+  paints it `look`, so emitting a search bound under that name painted a bar as though it were
+  being read, on every step. Invisible to every test and obvious in one screenshot. **Read
+  `rolesForStep` before choosing a highlight key, not after.**
+
+One test changed shape with them: the well-formed check measured a snapshot against
+`input.length + 1`, which holds only until a module packs a parameter in front of its values. It
+now measures through `inputSize` — the module's own answer, and the one the player puts in the n
+readout.
 
 ---
 
@@ -996,7 +1010,7 @@ more than the row.
 | 2   | `bubble-sort`                               | Prob. 2-2  | R1       | ⬜                                                                       |
 | 2   | `horner`                                    | Prob. 2-3  | R1       | ⬜                                                                       |
 | 2   | `count-inversions`                          | Prob. 2-4  | R1       | ✅ G1                                                                    |
-| 4   | `maximum-subarray`                          | Prob. 4-1  | R1       | 🔒 **E8** — then G2                                                      |
+| 4   | `maximum-subarray`                          | Prob. 4-1  | R1       | 🚧 G2 — E8 has landed                                                    |
 | 7   | `hoare-partition`                           | Prob. 7-1  | R1       | ✅ G1                                                                    |
 | 7   | `tail-recursive-quicksort`                  | Prob. 7-4  | R1       | ⬜                                                                       |
 | 8   | decision-tree lower bound                   | §8.1       | R3       | ⬜ needs a decision first — it is a proof, and has no procedure to panel |
