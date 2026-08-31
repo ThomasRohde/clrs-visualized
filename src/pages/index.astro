@@ -1,12 +1,14 @@
 ---
-import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import { publishedChapters } from '../lib/chapters';
 import { APPENDICES, BOOK, CHAPTERS } from '../lib/book';
 import { chapterHref } from '../lib/paths';
 import { ALGORITHMS, requireAlgorithm } from '../algorithms/registry';
 import { legendFor, ROLE_VAR } from '../visualizers/roles';
 
-const written = await getCollection('chapters');
+// Drafts are not ready chapters, so a row for one is dimmed like an unwritten
+// one. See src/lib/drafts.ts.
+const written = await publishedChapters();
 const bySlug = new Map(written.map((e) => [e.id, e]));
 
 // The hero runs insertion sort, so its pseudocode is rendered at build time

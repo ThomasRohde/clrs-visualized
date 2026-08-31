@@ -29,8 +29,20 @@ const END = '<!-- /generated:contents -->';
 const load = (rel) => import(pathToFileURL(join(ROOT, rel)).href);
 const { BOOK } = await load('src/lib/book.ts');
 const { ALGORITHMS } = await load('src/algorithms/registry.ts');
+const { parseDraftFlag } = await load('src/lib/drafts.ts');
 
-const written = (slug) => existsSync(join(ROOT, 'src/content/chapters', `${slug}.mdx`));
+/**
+ * Has this chapter been written *and published*?
+ *
+ * A draft is served as an unwritten stub in a production build, so listing it
+ * here would advertise a page the site does not serve. The flag is read
+ * through `parseDraftFlag` rather than a regex of its own, so this script and
+ * the site cannot disagree about which chapters exist — see src/lib/drafts.ts.
+ */
+const written = (slug) => {
+  const file = join(ROOT, 'src/content/chapters', `${slug}.mdx`);
+  return existsSync(file) && !parseDraftFlag(readFileSync(file, 'utf8'));
+};
 
 /** Which algorithms a chapter embeds, read from its own frontmatter. */
 function algorithmsOf(slug) {

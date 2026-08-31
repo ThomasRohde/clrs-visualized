@@ -24,7 +24,13 @@ const chapters = defineCollection({
      * exactly what you want when adding content.
      */
     algorithms: z.array(z.string()).default([]),
-    /** Set false to hide a work-in-progress chapter from navigation. */
+    /**
+     * Written but not published. A draft is served in `npm run dev` with a
+     * banner on it, and in a production build behaves exactly as if the file
+     * did not exist — no content on its route, dimmed in the sidebar and the
+     * home-page outline, absent from the generated README. See
+     * src/lib/drafts.ts, which is where the rule lives and is applied from.
+     */
     draft: z.boolean().default(false),
   }),
 });

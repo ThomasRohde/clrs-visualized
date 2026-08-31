@@ -176,6 +176,13 @@ Copy `src/content/chapters/_template.mdx` to `<slug>.mdx`, where `<slug>` matche
 `src/lib/book.ts`. Write prose, and drop in `<AlgorithmPlayer id="..." />` wherever a visualization
 helps. The sidebar, home page and progress bar update themselves.
 
+Set `draft: true` in the frontmatter while it is still being written. A draft is **readable in
+`npm run dev`**, with a banner on it, and in a production build behaves exactly as if the file were
+not there: its route serves the unwritten stub, it is dimmed in the sidebar and on the home page,
+and it is left out of the generated contents above. Clear the flag to publish. The rule lives in
+`src/lib/drafts.ts`; every surface goes through it, and `tests/drafts.test.ts` fails any that
+doesn't.
+
 There is a `add-chapter` skill in `.claude/skills/` with the full checklist, including two MDX traps
 that will otherwise cost you an afternoon.
 

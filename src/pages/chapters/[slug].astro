@@ -1,6 +1,7 @@
 ---
-import { getCollection, render } from 'astro:content';
+import { render } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import { publishedChapters, SHOW_DRAFTS } from '../../lib/chapters';
 import { ALL_CHAPTERS, chapterLabel } from '../../lib/book';
 import { chapterHref } from '../../lib/paths';
 import { ALGORITHM_IDS } from '../../algorithms/registry';
@@ -9,8 +10,13 @@ import { ALGORITHM_IDS } from '../../algorithms/registry';
 // their content; the rest render a stub that says so plainly and points at
 // what is readable instead. That way the full table of contents is browsable
 // from the very first commit.
+//
+// A **draft** is one of "the rest" in a production build — the route still
+// exists, because every chapter of the book has one, but it serves the stub
+// rather than half-written content. In `npm run dev` it serves the content,
+// behind the banner below.
 export async function getStaticPaths() {
-  const written = await getCollection('chapters');
+  const written = await publishedChapters();
   const bySlug = new Map(written.map((entry) => [entry.id, entry]));
 
   return ALL_CHAPTERS.map((chapter, i) => {
@@ -53,6 +59,9 @@ if (entry) {
 }
 
 const Content = entry ? (await render(entry)).Content : null;
+// Only ever true in dev: a production build has already filtered drafts out,
+// so `entry` is null for them and this page renders the stub.
+const isDraft = SHOW_DRAFTS && entry?.data.draft === true;
 const title = entry?.data.title ?? chapter.title;
 const eyebrow = entry?.data.section ?? chapterLabel(chapter);
 const summary = entry?.data.summary;
@@ -71,6 +80,13 @@ const summary = entry?.data.summary;
   {
     Content ? (
       <article class="chapter-body">
+        {isDraft && (
+          <p class="draft-banner">
+            <strong>Draft.</strong> This chapter is marked <code>draft: true</code>, so it is
+            readable here in <code>npm run dev</code> and is served as an unwritten stub in a
+            production build. Clear the flag when it is ready.
+          </p>
+        )}
         <Content />
       </article>
     ) : (
@@ -151,6 +167,19 @@ Your prose here.
 </BaseLayout>
 
 <style>
+  /* Dev-only, so it is deliberately loud rather than designed: it exists to
+     stop a half-written chapter reading like a finished one. Neutral ramp,
+     because the six coded colours mean things about algorithms. */
+  .draft-banner {
+    border: 1px dashed var(--ink-3);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.8rem;
+    margin-bottom: 1.5rem;
+    font-size: var(--t-small);
+    color: var(--ink-2);
+    background: var(--surface-2);
+  }
+
   .chapter-body {
     display: flex;
     flex-direction: column;

@@ -1,6 +1,6 @@
 ---
-import { getCollection } from 'astro:content';
 import { BOOK } from '../lib/book';
+import { publishedChapters } from '../lib/chapters';
 import { chapterHref } from '../lib/paths';
 
 interface Props {
@@ -10,9 +10,10 @@ interface Props {
 
 const { current } = Astro.props;
 
-// A chapter is "ready" when an MDX file exists for it; everything else
-// renders as planned, so the whole book is navigable from day one.
-const ready = new Set((await getCollection('chapters')).map((entry) => entry.id));
+// A chapter is "ready" when an MDX file exists for it and is not a draft;
+// everything else renders as planned, so the whole book is navigable from day
+// one. See src/lib/drafts.ts for what a draft is.
+const ready = new Set((await publishedChapters()).map((entry) => entry.id));
 const currentTitle = BOOK.flatMap((p) => p.chapters).find((c) => c.slug === current)?.title;
 ---
 
