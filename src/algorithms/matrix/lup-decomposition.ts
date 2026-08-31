@@ -29,6 +29,11 @@ import { determinant, isSingular } from './singular.ts';
  * `L`. On and above the diagonal it holds `U`. The two triangles never
  * collide, because `L` has an implicit 1 on its diagonal that is not stored.
  *
+ * In place is not free, though. `π` is a genuinely separate array of `n`
+ * entries, and it is returned rather than discarded, so the extra space is
+ * Θ(n) and not Θ(1) — sharing one matrix between L and U saves the *matrix*,
+ * which was the expensive part, and says nothing about the vector.
+ *
  * **The P is not decoration.** Without row exchanges the algorithm divides by
  * whatever happens to be on the diagonal, which may be zero — in which case
  * it fails on a perfectly invertible matrix — or merely tiny, in which case
@@ -319,11 +324,12 @@ export const lupDecomposition: AlgorithmModule = {
     best: 'Θ(n³)',
     average: 'Θ(n³)',
     worst: 'Θ(n³)',
-    space: 'Θ(1) extra — it factors in place',
+    space: 'Θ(n) extra — the permutation π; L and U share the input matrix',
     extra: [
       ['Then each solve', 'Θ(n²) — which is why you factor once'],
       ['Why pivot', 'a zero on the diagonal fails; a tiny one silently loses precision'],
       ['L and U together', 'stored in one matrix; L’s unit diagonal is not written'],
+      ['What is not in that matrix', 'π — n entries, and the reason the extra space is not Θ(1)'],
       ['The claim', 'PA = LU'],
       ['Determinant', 'the product of U’s diagonal, times the sign of P'],
     ],
