@@ -54,6 +54,14 @@ export const DEFAULT_LEGEND: Legend = [
 ];
 
 export const LEGENDS: Record<string, Legend> = {
+  'hopcroft-karp': [
+    ['scope', 'the ring round the vertices still unmatched — what a phase is shrinking'],
+    ['look', 'the edge being tested against the layers, and the vertices it joins'],
+    ['move', 'a level just assigned, or an edge just flipped into the matching'],
+    ['mark', 'the augmenting path being walked, and the vertex it started from'],
+    ['done', 'an edge of the matching, and the vertices it covers'],
+    ['rest', 'not on this phase’s layers'],
+  ],
   'difference-constraints': [
     ['look', 'the constraint being tested, and the variable it reads'],
     ['move', 'the edge just added, or the estimate it just lowered'],

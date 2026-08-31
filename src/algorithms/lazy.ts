@@ -71,6 +71,7 @@ export const ALGORITHM_LOADERS: Record<string, () => Promise<AlgorithmModule>> =
   'edmonds-karp': () => import('./graphs/edmonds-karp.js').then((m) => m.edmondsKarp),
   'bipartite-matching': () =>
     import('./graphs/bipartite-matching.js').then((m) => m.bipartiteMatching),
+  'hopcroft-karp': () => import('./graphs/hopcroft-karp.js').then((m) => m.hopcroftKarp),
   'maximum-subarray': () => import('./dp/maximum-subarray.js').then((m) => m.maximumSubarray),
   'rod-cutting': () => import('./dp/rod-cutting.js').then((m) => m.rodCutting),
   'matrix-chain-order': () => import('./dp/matrix-chain-order.js').then((m) => m.matrixChainOrder),

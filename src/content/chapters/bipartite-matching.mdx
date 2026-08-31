@@ -1,8 +1,8 @@
 ---
 title: Matchings in Bipartite Graphs
-section: '§25.1–25.3'
-summary: Pair things up so nothing is used twice — the most pairs, then the most stable, then the cheapest.
-algorithms: ['bipartite-matching', 'gale-shapley', 'hungarian']
+section: '§25.1–25.3 · problems'
+summary: Pair things up so nothing is used twice — the most pairs, then the most stable, then the cheapest, and then the same pairs again in a fraction of the time.
+algorithms: ['bipartite-matching', 'gale-shapley', 'hungarian', 'hopcroft-karp']
 ---
 
 import AlgorithmPlayer from '../../components/AlgorithmPlayer.astro';
@@ -79,9 +79,10 @@ version explains why the matching one is guaranteed to terminate at the right an
 equals the size of a minimum vertex cover. That is max-flow min-cut again, translated — the cut in
 the flow network is the cover.
 
-**Hopcroft-Karp** (still §25.1) improves this to O(E √V) by finding a **maximal set of shortest augmenting paths**
-in each phase rather than one path at a time, in the same way Dinic's algorithm improves
-Edmonds-Karp. It is the standard algorithm in practice.
+**Hopcroft-Karp** (still §25.1) improves this to O(E √V) by finding a **maximal set of shortest
+augmenting paths** in each phase rather than one path at a time, in the same way Dinic's algorithm
+improves Edmonds-Karp. It is the standard algorithm in practice, and there is a player for it at
+the end of this chapter.
 
 </ComplexityCard>
 
@@ -149,13 +150,62 @@ The algorithm alternates two moves. Grow an alternating path inside the tight pa
 whole row's slacks change at once, feasibility hold everywhere, and at least one new pair go tight —
 which is what lets the search continue. One worker is placed per round.
 
-## What is not here
+## Beyond the numbered sections
 
-**Hopcroft-Karp**, the refinement of §25.1 described above. It is the same theorem with a better
-schedule for applying it — a maximal set of shortest augmenting paths per phase rather than one path
-at a time — and its phases need a second layer of machinery on top of what the first player shows.
-It is the one thing in this chapter without a player, and it is catalogued in the backlog rather
-than dropped.
+§25.1 to §25.3 are above. What follows is the refinement §25.1 names and then leaves — the
+algorithm that is actually used — and it is marked as such rather than blended in with the book's
+own numbered sections.
+
+### Hopcroft-Karp — augmenting in phases
+
+The player at the top of this page does one thing per search: find an augmenting path, flip it, and
+start again. Each search costs O(E) and there can be V/2 of them, so O(V·E).
+
+Look at what it wastes. A single search explores much of the graph and then uses **one** path out of
+it. Hopcroft-Karp uses all the disjoint ones it can find, and that turns out to be worth an entire
+factor of √V.
+
+A **phase** is two passes. First a breadth-first sweep from every unmatched left vertex at once,
+assigning each left vertex a level and stopping at the layer where a free right vertex first appears
+— so the length of the shortest augmenting path is known before any of them is walked. Then a
+depth-first pass that walks only along the layers, collecting a **maximal set of vertex-disjoint**
+shortest paths, and augments along every one of them together.
+
+<AlgorithmPlayer id="hopcroft-karp" size={10} />
+
+<ComplexityCard id="hopcroft-karp">
+  **Two lines do all the work, and neither is the augmentation.** In `DFS-AUGMENT`, the test
+  `level[M[v]] == level[u] + 1` is what keeps every path *shortest* — the walk may only descend one
+  layer at a time, so it cannot wander into a longer route. And `level[u] = ∞` on the way out is
+  what keeps the paths **disjoint**: once a vertex has been walked through and failed, or been used,
+  no later path in this phase can reach it. Between them, a whole phase costs O(E) rather than O(E)
+  per path.
+
+**Why there are only O(√V) phases.** The claim is that the shortest augmenting path gets **strictly
+longer** every phase, and it follows from the set being maximal: if an augmenting path of the old
+length survived the augmentation, it would have to be disjoint from the set that was used, and then
+the set was not maximal. So after √V phases the shortest path is longer than √V edges. Now count the
+other way: a matching that is k short of maximum admits k vertex-disjoint augmenting paths, and if
+each is longer than √V they cannot all fit in V vertices unless k < √V. So at most √V improvements
+remain, and each takes at most one more phase. Two halves, √V each.
+
+**That strict increase is what this page checks**, on every generated input, rather than the O(√V)
+bound itself. At ten vertices the bound is not discriminating — a lazy one-path-per-phase
+implementation would satisfy it comfortably — but such an implementation would repeat a path length,
+and it would be caught. The matching itself is checked by Berge's theorem, exactly as the first
+player's is.
+
+**Watch two things.** The **badges** are levels, and only left vertices carry one: the search only
+branches there, since a right vertex is crossed to reach its partner and nothing else. And the
+**ring** is the set of still-unmatched vertices, which is what a phase exists to shrink — when it
+empties, or when a whole phase finds no path at all, the algorithm is done for the same reason
+§25.1's is.
+
+**Compare the tapes.** Set both this player and the one at the top of the page to the same `n` and
+look at the two strips. The first is one long uniform run of searching; this one is visibly grouped,
+and there are only two or three groups. That grouping is the algorithm.
+
+</ComplexityCard>
 
 ## Where Part VI ends
 
