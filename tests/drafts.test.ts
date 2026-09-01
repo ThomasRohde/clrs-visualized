@@ -60,6 +60,10 @@ test('every surface that lists chapters goes through the draft filter', () => {
     'src/pages/index.astro',
     'src/pages/chapters/[slug].astro',
     'src/components/BookNav.astro',
+    // The search corpus is a surface too, and the least visible one: a draft
+    // leaking in would not show anywhere until someone searched for a phrase
+    // only the unpublished chapter contains and was sent to a stub.
+    'src/search/corpus.ts',
   ];
   for (const file of surfaces) {
     const text = source(file);

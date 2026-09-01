@@ -39,6 +39,18 @@ const FUZZY_DAMP = 0.45;
 const PREFIX_CAP = 24;
 /** How much shorter than the typed prefix an index term may be. */
 const STEM_SLACK = 3;
+/**
+ * A document whose title *is* the query, and nothing else.
+ *
+ * BM25F has no notion of a title being used up. Typing "partition" put §7.1
+ * "Partitioning" sixth, behind five algorithms that mention PARTITION twice in
+ * a field weighted 8 — every one of them a defensible result, and none of them
+ * the thing whose entire name was typed. This is the one rule in the ranking
+ * that is not BM25, so it is deliberately narrow: set equality against the
+ * whole title, no partial credit, no effect on relative order among the
+ * documents that earn it.
+ */
+const TITLE_EXACT = 2.2;
 
 export interface QueryOptions {
   limit?: number;
@@ -161,7 +173,28 @@ function splitPhrases(raw: string): { phrases: string[]; rest: string } {
   return { phrases, rest };
 }
 
-const collapse = (s: string): string => fold(s).replace(/\s+/g, ' ').trim();
+/**
+ * Fold text for phrase comparison.
+ *
+ * The `lg`/`log` swap is here as well as in `termOf` so that a phrase means
+ * what the ranking means. The book writes `Θ(n lg n)`; a reader who quotes
+ * `"n log n"` is asking for the same thing and would otherwise get the empty
+ * result the ranking had already found forty documents for.
+ */
+const collapse = (s: string): string =>
+  fold(s)
+    .replace(/\blg\b/g, 'log')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/** Analyzed titles, built once per index and only for documents that score. */
+const titleTerms = new WeakMap<SearchIndex, Array<Set<string> | undefined>>();
+
+function titleSet(index: SearchIndex, doc: number): Set<string> {
+  let cache = titleTerms.get(index);
+  if (!cache) titleTerms.set(index, (cache = []));
+  return (cache[doc] ??= new Set(analyze(index.docs[doc]!.t)));
+}
 
 export function search(
   index: SearchIndex,
@@ -189,6 +222,19 @@ export function search(
     set.add(term);
   };
 
+  /**
+   * What each typed word turned out to mean.
+   *
+   * The word as typed is not always a term in the dictionary: a half-typed
+   * "partitio" resolves to `partit`, and a mistyped "quicksot" to `quicksort`.
+   * The exact-title rule below compares against *these*, not against the raw
+   * query, or the bonus would appear only on the last keystroke of a word and
+   * the top result would jump as the reader finished typing it. A word that
+   * resolved to nothing stays in the set as itself, so a query with an
+   * unmatchable word in it earns no title bonus at all.
+   */
+  const resolved = new Set<string>();
+
   for (const word of new Set(words)) {
     // The last word is scored over its expansions, taking each document's best
     // rather than its total — see the note at the top of this file.
@@ -207,6 +253,9 @@ export function search(
         candidates.push({ at: other, damp: FUZZY_DAMP });
       }
     }
+    // Candidates are ordered exact-first and then by how common they are, so
+    // the head of the list is what the reader most likely meant.
+    resolved.add(candidates.length > 0 ? index.terms[candidates[0]!.at]! : word);
     if (candidates.length === 0) continue;
 
     const best = new Map<number, { score: number; term: string }>();
@@ -222,11 +271,18 @@ export function search(
     for (const [doc, hit] of best) credit(doc, hit.term, hit.score);
   }
 
-  let results: SearchResult[] = [...scores].map(([doc, score]) => ({
-    doc,
-    score: score * (index.docs[doc]!.p ?? 1),
-    matched: [...(matched.get(doc) ?? [])],
-  }));
+  let results: SearchResult[] = [...scores].map(([doc, score]) => {
+    const title = titleSet(index, doc);
+    const isTitle =
+      title.size === resolved.size &&
+      title.size > 0 &&
+      [...resolved].every((term) => title.has(term));
+    return {
+      doc,
+      score: score * (index.docs[doc]!.p ?? 1) * (isTitle ? TITLE_EXACT : 1),
+      matched: [...(matched.get(doc) ?? [])],
+    };
+  });
 
   // A quoted phrase is confirmed against the text, once there is text. Until
   // then it has already done its work as ordinary words.
