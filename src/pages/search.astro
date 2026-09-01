@@ -1,0 +1,228 @@
+---
+/**
+ * The search a reader can link to.
+ *
+ * The dialog is the fast path and the one people will use; this is the one
+ * that survives. A search here has a URL, so it can be bookmarked, sent to
+ * someone, or reloaded — and the dialog's "see all results" lands here with
+ * the query already in the address bar.
+ *
+ * It is also the answer when the JavaScript has not arrived or never will.
+ * The `<noscript>` block below is a complete static index of the site — every
+ * published chapter and every registered algorithm, derived from
+ * `publishedChapters()` and the registry, so it cannot go stale — and its own
+ * `<style>` hides the search box, because a box that cannot answer is worse
+ * than no box.
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { publishedChapters } from '../lib/chapters';
+import { BOOK, chapterLabel } from '../lib/book';
+import { chapterHref, href } from '../lib/paths';
+import { ALGORITHMS, getAlgorithm } from '../algorithms/registry';
+
+const written = await publishedChapters();
+const bySlug = new Map(written.map((entry) => [entry.id, entry]));
+
+// Which algorithms each chapter animates, so the static list names what a
+// reader would actually be looking for rather than only the chapter titles.
+const parts = BOOK.map((part) => ({
+  ...part,
+  chapters: part.chapters
+    .filter((chapter) => bySlug.has(chapter.slug))
+    .map((chapter) => {
+      const entry = bySlug.get(chapter.slug)!;
+      return {
+        ...chapter,
+        summary: entry.data.summary,
+        algorithms: entry.data.algorithms
+          .map((id) => getAlgorithm(id))
+          .filter((algo) => algo !== undefined),
+      };
+    }),
+})).filter((part) => part.chapters.length > 0);
+---
+
+<BaseLayout
+  title="Search — Loop Invariant"
+  description={`Search ${written.length} chapters and ${ALGORITHMS.length} algorithms from Introduction to Algorithms, 4th edition.`}
+  fullWidth
+>
+  <section class="search-page-shell">
+    <p class="label">Search</p>
+    <h1>Everything in the book</h1>
+    <p class="search-page-lede">
+      {written.length} chapters and {ALGORITHMS.length} algorithms — their prose, their pseudocode, and
+      the wording of every key. Quote a <em>"phrase you remember"</em> to match it exactly.
+    </p>
+
+    <form id="search-page" role="search" action={href('/search/')} method="get">
+      <input
+        class="search-page-input"
+        data-el="search-input"
+        type="search"
+        name="q"
+        role="combobox"
+        aria-expanded="false"
+        aria-controls="search-page-results"
+        aria-autocomplete="list"
+        aria-label="Search chapters and algorithms"
+        autocomplete="off"
+        spellcheck="false"
+        placeholder="Chapters, algorithms, pseudocode…"
+      />
+    </form>
+
+    <p class="search-count" data-el="search-count"></p>
+    <div
+      class="search-page-results"
+      id="search-page-results"
+      data-el="search-results"
+      role="listbox"
+      aria-label="Search results"
+    >
+    </div>
+    <p class="sr-only" id="search-page-status" role="status" aria-live="polite"></p>
+
+    <noscript>
+      <style>
+        /* A search box that cannot search is worse than none. */
+        #search-page,
+        .search-count,
+        .search-page-lede {
+          display: none;
+        }
+      </style>
+      <p class="search-page-lede">
+        Search needs JavaScript. Here is the whole site instead — {written.length} chapters and {
+          ALGORITHMS.length
+        } algorithms.
+      </p>
+      <div class="search-static">
+        {
+          parts.map((part) => (
+            <div class="search-static-part">
+              <h2>
+                {part.numeral} · {part.title}
+              </h2>
+              <ul>
+                {part.chapters.map((chapter) => (
+                  <li>
+                    <a href={chapterHref(chapter.slug)}>
+                      {chapterLabel(chapter)} — {chapter.title}
+                    </a>
+                    <span class="search-static-summary">{chapter.summary}</span>
+                    {chapter.algorithms.length > 0 && (
+                      <span class="search-static-algos">
+                        {chapter.algorithms.map((algo) => algo.name).join(' · ')}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </div>
+    </noscript>
+  </section>
+</BaseLayout>
+
+<style>
+  .search-page-shell {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 1rem 0 3rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-size: var(--t-h1);
+    letter-spacing: var(--track-display);
+    margin: 0.35rem 0 0.6rem;
+  }
+
+  .search-page-lede {
+    color: var(--ink-2);
+    margin: 0 0 1.4rem;
+    max-width: var(--measure);
+  }
+
+  .search-page-lede em {
+    font-family: var(--font-mono);
+    font-size: var(--t-small);
+    font-style: normal;
+    color: var(--ink);
+  }
+
+  .search-page-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-lg);
+    padding: 0.7rem 0.9rem;
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+    color: var(--ink);
+  }
+
+  .search-page-input::placeholder {
+    color: var(--ink-3);
+  }
+
+  /* Fixed height, so the list does not jump up and down by a line as the count
+     appears and disappears between queries. */
+  .search-count {
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+    min-height: 1.4em;
+    margin: 0.7rem 0 0.2rem;
+  }
+
+  .search-page-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  /* ---------- the no-JavaScript index ---------- */
+  .search-static-part h2 {
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    letter-spacing: var(--track-label);
+    text-transform: uppercase;
+    color: var(--ink-3);
+    margin: 1.6rem 0 0.5rem;
+  }
+
+  .search-static ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .search-static li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .search-static-summary {
+    font-size: var(--t-small);
+    color: var(--ink-2);
+  }
+
+  .search-static-algos {
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    color: var(--ink-3);
+  }
+</style>
+
+<script>
+  import { mountSearchPage } from '../search/mount';
+  mountSearchPage();
+</script>

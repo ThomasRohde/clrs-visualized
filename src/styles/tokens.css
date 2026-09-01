@@ -50,6 +50,9 @@
   --line-strong: #a9b7d3;
   --shadow: rgba(14, 20, 38, 0.08);
   --shadow-lift: rgba(14, 20, 38, 0.14);
+  /* Behind the search dialog. Dims the page without tinting it — the modal
+     is chrome, so it takes no coded colour. */
+  --scrim: rgba(14, 20, 38, 0.34);
 
   /* --- the six coded colours ---------------------------------------- */
   --c-rest: #5a6a93;
@@ -112,6 +115,7 @@
     --line-strong: #3e4c6e;
     --shadow: rgba(0, 0, 0, 0.4);
     --shadow-lift: rgba(0, 0, 0, 0.55);
+    --scrim: rgba(0, 0, 0, 0.62);
 
     --c-rest: #7488b2;
     --c-look: #e9a93a;
@@ -140,6 +144,7 @@
   --line-strong: #3e4c6e;
   --shadow: rgba(0, 0, 0, 0.4);
   --shadow-lift: rgba(0, 0, 0, 0.55);
+  --scrim: rgba(0, 0, 0, 0.62);
 
   --c-rest: #7488b2;
   --c-look: #e9a93a;

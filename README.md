@@ -9,6 +9,9 @@ exercises, starred sections and end-of-chapter problems around them. Those are c
 Tier-2 backlog in [docs/PROGRESS.md](docs/PROGRESS.md). The counts below are generated from the
 registry, so they cannot drift from what is actually built.
 
+Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> anywhere to search the whole book — its prose, its
+pseudocode, and the wording of every key — or use [/search](https://thomasrohde.github.io/clrs-visualized/search/).
+
 Built with [Astro](https://astro.build). Static output, no client framework — the interactive parts
 are plain TypeScript and Canvas.
 
@@ -19,17 +22,17 @@ npm install
 npm run dev      # http://localhost:4321
 ```
 
-| Command                  | What it does                                        |
-| ------------------------ | --------------------------------------------------- |
-| `npm run dev`            | Dev server with hot reload                          |
-| `npm run build`          | Static build into `dist/`                           |
-| `npm run preview`        | Serve the built site locally                        |
-| `npm test`               | Generative correctness tests for every algorithm    |
-| `npm run check`          | Astro + TypeScript diagnostics                      |
-| `npm run lint`           | ESLint over `.ts` and `.astro`                      |
-| `npm run format`         | Prettier, including `.astro` and `.mdx`             |
-| `npm run verify:players` | Step every player in a real browser, in both themes |
-| `npm run readme`         | Regenerate the contents block below from the code   |
+| Command                  | What it does                                      |
+| ------------------------ | ------------------------------------------------- |
+| `npm run dev`            | Dev server with hot reload                        |
+| `npm run build`          | Static build into `dist/`                         |
+| `npm run preview`        | Serve the built site locally                      |
+| `npm test`               | Generative correctness tests for every algorithm  |
+| `npm run check`          | Astro + TypeScript diagnostics                    |
+| `npm run lint`           | ESLint over `.ts` and `.astro`                    |
+| `npm run format`         | Prettier, including `.astro` and `.mdx`           |
+| `npm run verify:players` | Step every player, and search, in a real browser  |
+| `npm run readme`         | Regenerate the contents block below from the code |
 
 ## What's here
 
@@ -169,6 +172,24 @@ on-screen key uses. It lives in a visually hidden element the canvas points at w
 live region; instead the narration stops announcing while the trace is playing and starts again
 when it is paused. `tests/describe.test.ts` asserts that two steps read out the same words exactly
 when they draw the same picture, so nothing on screen goes unsaid.
+
+### Search
+
+Full text with BM25F ranking, built at build time into two static JSON files — there is no service
+and no runtime dependency. 340 documents: every `##`/`###` section of every chapter, deep-linked to
+the heading anchor, and every registered algorithm, carrying its pseudocode, its complexity and the
+wording of its key. Typing `EXTRACT-MIN` finds the three procedures that call it; typing
+_the bad character_ finds Boyer-Moore, because that phrase exists only in the legend.
+
+The analyzer runs over the query and the document alike, which is what makes the rest of it free:
+Θ and § are spelled out as the words a reader would type, `red-black` is indexed as its parts _and_
+the parts joined, and `if`/`then`/`while`/`return` are not stopwords because the documents include
+pseudocode. Ranking is scored on the index alone so results appear immediately; the snippets arrive
+a moment later and the rows upgrade in place. A `"quoted phrase"` is confirmed against the stored
+text rather than by storing positions, which is most of why the index is about 100 KB gzipped.
+
+`tests/search-ranking.test.ts` is the quality gate — thirty real queries against the real corpus,
+because a set of field weights produces _an_ ordering whatever the numbers are.
 
 ### Verification, not re-running
 
