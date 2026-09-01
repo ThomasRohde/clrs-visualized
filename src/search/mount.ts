@@ -381,9 +381,15 @@ export function mountSearchPage(): void {
   const form = document.querySelector<HTMLFormElement>('#search-page');
   if (!form) return;
 
+  // By id, not by `data-el`. **The dialog is on this page too** — the layout
+  // puts it in every topbar — and its own list and status carry the same
+  // `data-el` while sitting earlier in the document, so a bare
+  // `document.querySelector` hands back the dialog's and this page renders its
+  // results into a closed <dialog> where nobody can see them. It did, and only
+  // a screenshot noticed: the count said 38 results above an empty page.
   const input = form.querySelector<HTMLInputElement>('[data-el="search-input"]')!;
-  const list = document.querySelector<HTMLElement>('[data-el="search-results"]')!;
-  const status = document.querySelector<HTMLElement>('[data-el="search-status"]')!;
+  const list = document.querySelector<HTMLElement>('#search-page-results')!;
+  const status = document.querySelector<HTMLElement>('#search-page-status')!;
   const count = document.querySelector<HTMLElement>('[data-el="search-count"]')!;
 
   const results = new ResultList('search-page', input, list, status, PAGE_LIMIT, (n, query) => {

@@ -319,14 +319,29 @@ async function verifySearch(page, theme, where, problems) {
   //    same rows. This is the surface that survives a reload and a shared URL.
   await page.goto(`${base}/search/?q=heapsort`, { waitUntil: 'networkidle' });
   try {
+    // Inside the page's own container, and actually laid out. Counting
+    // `.search-row` anywhere passes while the page renders its results into
+    // the closed dialog the layout also puts on it — which is exactly what it
+    // did, invisibly, until a screenshot showed a result count above an empty
+    // page. A closed <dialog> is display:none and `querySelectorAll` does not
+    // care.
     await page.waitForFunction(
-      () => document.querySelectorAll('.search-row').length > 0,
+      () =>
+        [...document.querySelectorAll('#search-page-results .search-row')].some(
+          (row) => row.getBoundingClientRect().height > 0,
+        ),
       undefined,
       { timeout: 8000 },
     );
   } catch {
-    problems.push(`${at}: /search/?q=heapsort rendered no results`);
+    problems.push(`${at}: /search/?q=heapsort rendered no visible results`);
     return;
+  }
+  const strays = await page.evaluate(
+    () => document.querySelectorAll('#site-search .search-row').length,
+  );
+  if (strays > 0) {
+    problems.push(`${at}: /search put ${strays} rows inside the dialog instead of the page`);
   }
   const pageReport = await page.evaluate(() => {
     const clips = (el) => /hidden|clip/.test(getComputedStyle(el).overflowX);
@@ -339,7 +354,7 @@ async function verifySearch(page, theme, where, problems) {
       }
     }
     return {
-      count: document.querySelectorAll('.search-row').length,
+      count: document.querySelectorAll('#search-page-results .search-row').length,
       // Scoped to the form: the dialog is on this page too, and its own box
       // carries the same data-el.
       seeded: document.querySelector('#search-page [data-el="search-input"]')?.value,

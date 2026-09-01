@@ -921,6 +921,15 @@ candidates.
 - **Fence tracking in the MDX chunker is load-bearing.** One line of `appendix-summations.mdx` reads
   `|x| < 1` inside a fenced block, and a tag-stripping regex let loose on it eats everything up to
   the next `>` on the page.
+- **And one that only a screenshot caught, which is the rule this project already has.** The layout
+  puts the dialog on every page, so `/search` has two elements carrying `data-el="search-results"` —
+  and the dialog's comes first in the document. `mountSearchPage` used a bare `document.querySelector`
+  and rendered every result into a closed `<dialog>`: the page said "38 results" above nothing at
+  all. **The browser check passed**, because `querySelectorAll('.search-row')` finds rows inside a
+  `display: none` dialog perfectly well. It now requires them to be inside the page's own container
+  _and_ to have a height, and separately fails if any row lands in the dialog. The same shot showed
+  the second problem: an algorithm's snippet was legend fragments and pseudocode joined with `·`,
+  which reads as debris in a 220-character window, so that text is written as sentences now.
 
 ---
 

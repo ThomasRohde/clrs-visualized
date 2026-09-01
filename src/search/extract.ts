@@ -228,7 +228,19 @@ export function extractDocs(chapters: ChapterSource[]): SearchDoc[] {
       meta: `${procedures[0]?.title ?? algo.id} · ${worst} worst case`,
       prior: PRIOR_ALGORITHM,
       fields,
-      text: [...about, code].join(' · '),
+      // Written as prose rather than joined with separators, because this is
+      // what a result's second line is cut out of. A window landing halfway
+      // through `a · b · TITLE LINE LINE` reads as debris; the same window over
+      // sentences reads as an answer. The pseudocode comes last and keeps its
+      // procedure titles, so a match on EXTRACT-MIN still shows the line.
+      text: [
+        `${algo.name}: ${legend.join('; ')}.`,
+        algo.input?.note ? `${algo.input.note}.` : '',
+        `Best ${best}, average ${average}, worst ${worst}, space ${space}.`,
+        ...procedures.map((proc) => `${proc!.title}: ${proc!.lines.join('; ')}.`),
+      ]
+        .filter(Boolean)
+        .join(' '),
     });
   }
 
