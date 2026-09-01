@@ -11,7 +11,7 @@ the end of every working session. A stale tracker is worse than none.
 
 ## Resume here
 
-> **Phase:** H — **complete. The book has search.** Phases A–G are closed: all 35 chapters and four
+> **Phase:** I — **complete. The book remembers this browser.** Phases A–H are closed: all 35 chapters and four
 > appendices are written, all six renderers are built, 88 algorithms ship, and housekeeping — CI,
 > deploy, the generated README, the skills — is closed too. `origin` is
 > <https://github.com/ThomasRohde/clrs-visualized>, **Settings → Pages → Source is GitHub Actions**,
@@ -21,16 +21,13 @@ the end of every working session. A stale tracker is worse than none.
 > [backlog](#tier-2-backlog) is eight ⬜ rows, two ❓ ones that need a 4e copy to settle, two ✏️
 > changes to players that already ship, and three ⛔ decisions not to build something. Promoting
 > another row is a decision, exactly as Phase G was.
-> **Last completed:** **[Phase H](#phase-h--search)** — full-text search with BM25F ranking, built at
-> build time and shipped as two static JSON files (about 100 KB and 127 KB gzipped, both under a
-> budget `npm test` asserts). A ⌘K/`/` dialog and a linkable `/search` page rank 340 documents: every
-> `##`/`###` section of every chapter, deep-linked to the anchor Astro already emits, and all 88
-> algorithms, carrying their pseudocode and the wording of their legends and linking to the heading
-> their player sits under. `tests/search-ranking.test.ts` — thirty golden queries against the real
-> corpus — is the quality gate, and `verify:players` now drives the dialog by keyboard in all four
-> theme/width combinations. Before that, **G5** — `miller-rabin` (§31.8 ★) and `boyer-moore`, which
-> closed Phase G.
-> **Phase G was optional in a way A–F were not**, and Phase H is optional in the same way: nothing in
+> **Last completed:** **[Phase I](#phase-i--personal-study)** — one favorite and one autosaved note per
+> algorithm, stored in native IndexedDB behind an async repository boundary. Every player has a
+> neutral annotation margin and an exact durable anchor; `/study` lists favorites in book order and
+> notes by edit time. `verify:players -- --only study` proves persistence through reload/navigation,
+> independent clearing, exact note focus, four theme/width layouts and the storage-denied state in a
+> real browser. Before that, **[Phase H](#phase-h--search)** built the BM25F search.
+> **Phase G was optional in a way A–F were not**, and Phases H–I are optional in the same way: nothing in
 > the backlog is a gap, and the book was complete without a search box. Nine of the twenty-four
 > Tier-2 rows were promoted, chosen because each teaches something no player on the site shows, and
 > the rest stay catalogued exactly as they were.
@@ -931,6 +928,32 @@ candidates.
   the second problem: an algorithm's snippet was legend fragments and pseudocode joined with `·`,
   which reads as debris in a 220-character window, so that text is written as sentences now.
 
+### Phase I — personal study
+
+The second cross-cutting feature, and the first user-authored state. A reader can mark an algorithm,
+write beside it without leaving the player, and return through `/study`; the static book remains
+fully usable when storage is denied.
+
+- [x] **I1** — `StudyRepository`, its deterministic memory implementation, and native IndexedDB
+      database `loop-invariant-study` v1. One record per algorithm, independent field timestamps,
+      and false/empty tombstones retained for a future synchronization adapter.
+- [x] **I2** — the player annotation margin: accessible bookmark, native note disclosure, 400 ms
+      autosave, serialized writes, retryable errors and exact `#algorithm-…` / `#study-note-…` links.
+- [x] **I3** — `/study`, using the published search corpus as its catalog: favorites in book order,
+      notes by edit time, direct removal and an explicit local-only/storage-unavailable state.
+- [x] **I4** — six model/catalog tests and the real-browser study pass across the four existing
+      theme/width rows, including reload, navigation, independent delete semantics, focus, clipping,
+      screenshots and denied IndexedDB.
+
+**The visual rule is the data rule.** The study margin uses the neutral ramp only. The six coded
+colours are a vocabulary for an algorithm state, so spending one on “saved” would make every legend
+on the page lie.
+
+**The screenshot found the integration bug.** Three header controls fit at 375 px only when all
+three collapse to icons; search and My Study did, while the theme kept “System” and squeezed the
+wordmark. The browser check now fails if the wordmark and controls overlap rather than merely asking
+whether the outer header fits the viewport.
+
 ---
 
 ## Chapters
@@ -1218,3 +1241,4 @@ Append one line per session: date, what landed, and where you stopped. Newest la
 | 2026-08-31 | **G4, `hopcroft-karp`.** §25.1's own algorithm uses one augmenting path per search; this one uses every disjoint shortest path it can find in a phase, which is worth a factor of √V. Two lines carry it and neither is the augmentation: `level[M[v]] == level[u] + 1` is what keeps a path shortest, and `level[u] = ∞` on the way out is what keeps the paths disjoint, so a phase costs O(E) rather than O(E) per path. NIL is a real vertex in the bookkeeping — every free right vertex leads to one virtual sink — which is what lets the BFS stop at the right layer and the DFS need no special case for the end of a path. `verify` checks Berge's theorem through the same helper §25.1's player uses, and then the property this algorithm exists for: the shortest augmenting path is strictly longer every phase. The O(E√V) bound is not worth asserting at ten vertices, since a one-path-per-phase implementation would meet it — but it would repeat a length. The odd-length check found that levels and edges had been conflated: a level counts left vertices, and a path of level ℓ has 2ℓ − 1 edges. 1087 tests, 86 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | **Phase G**, next: **G5** — `miller-rabin` and `boyer-moore` on R5                                               |
 | 2026-08-31 | **G5, and Phase G closed.** `miller-rabin` (§31.8 ★): Fermat's test is useless against Carmichael numbers, and Miller-Rabin's fix costs nothing — a prime has only two square roots of 1, so a squaring chain reaching 1 from anything else is a proof. `verify` checks the **guarantee** rather than the probability: a prime is never called composite however unlucky the bases, and a composite that survives s trials is allowed only if no row held an unreported witness. The candidate pool is chosen rather than random, because a random odd number is composite for a reason the first base finds instantly. `boyer-moore` (ch 32's problems): the fifth matcher on the same picture, reading right to left, with γ as the corner note on each pattern cell and λ as a second aux row. Its `verify` checks something stronger than the answer — every jump is recorded and every position it skipped is tested, because agreeing with the naive matcher only proves this input was handled right, while "no shift steps over an occurrence" is what both heuristics exist to preserve. Two fixes from looking: `done` named only the current trial, so a settled row lost its colour; and `doneSet` is an array-bars key the grid renderer does not read. 1111 tests, 88 players.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | **Phase G complete.** Nothing outstanding                                                                        |
 | 2026-09-01 | **Phase H — search.** Full-text with BM25F ranking, built at build time into two prerendered JSON files (101 KB and 127 KB gzipped, both under a budget `npm test` asserts). 340 documents: every `##`/`###` section deep-linked to the anchor Astro already emits, and all 88 algorithms — inverted out of the `<AlgorithmPlayer>` tag in a chapter body, down to the heading it sits under, so Enter lands on the player. One analyzer over query and document alike, which is what makes spelling out Θ and emitting `red-black` as three terms free; the pseudocode keywords are deliberately not stopwords. `tests/search-ranking.test.ts` is the point — thirty golden queries against the real corpus, because the weights are unfalsifiable on their own. It found the one thing that made search feel broken: BM25F has no notion of a title being used up, so "partition" put §7.1 sixth behind five algorithms that merely mention PARTITION. The fix then had a worse bug than the one it fixed, keyed to the raw query so it only fired on the last keystroke of a word. `verify:players` now drives the dialog by keyboard in all four theme/width combinations and found three more, two of them in the check rather than the product — an already-idle page satisfies `waitForLoadState` instantly, and a closed `<dialog>` fires `close` in a queued task after clearing `open`. 1154 tests, all gates clean, subpath build checked.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | **Nothing outstanding.** The [backlog](#tier-2-backlog) is the only work left, and promoting a row is a decision |
+| 2026-09-01 | **Phase I — personal study.** One record per stable algorithm id in native IndexedDB: favorite and plain-text note with independent timestamps, false/empty clears retained for a future synchronization adapter, and the entire browser implementation behind `StudyRepository` with an in-memory test implementation. Every player gained a neutral textbook-margin strip with an accessible bookmark, native disclosure, serialized 400 ms autosave, retryable failures and exact player/note anchors. `/study` joins the local records to the published search corpus, showing favorites in book order and notes by edit time without inventing a second algorithm-to-chapter map. Six direct tests pin merges, tombstones, validation, the memory contract and all 88 destinations; the suite is 1160 tests. The focused study pass and the complete browser gate are green across light/dark 1440, light 900 and dark 375, including reload, navigation, independent clears, exact focus and denied IndexedDB. The screenshot caught the header integration bug: three controls only fit at 375 when the theme label collapses with search and My Study, so the verifier now detects wordmark/control overlap. Production build and the 2,015-link subpath build are green.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | **Phase I complete. Nothing outstanding.**                                                                       |

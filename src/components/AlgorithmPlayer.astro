@@ -51,7 +51,7 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
   every pixel it can get.
 */
 }
-<section class="viz" data-algorithm={algo.id} data-size={startSize}>
+<section id={`algorithm-${algo.id}`} class="viz" data-algorithm={algo.id} data-size={startSize}>
   <div class="panel workspace">
     <div class="stage">
       <header class="stage-head">
@@ -265,6 +265,63 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
 
       <p class="custom-err mono" data-el="custom-error" aria-live="polite"></p>
     </div>
+
+    <div class="study-strip" data-study-root data-study-state="loading" aria-busy="true">
+      <span class="label study-label">Study</span>
+      <div class="study-tools">
+        <button
+          class="study-favorite"
+          data-study-el="favorite"
+          type="button"
+          aria-pressed="false"
+          aria-label={`Save ${algo.name} to My study`}
+          disabled
+        >
+          <svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true" focusable="false">
+            <path class="bookmark-fill" d="M2.25 1.25h9.5v13L7 11.2l-4.75 3.05z" fill="currentColor"
+            ></path>
+            <path
+              d="M2.25 1.25h9.5v13L7 11.2l-4.75 3.05z"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.35"
+              stroke-linejoin="round"></path>
+          </svg>
+          <span data-study-el="favorite-label">Favorite</span>
+        </button>
+
+        <details class="study-note" id={`study-note-${algo.id}`} data-study-el="note-details">
+          <summary>
+            <span>Study note</span>
+            <span class="note-presence mono" data-study-el="note-presence" hidden>saved</span>
+          </summary>
+          <div class="study-editor">
+            <label class="sr-only" for={`study-note-input-${algo.id}`}
+              >Study note for {algo.name}</label
+            >
+            <textarea
+              id={`study-note-input-${algo.id}`}
+              data-study-el="note-input"
+              rows="4"
+              placeholder={`What do you want to remember about ${algo.name}?`}
+              disabled></textarea>
+            <div class="study-editor-foot">
+              <span class="study-local mono">Stored in this browser</span>
+              <button class="study-retry mono" data-study-el="retry" type="button" hidden>
+                Try again
+              </button>
+              <span
+                class="study-status mono"
+                data-study-el="status"
+                role="status"
+                aria-live="polite">Loading…</span
+              >
+            </div>
+          </div>
+        </details>
+        <span class="study-availability mono" data-study-el="availability" hidden></span>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -280,7 +337,8 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
     grid-template-areas:
       'stage code'
       'controls controls'
-      'setup setup';
+      'setup setup'
+      'study study';
     overflow: hidden;
     /* The reserved rule turns the coded colour on when this player owns the
        keyboard, which is the only way a reader can tell where space will go
@@ -852,6 +910,195 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
     display: none;
   }
 
+  /* ---------- personal margin ---------- */
+  /* Neutral ink only: the six coded colours belong to the algorithm, never
+     to generic chrome. This is a textbook annotation margin, not another
+     instrument in the visualization. */
+  .study-strip {
+    grid-area: study;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    gap: 0.65rem 0.8rem;
+    padding: 0.65rem 0.9rem;
+    border-top: 1px solid var(--line);
+    background:
+      linear-gradient(90deg, var(--line) 0 1px, transparent 1px) 2.55rem 0 / 1px 100% no-repeat,
+      var(--surface);
+  }
+
+  .study-label {
+    padding-top: 0.38rem;
+  }
+
+  .study-tools {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+
+  .study-favorite,
+  .study-note summary {
+    min-height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--ink-2);
+    padding: 0.34rem 0.58rem;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    line-height: 1.2;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .study-favorite:hover:not(:disabled),
+  .study-note summary:hover {
+    color: var(--ink);
+    border-color: var(--line-strong);
+  }
+
+  .study-favorite:disabled {
+    cursor: default;
+    opacity: 0.55;
+  }
+
+  .bookmark-fill {
+    opacity: 0;
+  }
+
+  .study-favorite[aria-pressed='true'] {
+    color: var(--ink);
+    border-color: var(--line-strong);
+    background: var(--surface-3);
+  }
+
+  .study-favorite[aria-pressed='true'] .bookmark-fill {
+    opacity: 1;
+  }
+
+  .study-note {
+    min-width: 0;
+  }
+
+  .study-note summary {
+    list-style: none;
+  }
+
+  .study-note summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .study-note summary::before {
+    content: '›';
+    display: inline-block;
+    color: var(--ink-3);
+    transition: transform 0.15s;
+  }
+
+  .study-note[open] {
+    flex: 1 0 100%;
+  }
+
+  .study-note[open] summary {
+    width: fit-content;
+    margin-bottom: 0.55rem;
+  }
+
+  .study-note[open] summary::before {
+    transform: rotate(90deg);
+  }
+
+  .note-presence {
+    color: var(--ink-3);
+    font-size: 0.62rem;
+  }
+
+  .study-editor {
+    padding: 0.65rem 0.7rem 0.55rem;
+    border: 1px solid var(--line);
+    border-left: 2px solid var(--line-strong);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    background: var(--surface-2);
+  }
+
+  .study-editor textarea {
+    display: block;
+    width: 100%;
+    min-height: 6.8rem;
+    resize: vertical;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    padding: 0.3rem 0.2rem 0.6rem;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+
+  .study-editor textarea:focus {
+    outline: none;
+    border-bottom-color: var(--line-strong);
+  }
+
+  .study-editor textarea:disabled {
+    opacity: 0.6;
+  }
+
+  .study-editor-foot {
+    display: flex;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 0.65rem;
+    min-height: 1.5rem;
+    padding-top: 0.35rem;
+  }
+
+  .study-local,
+  .study-status,
+  .study-retry,
+  .study-availability {
+    font-size: 0.62rem;
+  }
+
+  .study-local {
+    color: var(--ink-3);
+    margin-right: auto;
+  }
+
+  .study-status {
+    color: var(--ink-2);
+    text-align: right;
+  }
+
+  .study-retry {
+    color: var(--ink);
+    background: none;
+    border: 0;
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 0.16em;
+    cursor: pointer;
+  }
+
+  .study-availability {
+    align-self: center;
+    color: var(--ink-2);
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .study-strip[data-study-state='unavailable'] .study-editor {
+    border-style: dashed;
+  }
+
   /* ---------- responsive ---------- */
   @container (min-width: 1180px) {
     .stage-canvas-wrap {
@@ -868,7 +1115,8 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
         'stage'
         'code'
         'controls'
-        'setup';
+        'setup'
+        'study';
     }
 
     .code-col {
@@ -946,10 +1194,26 @@ const startSize = Math.min(maxSize, Math.max(minSize, size));
     .speed-field {
       margin-left: 0;
     }
+
+    .study-strip {
+      grid-template-columns: minmax(0, 1fr);
+      background: var(--surface);
+    }
+
+    .study-label {
+      padding-top: 0;
+    }
+
+    .study-editor-foot {
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
   }
 </style>
 
 <script>
   import { mountAll } from '../visualizers/player';
+  import { mountStudyPlayers } from '../study/player';
   mountAll();
+  mountStudyPlayers();
 </script>

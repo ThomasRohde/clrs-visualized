@@ -224,7 +224,10 @@ export function extractDocs(chapters: ChapterSource[]): SearchDoc[] {
       title: algo.name,
       chapter: at.chapter.title,
       eyebrow: 'Algorithm',
-      path: `/chapters/${at.chapter.slug}/${at.anchor ? `#${at.anchor}` : ''}`,
+      // The player itself is the durable destination. A heading can be
+      // renamed without changing the algorithm's identity, and My Study uses
+      // this same exact link to return a reader to a favorite.
+      path: `/chapters/${at.chapter.slug}/#algorithm-${algo.id}`,
       meta: `${procedures[0]?.title ?? algo.id} · ${worst} worst case`,
       prior: PRIOR_ALGORITHM,
       fields,

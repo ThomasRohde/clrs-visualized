@@ -87,6 +87,10 @@ test('every registered algorithm is findable, at a chapter that embeds it', () =
       bodies.get(slug!)?.includes(`id="${algo.id}"`),
       `${algo.id} points at ${slug}, which does not embed it`,
     );
+    assert.ok(
+      doc.path.endsWith(`#algorithm-${algo.id}`),
+      `${algo.id} does not link to its exact player: ${doc.path}`,
+    );
     // The name has to be in the field the ranking weights most heavily, or it
     // is only findable by the words that happen to surround it.
     assert.ok(doc.fields.name.includes(algo.name), `${algo.id} does not carry its own name`);
