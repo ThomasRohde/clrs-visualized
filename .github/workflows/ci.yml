@@ -1,7 +1,7 @@
 # Every gate this project has, on every push — and the gate the deploy runs
 # behind.
 #
-# The generative suite is the safety net for 79 recorders: each one is checked
+# The generative suite is the safety net for 88 recorders: each one is checked
 # against its own `result` contract on random and edge-case inputs, and several
 # of those contracts are theorems rather than re-runs. It has caught real bugs
 # that no amount of reading would have — an RSA exponent that made the cipher
@@ -57,12 +57,13 @@ jobs:
       - run: npm run build
 
   # The pass `npm test` cannot make: every player, stepped through in a real
-  # browser in both themes at three widths, and the search dialog driven by
-  # keyboard alongside them. Separate job because it needs a browser download,
+  # browser in both themes at three widths, the search dialog driven by
+  # keyboard, and IndexedDB study state taken through reload and failure.
+  # Separate job because it needs a browser download,
   # and because a red cross here means something different from a red cross
   # above.
   players:
-    name: step every player, and search, in a browser
+    name: players, search, and study in a browser
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -76,7 +77,8 @@ jobs:
       # console error, a player that never boots, a canvas that drew nothing,
       # a step with no narration or the wrong number of highlighted lines,
       # panel height changing mid-trace, an algorithm embedded nowhere, or a
-      # search dialog that does not open, answer, navigate and give focus back.
+      # search dialog that does not open, answer, navigate and give focus back,
+      # or study state that does not survive a reload and reappear in My Study.
       - run: npm run verify:players
 
   # A subpath deploy is the case that breaks silently, because every link still

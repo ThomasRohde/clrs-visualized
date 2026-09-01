@@ -1,0 +1,254 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { buildCorpus, withBase } from '../search/corpus';
+import { buildStudyCatalog } from '../study/catalog';
+
+const catalog = buildStudyCatalog((await buildCorpus()).map(withBase));
+const catalogJson = JSON.stringify(catalog).replaceAll('<', '\\u003c');
+---
+
+<BaseLayout
+  title="My study — Loop Invariant"
+  description="Your favorited algorithms and study notes, stored in this browser."
+  fullWidth
+>
+  <header class="study-head">
+    <p class="label study-eyebrow">Your copy of the book</p>
+    <h1>My study</h1>
+    <p>
+      Return to the algorithms you marked and the notes you left beside them. Everything here stays
+      in this browser; it is not attached to an account or synced to another device.
+    </p>
+  </header>
+
+  <aside class="local-notice" aria-label="Where study data is stored">
+    <svg width="15" height="17" viewBox="0 0 14 16" aria-hidden="true" focusable="false">
+      <path
+        d="M2.25 1.25h9.5v13L7 11.2l-4.75 3.05z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.35"
+        stroke-linejoin="round"></path>
+    </svg>
+    <p>
+      <strong>Local to this browser.</strong> Clearing this site’s data clears these bookmarks and notes
+      too.
+    </p>
+  </aside>
+
+  <section
+    class="study-dashboard"
+    data-study-dashboard
+    data-study-dashboard-state="loading"
+    aria-busy="true"
+  >
+    <p class="dashboard-loading mono" data-study-dashboard-loading>Opening your study ledger…</p>
+
+    <div class="dashboard-error panel" data-study-dashboard-error hidden>
+      <p data-study-dashboard-error-text></p>
+      <button type="button" data-study-dashboard-retry>Try again</button>
+    </div>
+
+    <div class="study-ledgers" data-study-dashboard-content hidden>
+      <section class="study-ledger" aria-labelledby="favorites-heading">
+        <header class="ledger-head">
+          <div>
+            <p class="label">Book order</p>
+            <h2 id="favorites-heading">Favorites</h2>
+          </div>
+          <span class="ledger-count mono" data-study-favorites-count aria-label="Favorite count"
+            >0</span
+          >
+        </header>
+        <p class="ledger-intro">Algorithms you marked for another pass.</p>
+        <p class="ledger-empty" data-study-favorites-empty>
+          Use <strong>Favorite</strong> in any algorithm player to keep it here.
+        </p>
+        <ul class="study-saved-list" data-study-favorites></ul>
+      </section>
+
+      <section class="study-ledger" aria-labelledby="notes-heading">
+        <header class="ledger-head">
+          <div>
+            <p class="label">Most recently edited</p>
+            <h2 id="notes-heading">Notes</h2>
+          </div>
+          <span class="ledger-count mono" data-study-notes-count aria-label="Note count">0</span>
+        </header>
+        <p class="ledger-intro">Your own explanations, questions and reminders.</p>
+        <p class="ledger-empty" data-study-notes-empty>
+          Open <strong>Study note</strong> beneath a player to write your first note.
+        </p>
+        <ul class="study-saved-list" data-study-notes></ul>
+      </section>
+    </div>
+
+    <p class="sr-only" data-study-dashboard-status role="status" aria-live="polite"></p>
+  </section>
+
+  <noscript>
+    <p class="dashboard-error panel">
+      My Study needs JavaScript to read the bookmarks and notes stored in this browser. The book and
+      its chapter pages remain readable without it.
+    </p>
+  </noscript>
+
+  <script is:inline id="study-catalog" type="application/json" set:html={catalogJson} />
+</BaseLayout>
+
+<script>
+  import { mountStudyDashboard } from '../study/dashboard';
+  mountStudyDashboard();
+</script>
+
+<style>
+  .study-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 72ch;
+    padding: 0.35rem 0 0.75rem;
+  }
+
+  .study-eyebrow {
+    margin: 0 0 0.55rem;
+  }
+
+  .study-head h1 {
+    font-size: var(--t-h1);
+    font-weight: 800;
+    line-height: 1.06;
+  }
+
+  .study-head > p:last-child {
+    margin: 0.8rem 0 0;
+    max-width: var(--measure);
+    color: var(--ink-2);
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+
+  .local-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    max-width: 72ch;
+    padding: 0.65rem 0.8rem;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    color: var(--ink-2);
+  }
+
+  .local-notice svg {
+    flex-shrink: 0;
+    margin-top: 0.22rem;
+  }
+
+  .local-notice p {
+    margin: 0;
+    font-size: var(--t-small);
+  }
+
+  .local-notice strong {
+    color: var(--ink);
+  }
+
+  .study-dashboard {
+    min-height: 14rem;
+  }
+
+  .dashboard-loading {
+    margin: 0;
+    padding: 2rem 0;
+    color: var(--ink-3);
+    font-size: var(--t-small);
+  }
+
+  .dashboard-error {
+    max-width: 62ch;
+    padding: 1rem;
+    color: var(--ink-2);
+  }
+
+  .dashboard-error p {
+    margin: 0;
+  }
+
+  .dashboard-error button {
+    margin-top: 0.75rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+    color: var(--ink);
+    padding: 0.4rem 0.65rem;
+    font-family: var(--font-mono);
+    font-size: var(--t-micro);
+    cursor: pointer;
+  }
+
+  .study-ledgers {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.82fr) minmax(22rem, 1.18fr);
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  .study-ledger {
+    min-width: 0;
+    border-top: 2px solid var(--ink);
+  }
+
+  .ledger-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.8rem 0 0;
+  }
+
+  .ledger-head .label {
+    margin: 0 0 0.15rem;
+  }
+
+  .ledger-head h2 {
+    font-size: var(--t-h2);
+  }
+
+  .ledger-count {
+    min-width: 2rem;
+    text-align: center;
+    padding: 0.18rem 0.35rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--ink-2);
+    font-size: var(--t-micro);
+  }
+
+  .ledger-intro {
+    margin: 0.4rem 0 0.9rem;
+    color: var(--ink-3);
+    font-size: var(--t-small);
+  }
+
+  .ledger-empty {
+    margin: 0;
+    padding: 1rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--ink-2);
+    font-size: var(--t-small);
+  }
+
+  .study-saved-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  @media (max-width: 900px) {
+    .study-ledgers {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2rem;
+    }
+  }
+</style>

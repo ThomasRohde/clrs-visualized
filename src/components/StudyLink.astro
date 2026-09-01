@@ -1,0 +1,42 @@
+---
+import { href } from '../lib/paths';
+
+const active = Astro.url.pathname.replace(/\/+$/, '').endsWith('/study');
+---
+
+<a
+  class="theme-btn study-link"
+  href={href('/study/')}
+  aria-label="My study"
+  aria-current={active ? 'page' : undefined}
+  title="Open My study"
+>
+  <svg width="13" height="15" viewBox="0 0 14 16" aria-hidden="true" focusable="false">
+    <path
+      d="M2.25 1.25h9.5v13L7 11.2l-4.75 3.05z"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.35"
+      stroke-linejoin="round"></path>
+  </svg>
+  <span>My study</span>
+</a>
+
+<style>
+  .study-link {
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .study-link[aria-current='page'] {
+    color: var(--ink);
+    border-color: var(--line-strong);
+    background: var(--surface-2);
+  }
+
+  @media (max-width: 620px) {
+    .study-link span {
+      display: none;
+    }
+  }
+</style>

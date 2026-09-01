@@ -16,6 +16,7 @@
  *   npm run verify:players -- --shots        # …and write one PNG per player
  *   npm run verify:players -- --only select  # one chapter or algorithm
  *   npm run verify:players -- --only search  # the dialog and /search, alone
+ *   npm run verify:players -- --only study   # IndexedDB personalization alone
  *
  * Starts a dev server if nothing is already serving, and stops it again.
  * Exits non-zero if anything is wrong, so it can gate a release later.
@@ -53,6 +54,8 @@ const value = (name, fallback) => {
 const only = value('only', null);
 /** `--only search` means the dialog and none of the players. */
 const searchOnly = only === 'search';
+/** `--only study` means persistence, the player margin and My Study alone. */
+const studyOnly = only === 'study';
 const shotsDir = flag('shots') ? resolve(value('shots', join(ROOT, '.player-shots'))) : null;
 const shotAt = Number(value('at', '0.6'));
 const port = Number(value('port', '4321'));
@@ -390,6 +393,215 @@ async function verifySearch(page, theme, where, problems) {
   }
 }
 
+/**
+ * Personal study state, through the real browser database.
+ *
+ * Unit tests pin the merge rules; this pass proves IndexedDB actually survives
+ * navigation and reload, that exact note links open the editor, and that a
+ * storage-denied browser loses only personalization rather than the player.
+ */
+async function verifyStudy(page, theme, where, problems) {
+  const at = `[${where}] study`;
+  const viewportWidth = page.viewportSize()?.width ?? 'unknown';
+  const playerUrl = `${base}/chapters/getting-started/#algorithm-insertion-sort`;
+  const player = '.viz[data-algorithm="insertion-sort"]';
+  const noteText = `The prefix A[1..j-1] stays sorted — ${where}.`;
+
+  const stampTheme = () =>
+    page.evaluate((value) => document.documentElement.setAttribute('data-theme', value), theme);
+  const readyPlayer = async () => {
+    await page.waitForFunction(
+      (selector) => {
+        const root = document.querySelector(selector);
+        return (
+          root?.dataset.ready === 'true' &&
+          root.querySelector('[data-study-root]')?.dataset.studyState === 'ready'
+        );
+      },
+      player,
+      { timeout: 20000 },
+    );
+  };
+  const clippedStudyText = () =>
+    page.evaluate(() => {
+      const clips = (el) => /hidden|clip/.test(getComputedStyle(el).overflowX);
+      const cut = [];
+      const readable =
+        '.study-favorite, .study-note summary, .study-status, .study-availability, ' +
+        '.study-saved-title, .wordmark .name, ' +
+        '.study-saved-where, .study-note-excerpt, .study-open-note, .local-notice';
+      for (const el of document.querySelectorAll(readable)) {
+        const text = el.textContent.trim();
+        if (!text) continue;
+        const box = el.getBoundingClientRect();
+        for (let ancestor = el.parentElement; ancestor; ancestor = ancestor.parentElement) {
+          if (!clips(ancestor)) continue;
+          const outer = ancestor.getBoundingClientRect();
+          if (box.right > outer.right + 1 || box.left < outer.left - 1) {
+            cut.push(`"${text.slice(0, 46)}" is cut off by .${ancestor.className.split(' ')[0]}`);
+          }
+          break;
+        }
+        if (clips(el) && el.scrollWidth > el.clientWidth + 1) {
+          cut.push(`"${text.slice(0, 46)}" is wider than its own box`);
+        }
+      }
+      const topbar = document.querySelector('.topbar-inner')?.getBoundingClientRect();
+      if (topbar && (topbar.left < -1 || topbar.right > innerWidth + 1)) {
+        cut.push(`the top bar extends beyond the ${innerWidth}px viewport`);
+      }
+      const wordmark = document.querySelector('.wordmark')?.getBoundingClientRect();
+      const actions = document.querySelector('.topbar-right')?.getBoundingClientRect();
+      if (wordmark && actions && wordmark.right > actions.left - 1) {
+        cut.push('the wordmark overlaps the header controls');
+      }
+      return [...new Set(cut)];
+    });
+
+  try {
+    await page.goto(playerUrl, { waitUntil: 'networkidle' });
+    await stampTheme();
+    await readyPlayer();
+
+    const favorite = page.locator(`${player} [data-study-el="favorite"]`);
+    await favorite.click();
+    await page.waitForFunction(
+      (selector) => document.querySelector(selector)?.getAttribute('aria-pressed') === 'true',
+      `${player} [data-study-el="favorite"]`,
+    );
+
+    const details = page.locator(`${player} [data-study-el="note-details"]`);
+    await details.locator('summary').click();
+    const note = page.locator(`${player} [data-study-el="note-input"]`);
+    await note.fill(noteText);
+    await page.waitForFunction(
+      (selector) => document.querySelector(selector)?.textContent?.trim() === 'Saved locally',
+      `${player} [data-study-el="status"]`,
+      { timeout: 10000 },
+    );
+    for (const problem of await clippedStudyText()) problems.push(`${at}: ${problem}`);
+    if (shotsDir) {
+      await page.locator(player).screenshot({
+        path: join(shotsDir, `study-player-${theme}-${viewportWidth}.png`),
+      });
+    }
+
+    // A fresh document, reading the same browser database.
+    await page.reload({ waitUntil: 'networkidle' });
+    await stampTheme();
+    await readyPlayer();
+    const persisted = await page.locator(player).evaluate((root) => ({
+      favorite: root.querySelector('[data-study-el="favorite"]')?.getAttribute('aria-pressed'),
+      note: root.querySelector('[data-study-el="note-input"]')?.value,
+    }));
+    if (persisted.favorite !== 'true') problems.push(`${at}: favorite did not survive reload`);
+    if (persisted.note !== noteText) problems.push(`${at}: note did not survive reload`);
+
+    await page.goto(`${base}/study/`, { waitUntil: 'networkidle' });
+    await stampTheme();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-study-dashboard]')?.dataset.studyDashboardState === 'ready',
+      undefined,
+      { timeout: 10000 },
+    );
+    if ((await page.locator('[data-study-favorite-id="insertion-sort"]').count()) !== 1) {
+      problems.push(`${at}: My Study does not list the favorite`);
+    }
+    if ((await page.locator('[data-study-note-id="insertion-sort"]').count()) !== 1) {
+      problems.push(`${at}: My Study does not list the note`);
+    }
+
+    const favoriteHref = await page
+      .locator('[data-study-favorite-id="insertion-sort"] .study-saved-title')
+      .getAttribute('href');
+    const noteHref = await page
+      .locator('[data-study-note-id="insertion-sort"] .study-open-note')
+      .getAttribute('href');
+    if (!favoriteHref?.endsWith('/chapters/getting-started/#algorithm-insertion-sort')) {
+      problems.push(`${at}: favorite link is not the exact player (${favoriteHref})`);
+    }
+    if (!noteHref?.endsWith('/chapters/getting-started/#study-note-insertion-sort')) {
+      problems.push(`${at}: note link is not the exact editor (${noteHref})`);
+    }
+    for (const problem of await clippedStudyText()) problems.push(`${at}: ${problem}`);
+    if (shotsDir) {
+      await page.screenshot({
+        path: join(shotsDir, `study-${theme}-${viewportWidth}.png`),
+        fullPage: true,
+      });
+    }
+
+    // Removing a bookmark must not erase the independently edited note.
+    await page.locator('[data-study-favorite-id="insertion-sort"] .study-remove').click();
+    await page.waitForFunction(
+      () => document.querySelector('[data-study-favorite-id="insertion-sort"]') === null,
+    );
+    if ((await page.locator('[data-study-note-id="insertion-sort"]').count()) !== 1) {
+      problems.push(`${at}: removing a favorite also removed its note`);
+    }
+
+    await page.goto(new URL(noteHref, page.url()).href, { waitUntil: 'networkidle' });
+    await stampTheme();
+    await readyPlayer();
+    try {
+      await page.waitForFunction(
+        (selector) => {
+          const input = document.querySelector(selector);
+          return input?.closest('details')?.open && document.activeElement === input;
+        },
+        `${player} [data-study-el="note-input"]`,
+        { timeout: 5000 },
+      );
+    } catch {
+      problems.push(`${at}: the exact note link did not open and focus the editor`);
+    }
+
+    await page.locator(`${player} [data-study-el="note-input"]`).fill('');
+    await page.waitForFunction(
+      (selector) => document.querySelector(selector)?.textContent?.trim() === 'Saved locally',
+      `${player} [data-study-el="status"]`,
+      { timeout: 10000 },
+    );
+    await page.goto(`${base}/study/`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-study-dashboard]')?.dataset.studyDashboardState === 'ready',
+    );
+    if ((await page.locator('[data-study-note-id="insertion-sort"]').count()) !== 0) {
+      problems.push(`${at}: a cleared note still appears in My Study`);
+    }
+
+    // Deny IndexedDB before the next document loads. The player still has to
+    // boot, while only the study margin becomes unavailable.
+    await page.addInitScript(() => {
+      Object.defineProperty(globalThis, 'indexedDB', { configurable: true, value: undefined });
+    });
+    await page.goto(playerUrl, { waitUntil: 'networkidle' });
+    await page.waitForFunction(
+      (selector) => {
+        const root = document.querySelector(selector);
+        return (
+          root?.dataset.ready === 'true' &&
+          root.querySelector('[data-study-root]')?.dataset.studyState === 'unavailable'
+        );
+      },
+      player,
+      { timeout: 20000 },
+    );
+    await page.goto(`${base}/study/`, { waitUntil: 'networkidle' });
+    await page.waitForFunction(
+      () =>
+        document.querySelector('[data-study-dashboard]')?.dataset.studyDashboardState ===
+        'unavailable',
+      undefined,
+      { timeout: 10000 },
+    );
+  } catch (error) {
+    problems.push(`${at}: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
 const problems = [];
 const seenIds = new Set();
 const chromium = await loadChromium();
@@ -411,7 +623,7 @@ try {
       problems.push(`[${where()}] page error on ${page.url()}: ${e.message}`),
     );
 
-    for (const { slug, ids: declared } of searchOnly ? [] : chapters()) {
+    for (const { slug, ids: declared } of searchOnly || studyOnly ? [] : chapters()) {
       if (only && !slug.includes(only) && !declared.some((id) => id.includes(only))) continue;
 
       await page.goto(`${base}/chapters/${slug}`, { waitUntil: 'networkidle' });
@@ -564,6 +776,7 @@ try {
     }
 
     if (!only || searchOnly) await verifySearch(page, theme, where(), problems);
+    if (!only || studyOnly) await verifyStudy(page, theme, where(), problems);
 
     await ctx.close();
     await browser.close();

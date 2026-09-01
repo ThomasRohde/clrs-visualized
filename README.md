@@ -11,6 +11,8 @@ registry, so they cannot drift from what is actually built.
 
 Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> anywhere to search the whole book — its prose, its
 pseudocode, and the wording of every key — or use [/search](https://thomasrohde.github.io/clrs-visualized/search/).
+Favorite any player, leave a note in its study margin, and return to both in
+[/study](https://thomasrohde.github.io/clrs-visualized/study/). Study data stays in that browser.
 
 Built with [Astro](https://astro.build). Static output, no client framework — the interactive parts
 are plain TypeScript and Canvas.
@@ -31,7 +33,7 @@ npm run dev      # http://localhost:4321
 | `npm run check`          | Astro + TypeScript diagnostics                    |
 | `npm run lint`           | ESLint over `.ts` and `.astro`                    |
 | `npm run format`         | Prettier, including `.astro` and `.mdx`           |
-| `npm run verify:players` | Step every player, and search, in a real browser  |
+| `npm run verify:players` | Step players; verify search and study in-browser  |
 | `npm run readme`         | Regenerate the contents block below from the code |
 
 ## What's here
@@ -136,6 +138,10 @@ src/
     describe.ts          The canvas in words, for screen readers
     player.ts            Playback: transport, scrubbing, code highlighting
     tape.ts              The trace tape, classified from Step alone
+  study/
+    repository.ts        Async persistence contract + in-memory test store
+    indexed-db.ts        Native IndexedDB adapter, schema and migrations
+    player.ts dashboard.ts   Player annotation margin + My Study hydration
   components/
     AlgorithmPlayer.astro   Markup + styles for one visualizer
     ComplexityCard.astro    Complexity table + commentary
@@ -190,6 +196,18 @@ text rather than by storing positions, which is most of why the index is about 1
 
 `tests/search-ranking.test.ts` is the quality gate — thirty real queries against the real corpus,
 because a set of field weights produces _an_ ordering whatever the numbers are.
+
+### Personal study
+
+Every player has one stable algorithm identity, one favorite flag and one plain-text note. The
+annotation margin autosaves after a short pause, and `/study` joins those local records to the same
+published algorithm corpus search uses, so chapter names, book order and exact links have one source
+of truth. Favorites return to `#algorithm-<id>`; notes return to `#study-note-<id>` and open the editor.
+
+The browser database is deliberately behind the asynchronous `StudyRepository` contract. IndexedDB
+is the adapter today; independent favorite/note timestamps and retained clears leave a clean seam for
+future synchronization without claiming that anything is currently attached to an account. If
+storage is unavailable, personalization says so and disables itself while every player keeps working.
 
 ### Verification, not re-running
 
@@ -275,6 +293,8 @@ A few decisions worth knowing before editing, each of which fixed a real bug:
   missing when the viewer's setting is "system".
 - **Canvas backing stores are sized from the canvas's own box**, never its parent's — the parent's
   includes padding, and sizing to that silently stretches every frame.
+- **Personalization uses the neutral ramp.** The note margin can sit inside every player without
+  borrowing a coded colour whose meaning belongs to the algorithm on the canvas.
 
 ## Licence and attribution
 
