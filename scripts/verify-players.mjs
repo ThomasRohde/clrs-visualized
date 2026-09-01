@@ -47,6 +47,8 @@ const value = (name, fallback) => {
 };
 
 const only = value('only', null);
+/** `--only search` means the dialog and none of the players. */
+const searchOnly = only === 'search';
 const shotsDir = flag('shots') ? resolve(value('shots', join(ROOT, '.player-shots'))) : null;
 const shotAt = Number(value('at', '0.6'));
 const port = Number(value('port', '4321'));
@@ -132,6 +134,184 @@ function chapters() {
     });
 }
 
+/**
+ * The search dialog, driven the way a reader drives it.
+ *
+ * `npm test` proves the ranking: thirty golden queries against the real index,
+ * in Node. What it cannot see is whether the dialog opens, whether the row the
+ * arrow keys highlight is the row Enter follows, and whether a result is legible
+ * at 375px — the width where the panel is tightest and where a clipped row
+ * would have nothing to scroll to. It also cannot see the one thing this design
+ * risks: the snippets arrive after the index, so every row is rewritten a
+ * moment after it is first painted, and a row that changed height doing it
+ * would move the list under the reader's cursor. That is why the heights are
+ * compared rather than merely measured.
+ */
+async function verifySearch(page, theme, where, problems) {
+  const at = `[${where}] search`;
+
+  // The snippet payload is held back so the "does a row move when it lands"
+  // question has a before and an after to compare. Racing it is not a test.
+  await page.route('**/search-text.json', async (route) => {
+    await new Promise((r) => setTimeout(r, 700));
+    await route.continue();
+  });
+
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.evaluate((t) => document.documentElement.setAttribute('data-theme', t), theme);
+
+  if ((await page.locator('#site-search-btn').count()) !== 1) {
+    problems.push(`${at}: no search button in the topbar`);
+    return;
+  }
+
+  // 1. It opens on the shortcut, and the caret is already in the box.
+  await page.keyboard.press('Control+k');
+  try {
+    await page.waitForSelector('#site-search[open]', { timeout: 5000 });
+  } catch {
+    problems.push(`${at}: Ctrl-K did not open the dialog`);
+    return;
+  }
+  const focused = await page.evaluate(() => document.activeElement?.getAttribute('data-el'));
+  if (focused !== 'search-input')
+    problems.push(`${at}: the dialog opened without focusing the box`);
+
+  // 2. It answers from the index alone…
+  await page.keyboard.type('quicksort');
+  const rowHeights = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll('.search-row')].map((r) =>
+        Math.round(r.getBoundingClientRect().height),
+      ),
+    );
+  try {
+    await page.waitForFunction(
+      () => document.querySelectorAll('.search-row').length > 0,
+      undefined,
+      { timeout: 8000 },
+    );
+  } catch {
+    problems.push(`${at}: "quicksort" produced no results within 8s`);
+    return;
+  }
+  const before = await rowHeights();
+
+  // …and upgrades in place when the snippets arrive, without moving.
+  try {
+    await page.waitForFunction(() => document.querySelector('.search-hit') !== null, undefined, {
+      timeout: 8000,
+    });
+  } catch {
+    problems.push(`${at}: the snippets never arrived, or nothing was highlighted`);
+    return;
+  }
+  const after = await rowHeights();
+  if (before.length !== after.length || before.some((h, i) => h !== after[i])) {
+    problems.push(
+      `${at}: rows changed height when the snippets landed (${before.join('/')} → ${after.join('/')})`,
+    );
+  }
+
+  const report = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.search-row')];
+    const clips = (el) => /hidden|clip/.test(getComputedStyle(el).overflowX);
+    const cut = [];
+    const READABLE =
+      '.search-row-title, .search-kind, .search-row-where, .search-keys, .search-all';
+    const panel = document.querySelector('.search-panel');
+    for (const el of panel.querySelectorAll(READABLE)) {
+      const text = el.textContent.trim();
+      const box = el.getBoundingClientRect();
+      // An element the layout has switched off is not cut off; it is absent,
+      // and its zero-sized box is outside every ancestor by construction.
+      if (!text || (box.width === 0 && box.height === 0)) continue;
+      for (let a = el.parentElement; a && panel.contains(a); a = a.parentElement) {
+        if (!clips(a)) continue;
+        const outer = a.getBoundingClientRect();
+        if (box.right > outer.right + 1 || box.left < outer.left - 1) {
+          cut.push(`"${text.slice(0, 46)}" is cut off by .${a.className.split(' ')[0]}`);
+        }
+        break;
+      }
+      if (clips(el) && el.scrollWidth > el.clientWidth + 1) {
+        cut.push(`"${text.slice(0, 46)}" is wider than its own box`);
+      }
+    }
+    const input = document.querySelector('.search-input');
+    return {
+      count: rows.length,
+      selected: rows.filter((r) => r.getAttribute('aria-selected') === 'true').length,
+      firstSelected: rows[0]?.getAttribute('aria-selected') === 'true',
+      active: input?.getAttribute('aria-activedescendant'),
+      expanded: input?.getAttribute('aria-expanded'),
+      cut,
+    };
+  });
+
+  if (report.expanded !== 'true') {
+    problems.push(`${at}: the combobox never reported itself expanded`);
+  }
+  if (report.selected !== 1) {
+    problems.push(`${at}: ${report.selected} rows are aria-selected, want 1`);
+  }
+  if (!report.firstSelected) problems.push(`${at}: the first row is not the selected one`);
+  for (const line of report.cut) problems.push(`${at}: ${line}`);
+
+  // 3. The arrow keys move the selection, and they move the thing Enter opens.
+  await page.keyboard.press('ArrowDown');
+  const moved = await page.evaluate(() => ({
+    active: document.querySelector('.search-input')?.getAttribute('aria-activedescendant'),
+    href: document.querySelectorAll('.search-row')[1]?.getAttribute('href'),
+  }));
+  if (moved.active === report.active) problems.push(`${at}: ArrowDown did not move the selection`);
+
+  // Waited for by URL: a click that navigates does so after the keypress
+  // resolves, and an already-idle page satisfies waitForLoadState instantly.
+  await page.keyboard.press('Enter');
+  try {
+    await page.waitForURL(/\/chapters\//, { timeout: 5000 });
+  } catch {
+    problems.push(`${at}: Enter stayed on ${page.url()} instead of opening ${moved.href}`);
+  }
+
+  // 4. `/` opens it too, and Escape gives the page back — including the focus.
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.keyboard.press('/');
+  try {
+    await page.waitForSelector('#site-search[open]', { timeout: 5000 });
+  } catch {
+    problems.push(`${at}: "/" did not open the dialog`);
+    return;
+  }
+  await page.keyboard.press('Escape');
+  // Waited for as a property, not a selector: a closed <dialog> is display:none,
+  // so `#site-search:not([open])` is a locator that can never become visible.
+  try {
+    await page.waitForFunction(() => !document.querySelector('#site-search')?.open, undefined, {
+      timeout: 5000,
+    });
+  } catch {
+    problems.push(`${at}: Escape did not close the dialog`);
+    return;
+  }
+  // Waited for rather than read once. Closing a <dialog> clears `open`
+  // synchronously and fires `close` in a queued task, so the handler that puts
+  // focus back has not necessarily run at the moment `open` becomes false —
+  // reading it immediately fails on roughly one run in three, at whichever
+  // width happened to be quickest.
+  try {
+    await page.waitForFunction(() => document.activeElement?.id === 'site-search-btn', undefined, {
+      timeout: 3000,
+    });
+  } catch {
+    const returned = await page.evaluate(
+      () => document.activeElement?.id || document.activeElement?.tagName,
+    );
+    problems.push(`${at}: Escape left focus on "${returned}", not the search button`);
+  }
+}
+
 const problems = [];
 const seenIds = new Set();
 const chromium = await loadChromium();
@@ -153,7 +333,7 @@ try {
       problems.push(`[${where()}] page error on ${page.url()}: ${e.message}`),
     );
 
-    for (const { slug, ids: declared } of chapters()) {
+    for (const { slug, ids: declared } of searchOnly ? [] : chapters()) {
       if (only && !slug.includes(only) && !declared.some((id) => id.includes(only))) continue;
 
       await page.goto(`${base}/chapters/${slug}`, { waitUntil: 'networkidle' });
@@ -304,6 +484,8 @@ try {
         }
       }
     }
+
+    if (!only || searchOnly) await verifySearch(page, theme, where(), problems);
 
     await ctx.close();
     await browser.close();

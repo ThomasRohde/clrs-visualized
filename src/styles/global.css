@@ -68,6 +68,23 @@ h4 {
   color: var(--ink-3);
 }
 
+/* Visible to a screen reader, and to nothing else. Clipped rather than
+   `display: none`, which some readers skip even when it is the target of
+   aria-describedby. Two components need it — the player's canvas description
+   and the search dialog's result count — so it lives here rather than being
+   copied into each. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 .skip-link {
   position: absolute;
   left: 0.5rem;
@@ -581,6 +598,119 @@ footer.site-footer {
     animation-duration: 0.001ms !important;
     transition-duration: 0.001ms !important;
   }
+}
+
+/* ---------- search results ---------- */
+/*
+  Same reason as the aux chips below: the search dialog and the /search page
+  build their rows with the DOM, so those nodes never carry Astro's scope
+  attribute and cannot be styled from inside SearchBox.astro. The static shell
+  is styled there; everything the script creates is styled here.
+
+  Note what is *not* here. Colour is information on this site — the six coded
+  colours each mean one thing about an algorithm's state — so search chrome,
+  the matched-word highlight included, is built from the neutral ramp alone.
+*/
+.search-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius);
+  text-decoration: none;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* Driven by aria-selected, so the pointer and the arrow keys cannot disagree
+   about which row is the one Enter will open. */
+.search-row.is-active {
+  background: var(--surface-2);
+}
+
+.search-row-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.5rem;
+  min-width: 0;
+}
+
+/* Wraps rather than ellipsising. At 375 the panel is narrower than plenty of
+   this book's headings — "§7.3 — Moving the worst case off the input" — and an
+   ellipsis inside a clipping box is text with no gesture that brings it back,
+   which is exactly what `verify:players` fails a player for. Wrapping costs a
+   line and reads. */
+.search-row-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.search-row-where {
+  font-family: var(--font-mono);
+  font-size: var(--t-micro);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* The kind chip: "§7.1", "Chapter 7", "Algorithm". Neutral ramp, and a filled
+   pill for an algorithm so the two kinds differ in shape and not only in
+   wording — a row is scanned, not read. */
+.search-kind {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.1em 0.35em;
+  min-width: 4.2rem;
+  text-align: center;
+}
+
+.search-kind.is-algorithm {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+
+/* Two lines, fixed: a snippet arriving after the index must not change a row's
+   height, or the list shifts under the reader's cursor mid-search. */
+.search-row-text {
+  font-size: var(--t-small);
+  line-height: 1.4;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(2 * 1.4 * var(--t-small));
+}
+
+.search-hit {
+  background: var(--surface-3);
+  color: var(--ink);
+  border-radius: 2px;
+  padding: 0 0.1em;
+  font-weight: 600;
+}
+
+.search-row.is-active .search-hit {
+  background: var(--surface);
+}
+
+.search-empty {
+  margin: 0;
+  padding: 1.1rem 0.9rem;
+  font-size: var(--t-small);
+  color: var(--ink-3);
 }
 
 /* ---------- auxiliary value chips ---------- */

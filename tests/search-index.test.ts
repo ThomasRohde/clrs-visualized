@@ -183,3 +183,43 @@ test('the deploy base is applied to a document path exactly once', () => {
     assert.ok(doc.path.startsWith('/chapters/'), `${doc.id} is not base-relative`);
   }
 });
+
+test('the search payloads are fetched through href(), not from the root', () => {
+  // CI's base-path job reads every href and src in `dist/` and requires the
+  // deploy prefix. It cannot see a `fetch()`, so on a GitHub Pages project
+  // site — which is where this is actually served — a hardcoded URL would be
+  // two 404s and a search box that never answers, with nothing failing first.
+  const mount = source('src/search/mount.ts');
+  for (const payload of ['/search-index.json', '/search-text.json', '/search/']) {
+    assert.ok(
+      mount.includes(`href('${payload}')`),
+      `${payload} must be built through href() from src/lib/paths.ts`,
+    );
+    assert.ok(
+      !mount.includes(`fetch('${payload}')`),
+      `${payload} is fetched as a root-relative URL, which breaks a subpath deploy`,
+    );
+  }
+});
+
+test('the dialog names the keys it actually binds', () => {
+  // A hint that has drifted from the bindings is worse than no hint. Both
+  // shortcuts, and all three keys the footer promises.
+  const mount = source('src/search/mount.ts');
+  const markup = source('src/components/SearchBox.astro');
+
+  assert.match(mount, /event\.key === 'k' && \(event\.metaKey \|\| event\.ctrlKey\)/);
+  assert.match(mount, /event\.key !== '\/'/);
+  assert.match(markup, /Ctrl K/, 'the button chip must name the shortcut');
+
+  for (const [key, binding] of [
+    ['↑', "event.key === 'ArrowUp'"],
+    ['↓', "event.key === 'ArrowDown'"],
+    ['↵', "event.key === 'Enter'"],
+  ] as Array<[string, string]>) {
+    assert.ok(markup.includes(key), `the footer stops mentioning ${key}`);
+    assert.ok(mount.includes(binding), `${key} is promised in the footer but ${binding} is gone`);
+  }
+  // Escape is the <dialog> element's own, which is why it is not in mount.ts.
+  assert.match(markup, /esc<\/kbd> close/);
+});

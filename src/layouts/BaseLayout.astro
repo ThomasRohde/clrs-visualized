@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import ThemeToggle from '../components/ThemeToggle.astro';
+import SearchBox from '../components/SearchBox.astro';
 import BookNav from '../components/BookNav.astro';
 import { href } from '../lib/paths';
 
@@ -74,6 +75,7 @@ const MARK_HEIGHTS = [7, 12, 9, 15, 6, 11];
           </span>
         </a>
         <div class="topbar-right">
+          <SearchBox />
           <ThemeToggle />
         </div>
       </div>
