@@ -196,11 +196,15 @@ function titleSet(index: SearchIndex, doc: number): Set<string> {
   return (cache[doc] ??= new Set(analyze(index.docs[doc]!.t)));
 }
 
-export function search(
-  index: SearchIndex,
-  raw: string,
-  options: QueryOptions = {},
-): SearchResult[] {
+/**
+ * Every document that matched, best first and uncapped.
+ *
+ * Exported because the dialog shows eight rows and has to say how many it is
+ * not showing. Counting them by running the query a second time without a
+ * limit would be the same work twice per keystroke, and the number is already
+ * sitting here one line above the slice.
+ */
+export function rank(index: SearchIndex, raw: string, options: QueryOptions = {}): SearchResult[] {
   const { phrases, rest } = splitPhrases(raw);
   const words = analyze(rest);
   // A phrase's own words drive retrieval too — the quotes only add a filter.
@@ -295,5 +299,14 @@ export function search(
   }
 
   results.sort((a, b) => b.score - a.score || a.doc - b.doc);
-  return results.slice(0, options.limit ?? 30);
+  return results;
+}
+
+/** The top `limit` of them — what most callers want. */
+export function search(
+  index: SearchIndex,
+  raw: string,
+  options: QueryOptions = {},
+): SearchResult[] {
+  return rank(index, raw, options).slice(0, options.limit ?? 30);
 }

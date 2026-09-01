@@ -20,7 +20,7 @@
  * with `role="option"` over the top for anything reading the page aloud.
  */
 import { href } from '../lib/paths.ts';
-import { search } from './query.ts';
+import { rank } from './query.ts';
 import { snippet } from './snippet.ts';
 import type { SearchIndex, SearchResult, SearchText } from './types.ts';
 
@@ -144,6 +144,8 @@ function renderRow(index: SearchIndex, result: SearchResult, at: number, id: str
  */
 class ResultList {
   private results: SearchResult[] = [];
+  /** How many matched, which is not how many are rendered. */
+  private total = 0;
   private active = -1;
   private index: SearchIndex | null = null;
   private announcing: ReturnType<typeof setTimeout> | null = null;
@@ -179,6 +181,7 @@ class ResultList {
       // Back to the suggestions the markup shipped with, rather than an empty
       // box that reads as a search which found nothing.
       this.results = [];
+      this.total = 0;
       this.active = -1;
       this.list.replaceChildren(...this.placeholder);
       this.setExpanded(false);
@@ -193,7 +196,11 @@ class ResultList {
         this.index = index;
         // A slower keystroke may have overtaken this one.
         if (this.query !== query) return;
-        this.results = search(index, query, { text: text ?? undefined, limit: this.limit });
+        // Ranked in full, shown in part: the footer has to say how many results
+        // it is not showing, and the total is free here.
+        const all = rank(index, query, { text: text ?? undefined });
+        this.total = all.length;
+        this.results = all.slice(0, this.limit);
         this.paint();
       })
       .catch(() => {
@@ -220,7 +227,7 @@ class ResultList {
 
     this.setExpanded(this.results.length > 0);
     this.paintActive();
-    this.onCount(this.results.length, this.query.trim());
+    this.onCount(this.total, this.query.trim());
     this.announce();
   }
 
@@ -236,7 +243,7 @@ class ResultList {
         this.status.textContent = '';
         return;
       }
-      const n = this.results.length;
+      const n = this.total;
       this.status.textContent =
         n === 0 ? `No results for ${query}.` : `${n} result${n === 1 ? '' : 's'} for ${query}.`;
     }, ANNOUNCE_MS);
@@ -330,8 +337,10 @@ export function mountSearchDialog(): void {
   }
 
   const results = new ResultList('search', input, list, status, DIALOG_LIMIT, (count, query) => {
-    const more = count >= DIALOG_LIMIT;
-    all.hidden = !query || !more;
+    // Named with the number, because "see all results" beside eight rows does
+    // not tell a reader whether there are nine of them or ninety.
+    all.hidden = !query || count <= DIALOG_LIMIT;
+    all.textContent = `See all ${count} results →`;
     all.href = `${href('/search/')}?q=${encodeURIComponent(query)}`;
   });
 

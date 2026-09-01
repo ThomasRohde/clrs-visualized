@@ -310,6 +310,65 @@ async function verifySearch(page, theme, where, problems) {
     );
     problems.push(`${at}: Escape left focus on "${returned}", not the search button`);
   }
+
+  // 5. The page the dialog hands off to: linkable, seeded from ?q=, and the
+  //    same rows. This is the surface that survives a reload and a shared URL.
+  await page.goto(`${base}/search/?q=heapsort`, { waitUntil: 'networkidle' });
+  try {
+    await page.waitForFunction(
+      () => document.querySelectorAll('.search-row').length > 0,
+      undefined,
+      { timeout: 8000 },
+    );
+  } catch {
+    problems.push(`${at}: /search/?q=heapsort rendered no results`);
+    return;
+  }
+  const pageReport = await page.evaluate(() => {
+    const clips = (el) => /hidden|clip/.test(getComputedStyle(el).overflowX);
+    const cut = [];
+    for (const el of document.querySelectorAll('.search-row-title, .search-kind')) {
+      const box = el.getBoundingClientRect();
+      if (!el.textContent.trim() || (box.width === 0 && box.height === 0)) continue;
+      if (clips(el) && el.scrollWidth > el.clientWidth + 1) {
+        cut.push(`"${el.textContent.trim().slice(0, 46)}" is wider than its own box`);
+      }
+    }
+    return {
+      count: document.querySelectorAll('.search-row').length,
+      // Scoped to the form: the dialog is on this page too, and its own box
+      // carries the same data-el.
+      seeded: document.querySelector('#search-page [data-el="search-input"]')?.value,
+      counted: document.querySelector('[data-el="search-count"]')?.textContent?.trim(),
+      // The no-JS index ships in the markup whether or not it is displayed.
+      staticIndex: document.querySelectorAll('noscript').length,
+      cut,
+    };
+  });
+  if (pageReport.seeded !== 'heapsort') {
+    problems.push(`${at}: /search did not seed its box from ?q= (got "${pageReport.seeded}")`);
+  }
+  if (!/heapsort/.test(pageReport.counted ?? '')) {
+    problems.push(`${at}: /search does not say what it searched for ("${pageReport.counted}")`);
+  }
+  if (pageReport.staticIndex === 0) {
+    problems.push(`${at}: /search ships no <noscript> index, so it is useless without JS`);
+  }
+  for (const line of pageReport.cut) problems.push(`${at} page: ${line}`);
+
+  // …and typing keeps the address bar in step, so the search can be shared.
+  await page.fill('#search-page [data-el="search-input"]', 'red-black');
+  try {
+    await page.waitForFunction(
+      () => new URL(location.href).searchParams.get('q') === 'red-black',
+      undefined,
+      {
+        timeout: 5000,
+      },
+    );
+  } catch {
+    problems.push(`${at}: /search does not put the query in the URL (${page.url()})`);
+  }
 }
 
 const problems = [];
