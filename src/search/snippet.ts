@@ -29,8 +29,11 @@ const WORD = /[\p{L}\p{N}]+/gu;
 const ELLIPSIS = '…';
 
 /** Every word of `text` that folds onto one of `matched`. */
-function hitsIn(text: string, matched: Set<string>): Array<{ start: number; end: number }> {
-  const hits: Array<{ start: number; end: number }> = [];
+function hitsIn(
+  text: string,
+  matched: Set<string>,
+): Array<{ start: number; end: number; term: string }> {
+  const hits: Array<{ start: number; end: number; term: string }> = [];
   WORD.lastIndex = 0;
   for (let m = WORD.exec(text); m !== null; m = WORD.exec(text)) {
     // A single source word can fold to several — "Θ" becomes "theta", "ĉ"
@@ -38,7 +41,7 @@ function hitsIn(text: string, matched: Set<string>): Array<{ start: number; end:
     for (const run of fold(m[0]).match(/[a-z0-9]+/g) ?? []) {
       const term = termOf(run);
       if (term && matched.has(term)) {
-        hits.push({ start: m.index, end: m.index + m[0].length });
+        hits.push({ start: m.index, end: m.index + m[0].length, term });
         break;
       }
     }
