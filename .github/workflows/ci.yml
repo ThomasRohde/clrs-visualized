@@ -57,11 +57,12 @@ jobs:
       - run: npm run build
 
   # The pass `npm test` cannot make: every player, stepped through in a real
-  # browser in both themes at three widths. Separate job because it needs a
-  # browser download, and because a red cross here means something different
-  # from a red cross above.
+  # browser in both themes at three widths, and the search dialog driven by
+  # keyboard alongside them. Separate job because it needs a browser download,
+  # and because a red cross here means something different from a red cross
+  # above.
   players:
-    name: step every player in a browser
+    name: step every player, and search, in a browser
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -74,7 +75,8 @@ jobs:
       # Starts its own dev server and stops it again; exits non-zero on a
       # console error, a player that never boots, a canvas that drew nothing,
       # a step with no narration or the wrong number of highlighted lines,
-      # panel height changing mid-trace, or an algorithm embedded nowhere.
+      # panel height changing mid-trace, an algorithm embedded nowhere, or a
+      # search dialog that does not open, answer, navigate and give focus back.
       - run: npm run verify:players
 
   # A subpath deploy is the case that breaks silently, because every link still

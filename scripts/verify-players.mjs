@@ -1,17 +1,21 @@
 /**
- * Steps every player on every written chapter, in both themes, and reports what
- * the unit tests structurally cannot see.
+ * Steps every player on every written chapter, in both themes, drives the
+ * search dialog by keyboard, and reports what the unit tests structurally
+ * cannot see.
  *
  * `npm test` proves a recorder is correct and that its legend matches what the
- * renderer would paint. It runs in Node with no DOM, so it cannot tell you that
- * a player never booted, that a canvas came out blank, that a variable marker
- * sits over the wrong bar, or that the panel grows by 8px on the steps whose
- * narration wraps. Both definitions of done in docs/PROGRESS.md end with "step
- * through it in both themes"; this is that, automated as far as it goes.
+ * renderer would paint, and it proves the search ranking against thirty golden
+ * queries. It runs in Node with no DOM, so it cannot tell you that a player
+ * never booted, that a canvas came out blank, that a variable marker sits over
+ * the wrong bar, that the panel grows by 8px on the steps whose narration
+ * wraps, or that the row the arrow keys highlight is not the row Enter
+ * follows. Both definitions of done in docs/PROGRESS.md end with "step through
+ * it in both themes"; this is that, automated as far as it goes.
  *
  *   npm run verify:players                  # assert only
  *   npm run verify:players -- --shots        # …and write one PNG per player
  *   npm run verify:players -- --only select  # one chapter or algorithm
+ *   npm run verify:players -- --only search  # the dialog and /search, alone
  *
  * Starts a dev server if nothing is already serving, and stops it again.
  * Exits non-zero if anything is wrong, so it can gate a release later.
